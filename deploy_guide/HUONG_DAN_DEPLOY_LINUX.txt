@@ -1,0 +1,96 @@
+﻿============================================
+ HUONG DAN DEPLOY MIDOMAX HELPDESK
+ Linux (Ubuntu/CentOS/Debian)
+ Ngay tao: 25/07/2026 12:37
+============================================
+
+== CAU TRUC GOI DEPLOY ==
+  source/               -> Toan bo source code Spring Boot (de build)
+  jar_deploy/           -> File JAR da build san + scripts chay Linux
+    helpdesk.jar        -> Ung dung chinh (chay ngay, khong can build)
+    start.sh            -> Script khoi dong (Linux)
+    stop.sh             -> Script dung
+    application.properties -> Cau hinh (SUA truoc khi chay)
+  database/             -> SQL dump MySQL
+    helpdesk_db_20260725_1237.sql
+  deploy_guide/         -> Tai lieu nay
+
+============================================
+CACH 1: CHAY NHANH BANG JAR (KHUYEN DUNG)
+============================================
+
+Buoc 1 - Cai dat Java 17:
+  Ubuntu/Debian:
+    sudo apt update
+    sudo apt install -y openjdk-17-jre-headless
+  CentOS/RHEL:
+    sudo yum install -y java-17-openjdk
+
+Buoc 2 - Cai MySQL 8:
+  Ubuntu:
+    sudo apt install -y mysql-server
+    sudo systemctl start mysql
+    sudo mysql_secure_installation
+
+Buoc 3 - Import database:
+  sudo mysql -u root -p -e "CREATE DATABASE helpdesk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  sudo mysql -u root -p --default-character-set=utf8mb4 helpdesk < database/helpdesk_db_20260725_1237.sql
+
+Buoc 4 - Cau hinh ung dung:
+  Chinh sua file: jar_deploy/application.properties
+  Thay doi:
+    spring.datasource.password=<MAT_KHAU_MYSQL>
+    server.port=8080
+
+Buoc 5 - Phan quyen va chay:
+  chmod +x jar_deploy/start.sh jar_deploy/stop.sh
+  ./jar_deploy/start.sh
+
+  Kiem tra log:
+    tail -f jar_deploy/app.log
+
+  Dung:
+    ./jar_deploy/stop.sh
+
+Buoc 6 - Truy cap:
+  http://[IP_MAY_CHU]:8080
+
+============================================
+CACH 2: BUILD TU SOURCE
+============================================
+  Cai them Maven 3.8+ va JDK 17+
+  cd source/helpdesk
+  mvn clean package -DskipTests
+  java -jar target/helpdesk-0.0.1-SNAPSHOT.jar
+
+============================================
+MO PORT TUONG LUA (neu can)
+============================================
+  Ubuntu: sudo ufw allow 8080
+  CentOS: sudo firewall-cmd --add-port=8080/tcp --permanent && firewall-cmd --reload
+
+============================================
+CHAY NHU SERVICE (systemd)
+============================================
+  Tao file /etc/systemd/system/helpdesk.service:
+  
+    [Unit]
+    Description=Midomax Helpdesk
+    After=network.target mysql.service
+
+    [Service]
+    User=www-data
+    WorkingDirectory=/opt/helpdesk
+    ExecStart=/usr/bin/java -jar /opt/helpdesk/helpdesk.jar
+    SuccessExitStatus=143
+    Restart=on-failure
+
+    [Install]
+    WantedBy=multi-user.target
+
+  Kich hoat:
+    sudo systemctl daemon-reload
+    sudo systemctl enable helpdesk
+    sudo systemctl start helpdesk
+
+Ho tro: Midomax IT Team

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body>
+
+<!--
+  Máy tính ticket + phụ kiện trên tấm giấy. Dùng chung cho admin-home và user-home.
+  CSS ở /css/ticket-rig.css — trang nào dùng fragment này phải link file đó.
+
+  rigMachine nhận 1 số cho đèn LED và 5 cặp (giá trị, nhãn):
+    v1..v3 -> 3 note vàng ghim đỏ phía trên
+    v4, v5 -> 2 bong bóng đỏ hai bên
+  Hai trang có bộ số khác nhau (admin xem toàn hệ thống, user xem ticket của mình)
+  nên nhãn được truyền vào chứ không viết cứng ở đây.
+-->
+<div th:fragment="rigMachine(led, v1,l1, v2,l2, v3,l3, v4,l4, v5,l5)"
+     class="rig-scene" id="rig-scene">
+    <div class="rig-tilt-wrapper">
+        <svg class="rig-svg" viewBox="0 0 900 566" role="img"
+             aria-label="Máy tính hiển thị số liệu ticket">
+            <defs>
+                <!-- Gradients cho Robot Chibi Kamito (như Hình 1 & Hình 2) -->
+                <linearGradient id="chibiWhiteG" x1="0" y1="0" x2="0.3" y2="1">
+                    <stop offset="0%" stop-color="#FFFFFF" />
+                    <stop offset="50%" stop-color="#F2F6FB" />
+                    <stop offset="100%" stop-color="#DDE7F2" />
+                </linearGradient>
+                <linearGradient id="chibiBlueG" x1="0" y1="0" x2="0.5" y2="1">
+                    <stop offset="0%" stop-color="#18B2FF" />
+                    <stop offset="60%" stop-color="#0088FF" />
+                    <stop offset="100%" stop-color="#0055CC" />
+                </linearGradient>
+                <linearGradient id="screenBevelG" x1="0" y1="0" x2="0.2" y2="1">
+                    <stop offset="0%" stop-color="#2D4663" />
+                    <stop offset="100%" stop-color="#112030" />
+                </linearGradient>
+                <linearGradient id="chibiScreenG" x1="0" y1="0" x2="0.4" y2="1">
+                    <stop offset="0%" stop-color="#0A223E" />
+                    <stop offset="55%" stop-color="#061628" />
+                    <stop offset="100%" stop-color="#020B16" />
+                </linearGradient>
+                <linearGradient id="glassGlossG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#80B8FF" />
+                    <stop offset="100%" stop-color="#182432" stop-opacity="0" />
+                </linearGradient>
+                <linearGradient id="ledG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#0A323A" />
+                    <stop offset="100%" stop-color="#04181E" />
+                </linearGradient>
+
+                <pattern id="dotPat" width="7" height="7" patternUnits="userSpaceOnUse">
+                    <circle cx="1.6" cy="1.6" r="1.15" fill="#00EAFF" opacity=".16" />
+                </pattern>
+                <clipPath id="robotScrClip">
+                    <rect x="302" y="206" width="262" height="172" rx="28" />
+                </clipPath>
+                <filter id="eyeGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#00EAFF" flood-opacity=".75" />
+                </filter>
+                <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#102036" flood-opacity=".26" />
+                </filter>
+                <filter id="tinyShadow" x="-40%" y="-40%" width="180%" height="180%">
+                    <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#102036" flood-opacity=".3" />
+                </filter>
+
+                <!-- VECTOR LOGO KAMITO CHUẨN HÌNH 2 (ĐẶT LÊN NGỰC ROBOT) -->
+                <g id="kamito-vector-logo">
+                    <!-- Nền huy hiệu đỏ bo góc sang trọng -->
+                    <rect x="0" y="0" width="100" height="34" rx="7" fill="#E82020" />
+                    <!-- Biểu tượng cánh chim & đầu đại bàng bên trên -->
+                    <g fill="#FFFFFF" transform="translate(36, 3) scale(0.18)">
+                        <!-- 3 lông cánh vuốt chéo & đầu chim -->
+                        <path d="M 20 80 C 15 65 5 50 0 38 C 12 48 32 68 45 88 C 28 65 10 38 5 18 C 22 35 48 60 62 85 C 45 60 22 30 18 10 C 38 28 65 55 82 82 C 95 62 110 52 128 52 C 138 52 142 55 140 62 C 132 68 122 76 118 82 C 114 74 108 65 98 60 C 92 68 85 78 75 92 Z" />
+                    </g>
+                    <!-- Chữ KAMITO đậm cùng chữ A tia chớp bên dưới -->
+                    <g fill="#FFFFFF" transform="translate(18, 19) scale(0.19)">
+                        <!-- K -->
+                        <path d="M 0 0 L 0 38 L 10 38 L 10 23 L 24 38 L 36 38 L 18 19 L 34 0 L 22 0 L 10 15 L 10 0 Z" />
+                        <!-- A (Tia chớp ở giữa) -->
+                        <path d="M 38 38 L 50 0 L 62 0 L 74 38 L 64 38 L 61 27 L 51 27 L 48 38 Z M 53 20 L 58 20 L 54 11 L 59 11 L 52 3 L 56 20 Z" />
+                        <!-- M -->
+                        <path d="M 76 38 L 76 0 L 86 0 L 93 19 L 100 0 L 110 0 L 110 38 L 101 38 L 101 11 L 95 26 L 91 26 L 85 11 L 85 38 Z" />
+                        <!-- I -->
+                        <path d="M 114 0 L 123 0 L 123 38 L 114 38 Z" />
+                        <!-- T -->
+                        <path d="M 126 0 L 148 0 L 148 8 L 141 8 L 141 38 L 133 38 L 133 8 L 126 8 Z" />
+                        <!-- O -->
+                        <path d="M 163 0 C 174 0 181 8 181 19 C 181 30 174 38 163 38 C 152 38 145 30 145 19 C 145 8 152 0 163 0 Z M 163 8 C 157 8 154 12 154 19 C 154 26 157 30 163 30 C 169 30 172 26 172 19 C 172 12 169 8 163 8 Z" />
+                    </g>
+                </g>
+            </defs>
+
+            <!-- 5 thẻ số liệu: kính mờ, không xoay, không ghim, không emoji.
+                 Cùng ngôn ngữ với .sc và topbar/sidebar glass. -->
+            <g class="tagfloat t1">
+                <rect x="122" y="8" width="140" height="104" rx="14" fill="#efe3ba" transform="rotate(6 190 62)" />
+                <rect x="118" y="12" width="144" height="104" rx="14" fill="#fdf6da" stroke="#eee1b4" stroke-width="1" filter="url(#tinyShadow)" />
+                <line x1="134" y1="60" x2="246" y2="60" stroke="#ece0b2" stroke-width="1.5" />
+                <line x1="134" y1="94" x2="246" y2="94" stroke="#ece0b2" stroke-width="1.5" />
+                <text x="134" y="45" class="note-head" font-family="ui-sans-serif, system-ui"
+                      font-size="11.5" font-weight="700" fill="#b6983f" letter-spacing="1" th:text="${l1}">Nhãn</text>
+                <text x="190" y="90" text-anchor="middle" font-family="ui-sans-serif, system-ui"
+                      font-size="34" font-weight="700" fill="#2f6df6" th:text="${v1}">0</text>
+            </g>
+
+            <g class="tagfloat t2">
+                <rect x="364" y="8" width="140" height="104" rx="14" fill="#efe3ba" transform="rotate(6 432 62)" />
+                <rect x="360" y="12" width="144" height="104" rx="14" fill="#fdf6da" stroke="#eee1b4" stroke-width="1" filter="url(#tinyShadow)" />
+                <line x1="376" y1="60" x2="488" y2="60" stroke="#ece0b2" stroke-width="1.5" />
+                <line x1="376" y1="94" x2="488" y2="94" stroke="#ece0b2" stroke-width="1.5" />
+                <text x="376" y="45" class="note-head" font-family="ui-sans-serif, system-ui"
+                      font-size="11.5" font-weight="700" fill="#b6983f" letter-spacing="1" th:text="${l2}">Nhãn</text>
+                <text x="432" y="90" text-anchor="middle" font-family="ui-sans-serif, system-ui"
+                      font-size="34" font-weight="700" fill="#2f6df6" th:text="${v2}">0</text>
+            </g>
+
+            <g class="tagfloat t3">
+                <rect x="606" y="8" width="140" height="104" rx="14" fill="#efe3ba" transform="rotate(6 674 62)" />
+                <rect x="602" y="12" width="144" height="104" rx="14" fill="#fdf6da" stroke="#eee1b4" stroke-width="1" filter="url(#tinyShadow)" />
+                <line x1="618" y1="60" x2="730" y2="60" stroke="#ece0b2" stroke-width="1.5" />
+                <line x1="618" y1="94" x2="730" y2="94" stroke="#ece0b2" stroke-width="1.5" />
+                <text x="618" y="45" class="note-head" font-family="ui-sans-serif, system-ui"
+                      font-size="11.5" font-weight="700" fill="#b6983f" letter-spacing="1" th:text="${l3}">Nhãn</text>
+                <text x="674" y="90" text-anchor="middle" font-family="ui-sans-serif, system-ui"
+                      font-size="34" font-weight="700" fill="#2f6df6" th:text="${v3}">0</text>
+            </g>
+
+            <!-- Hai chỉ số cảnh báo: giữ sắc đỏ nhưng chỉ ở gạch chỉ báo bên trái,
+                 nền vẫn là kính mờ — đỏ đặc cả khối trông như bong bóng chat. -->
+            <g class="tagfloat t4">
+                <rect x="32" y="266" width="204" height="94" rx="14" fill="#efe3ba" transform="rotate(4 132 313)" />
+                <rect x="28" y="270" width="208" height="94" rx="14" fill="#fdf6da" stroke="#eee1b4" stroke-width="1" filter="url(#tinyShadow)" />
+                <line x1="44" y1="322" x2="220" y2="322" stroke="#ece0b2" stroke-width="1.5" />
+                <text x="44" y="304" class="note-head" font-family="ui-sans-serif, system-ui"
+                      font-size="11.5" font-weight="700" fill="#b6983f" letter-spacing="1" th:text="${l4}">Nhãn</text>
+                <text x="132" y="352" text-anchor="middle" font-family="ui-sans-serif, system-ui"
+                      font-size="32" font-weight="700" fill="#c0555f" th:text="${v4}">0</text>
+            </g>
+
+            <g class="tagfloat t5">
+                <rect x="704" y="206" width="184" height="94" rx="14" fill="#efe3ba" transform="rotate(4 794 253)" />
+                <rect x="700" y="210" width="188" height="94" rx="14" fill="#fdf6da" stroke="#eee1b4" stroke-width="1" filter="url(#tinyShadow)" />
+                <line x1="716" y1="262" x2="872" y2="262" stroke="#ece0b2" stroke-width="1.5" />
+                <text x="716" y="244" class="note-head" font-family="ui-sans-serif, system-ui"
+                      font-size="11.5" font-weight="700" fill="#b6983f" letter-spacing="1" th:text="${l5}">Nhãn</text>
+                <text x="794" y="292" text-anchor="middle" font-family="ui-sans-serif, system-ui"
+                      font-size="32" font-weight="700" fill="#c0555f" th:text="${v5}">0</text>
+            </g>
+
+            <!-- === ROBOT CHIBI KAMITO (ĐẶT SAU NOTE VÀNG TRONG SVG ĐỂ ROBOT ĐÈ LÊN TRÊN NOTE, CHỈ RIÊNG ROBOT NGHIÊNG 3D) === -->
+            <g class="robot-mecha-unit" id="rig-tilt">
+                <!-- BÓNG DƯỚI ĐẤT (Vì robot lơ lửng không có chân chạm đất như Hình 1) -->
+                <ellipse class="robot-ground-shadow" cx="433" cy="538" rx="116" ry="14" fill="#0C192C" />
+
+                <!-- CỤM THÂN TRÊN & ĐẦU ROBOT LƠ LỬNG BỒNG BỀNH (.robot-head-bob) -->
+                <g class="robot-head-bob">
+                    <!-- 1. THÂN DƯỚI LƠ LỬNG (CAPSULE BODY NHƯ HÌNH 1) -->
+                    <g filter="url(#softShadow)">
+                        <!-- Khối bụng capsule trắng/kem -->
+                        <rect x="356" y="416" width="154" height="106" rx="46" fill="url(#chibiWhiteG)" />
+                        <!-- Vòng cổ xanh biển nổi bật -->
+                        <rect x="376" y="416" width="114" height="16" rx="8" fill="url(#chibiBlueG)" />
+                        <!-- Phần đáy bụng cong màu xanh biển -->
+                        <path d="M 370 490 Q 433 528 496 490 Q 480 522 433 522 Q 386 522 370 490 Z" fill="url(#chibiBlueG)" />
+
+                        <!-- LOGO KAMITO GỌN GÀNG Ở MỘT GÓC ÁO (Góc trên ngực áo như huy hiệu thương hiệu) -->
+                        <g filter="url(#tinyShadow)">
+                            <rect x="446" y="434" width="56" height="24" rx="5" fill="#E82020" />
+                            <image th:href="@{/images/kamito-logo.png}" href="/images/kamito-logo.png" x="448" y="435" width="52" height="22" preserveAspectRatio="xMidYMid meet" />
+                        </g>
+
+                        <!-- MÀN HÌNH LED SỐ TICKET Ở GIỮA NGỰC -->
+                        <g filter="url(#tinyShadow)">
+                            <rect x="390" y="462" width="86" height="32" rx="8" fill="url(#ledG)" stroke="#00EAFF" stroke-width="1.5" />
+                            <text class="led-num" x="433" y="485" text-anchor="middle"
+                                  font-family="ui-monospace, Consolas, monospace" font-size="20"
+                                  font-weight="800" fill="#00FFFF" letter-spacing="2"
+                                  th:text="${led}">0</text>
+                        </g>
+                    </g>
+
+                    <!-- 2. ĐẦU ROBOT BO TRÒN (HELMET VỚI CREST XANH BÊN TRÊN - HÌNH 1) -->
+                    <g filter="url(#softShadow)">
+                        <!-- Khớp cổ nối -->
+                        <rect x="413" y="402" width="40" height="20" rx="6" fill="#69819E" />
+
+                        <!-- Tai cảm biến bên trái & phải -->
+                        <g filter="url(#tinyShadow)">
+                            <rect x="256" y="258" width="24" height="64" rx="12" fill="url(#chibiWhiteG)" />
+                            <circle class="ear-pulse" cx="264" cy="290" r="10" fill="url(#chibiBlueG)" />
+                            <rect x="586" y="258" width="24" height="64" rx="12" fill="url(#chibiWhiteG)" />
+                            <circle class="ear-pulse" cx="602" cy="290" r="10" fill="url(#chibiBlueG)" />
+                        </g>
+
+                        <!-- Khối mũ bảo hiểm trắng/cream chính -->
+                        <rect x="274" y="168" width="318" height="244" rx="56" fill="url(#chibiWhiteG)" />
+                        <!-- Viền mí sáng bóng nhôm -->
+                        <rect x="284" y="178" width="298" height="224" rx="46" fill="none" stroke="#FFFFFF" stroke-width="3" opacity=".85" />
+
+                        <!-- MÃO XANH BIỂN TRÊN ĐỈNH ĐẦU (Đặc trưng Hình 1 - Sẽ đè lên giấy note trên đầu) -->
+                        <g filter="url(#tinyShadow)">
+                            <rect x="378" y="152" width="110" height="32" rx="14" fill="url(#chibiBlueG)" stroke="#FFFFFF" stroke-width="2.5" />
+                            <circle class="antenna-led" cx="433" cy="168" r="6" fill="#00EAFF" />
+                        </g>
+
+                        <!-- KHUNG MÀN HÌNH BEVEL & MẶT KÍNH TỐI -->
+                        <rect x="294" y="198" width="278" height="188" rx="36" fill="url(#screenBevelG)" />
+                        <rect x="302" y="206" width="262" height="172" rx="28" fill="url(#chibiScreenG)" stroke="#00EAFF" stroke-width="2" opacity=".9" />
+
+                        <!-- NỘI DUNG MÀN HÌNH: một khuôn mặt điềm đạm, tối giản.
+                             Bỏ má hồng, chữ pixel chạy và các trạng thái xoay vòng —
+                             chỉ còn cặp mắt nhìn theo con trỏ và nụ cười nhẹ. -->
+                        <g clip-path="url(#robotScrClip)">
+                            <!-- Nền lưới dot & bóng kính sweep -->
+                            <rect x="302" y="206" width="262" height="172" fill="url(#dotPat)" />
+                            <path d="M 302 206 L 564 206 L 564 256 Q 433 280 302 256 Z" fill="url(#glassGlossG)" opacity=".25" />
+
+                            <g class="face-smile">
+                                <!-- Mắt cyan nhìn theo con trỏ chuột -->
+                                <g class="eye-track">
+                                    <ellipse cx="366" cy="286" rx="20" ry="24" fill="#00EAFF" filter="url(#eyeGlow)" />
+                                    <circle cx="372" cy="279" r="6.5" fill="#FFFFFF" />
+                                    <ellipse cx="500" cy="286" rx="20" ry="24" fill="#00EAFF" filter="url(#eyeGlow)" />
+                                    <circle cx="506" cy="279" r="6.5" fill="#FFFFFF" />
+                                </g>
+                                <!-- Nụ cười nhẹ -->
+                                <path d="M 418 324 Q 433 338 448 324" fill="none" stroke="#00EAFF" stroke-width="5" stroke-linecap="round" filter="url(#eyeGlow)" />
+                            </g>
+
+                            <!-- Câu chào 1: chạy phải → trái (nhịp scr-t1/scr-m1) -->
+                            <g class="pixel-text-1">
+                                <text class="pixel-scroll-1" x="302" y="302" text-anchor="start"
+                                      font-family="'Press Start 2P', 'Silkscreen', 'VT323', Consolas, monospace"
+                                      font-size="24" font-weight="700" letter-spacing="1"
+                                      fill="#00EAFF" filter="url(#eyeGlow)">CHÀO MỪNG BẠN ĐẾN VỚI MIDOMAX ✦</text>
+                            </g>
+
+                            <!-- Câu chào 2 (nhịp scr-t2/scr-m2) -->
+                            <g class="pixel-text-2">
+                                <text class="pixel-scroll-2" x="302" y="302" text-anchor="start"
+                                      font-family="'Press Start 2P', 'Silkscreen', 'VT323', Consolas, monospace"
+                                      font-size="24" font-weight="700" letter-spacing="1"
+                                      fill="#00EAFF" filter="url(#eyeGlow)">HÔM NAY BẠN THẾ NÀO? <tspan class="pixel-cursor">_</tspan></text>
+                            </g>
+                        </g>
+                    </g>
+
+                    <!-- 3. CÁNH TAY & KHỚP VAI BO TRÒN (ĐẶT SAU ĐẦU VÀ THÂN TRONG SVG ĐỂ HOÀN TOÀN KHÔNG BỊ CHE HAY CỤT) -->
+                    <!-- Khớp vai trái & tay trái lơ lửng tự nhiên -->
+                    <g filter="url(#tinyShadow)">
+                        <circle cx="344" cy="446" r="16" fill="url(#chibiBlueG)" stroke="#FFFFFF" stroke-width="3" />
+                        <path d="M 344 446 C 310 460 306 496 316 524" stroke="url(#chibiWhiteG)" stroke-width="34" stroke-linecap="round" fill="none" />
+                        <circle cx="317" cy="525" r="15" fill="url(#chibiBlueG)" stroke="#FFFFFF" stroke-width="2" />
+                    </g>
+                    <!-- Khớp vai phải & tay phải VẪY CHÀO VUI VẺ nhún nhảy (arm-wave với transform-origin: 520px 446px) -->
+                    <g class="arm-wave" filter="url(#tinyShadow)">
+                        <circle cx="520" cy="446" r="16" fill="url(#chibiBlueG)" stroke="#FFFFFF" stroke-width="3" />
+                        <path d="M 520 446 C 554 430 564 406 564 386" stroke="url(#chibiWhiteG)" stroke-width="34" stroke-linecap="round" fill="none" />
+                        <circle cx="564" cy="384" r="15" fill="url(#chibiBlueG)" stroke="#FFFFFF" stroke-width="2" />
+                    </g>
+                </g>
+            </g>
+        </svg>
+    </div>
+</div>
+
+
+<!-- Nghiêng Robot 3D theo con trỏ chuột và Mắt linh hoạt nhìn theo hướng chuột -->
+<script th:fragment="rigScript">
+    (function () {
+        var scene = document.getElementById('rig-scene');
+        var tilt = document.getElementById('rig-tilt');
+        if (!scene || !tilt) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        function handlePointerMove(e) {
+            var r = scene.getBoundingClientRect();
+            var isInside = e.clientX >= r.left && e.clientX <= r.right &&
+                           e.clientY >= r.top && e.clientY <= r.bottom;
+
+            if (isInside) {
+                scene.classList.add('is-hovering');
+            } else {
+                scene.classList.remove('is-hovering');
+            }
+
+            var cx = r.left + r.width / 2;
+            var cy = r.top + r.height / 2;
+
+            // Tính toán khoảng cách chuẩn hóa (-1 đến 1) so với tâm Robot
+            var dx = (e.clientX - cx) / (window.innerWidth * 0.5);
+            var dy = (e.clientY - cy) / (window.innerHeight * 0.5);
+
+            var px = Math.max(-1, Math.min(1, dx));
+            var py = Math.max(-1, Math.min(1, dy));
+
+            // Góc nghiêng 3D (Rotation Y/X) & độ nổi (TranslateZ)
+            var ry = (px * 24).toFixed(2) + 'deg';
+            var rx = (-py * 16).toFixed(2) + 'deg';
+            var tz = '22px';
+
+            // Tọa độ Mắt nhìn theo con trỏ chuột (Eye Tracking)
+            var eyeX = (px * 18).toFixed(1) + 'px';
+            var eyeY = (py * 12).toFixed(1) + 'px';
+
+            tilt.style.setProperty('--ry', ry);
+            tilt.style.setProperty('--rx', rx);
+            tilt.style.setProperty('--tz', tz);
+            scene.style.setProperty('--eye-x', eyeX);
+            scene.style.setProperty('--eye-y', eyeY);
+        }
+
+        function handlePointerReset() {
+            scene.classList.remove('is-hovering');
+            tilt.style.setProperty('--ry', '0deg');
+            tilt.style.setProperty('--rx', '0deg');
+            tilt.style.setProperty('--tz', '0px');
+            scene.style.setProperty('--eye-x', '0px');
+            scene.style.setProperty('--eye-y', '0px');
+        }
+
+        // Tương tác rê chuột toàn màn hình & trong khu vực Robot
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerleave', handlePointerReset);
+        scene.addEventListener('pointerleave', handlePointerReset);
+    })();
+</script>
+
+</body>
+</html>

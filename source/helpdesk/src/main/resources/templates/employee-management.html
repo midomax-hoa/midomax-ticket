@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Nhân Sự - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); border: 1px solid #e5e7eb; }
+
+        /* ===== WIDGET / TABLE ===== */
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 15px 12px; white-space: nowrap; }
+        .table-custom td { padding: 12px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
+        .table-custom tbody tr:hover { background-color: #f8fafc; }
+
+        /* ===== FORM / TABS ===== */
+        .nav-tabs .nav-link { color: #64748b; font-weight: 500; border: none; border-bottom: 2px solid transparent; padding: 10px 15px; font-size: 14px; }
+        .nav-tabs .nav-link.active { color: #1e3a8a; border-bottom: 2px solid #1e3a8a; background: transparent; font-weight: 600; }
+        .nav-tabs .nav-link:hover:not(.active) { color: #1e3a8a; border-bottom: 2px solid #cbd5e1; }
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.12); }
+        .section-divider { font-weight: 700; font-size: 13px; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px; margin-top: 4px; }
+        .doc-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc; transition: 0.2s; }
+        .doc-check-item:hover { border-color: #bfdbfe; background: #eff6ff; }
+        .doc-check-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: #1e3a8a; cursor: pointer; }
+        .doc-check-item label { font-size: 13px; color: #374151; cursor: pointer; margin: 0; }
+        .family-row { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 15px; margin-bottom: 10px; }
+
+        /* ===== BADGE ===== */
+        .badge-status-active { background: #dcfce7; color: #15803d; font-weight: 600; font-size: 12px; padding: 4px 10px; border-radius: 20px; }
+        .badge-status-maternity { background: #fef9c3; color: #a16207; font-weight: 600; font-size: 12px; padding: 4px 10px; border-radius: 20px; }
+        .badge-status-resigned { background: #f1f5f9; color: #475569; font-weight: 600; font-size: 12px; padding: 4px 10px; border-radius: 20px; }
+            .topbar small { font-size: 10px !important; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== SIDEBAR ===== -->
+    <div th:replace="~{fragments/sidebar :: sidebar('employees')}"></div>
+    <div class="main-content" id="main-content">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Quản lý Nhân Sự</h4>
+                    <small class="text-muted">Danh sách hồ sơ nhân viên</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a th:href="@{/employees/export}" class="btn btn-success fw-semibold shadow-sm" title="Xuất Excel">
+                    <i class="fa-solid fa-file-export"></i><span class="d-none d-md-inline ms-1"> Xuất Excel</span>
+                </a>
+                <button class="btn btn-outline-success fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#importModal" title="Nhập Excel">
+                    <i class="fa-solid fa-file-import"></i><span class="d-none d-md-inline ms-1"> Nhập Excel</span>
+                </button>
+                <button id="btnOpenAdd" class="btn btn-primary fw-semibold shadow-sm" style="background:#1e3a8a; border:none;" data-bs-toggle="modal" data-bs-target="#employeeModal" title="Thêm Nhân Viên">
+                    <i class="fa-solid fa-plus"></i><span class="d-none d-md-inline ms-1"> Thêm Nhân Viên</span>
+                </button>
+                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#1e3a8a'" onmouseout="this.style.color='#6b7280'"></i>
+            </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- TABLE CARD -->
+        <div class="widget-card">
+            <!-- TÌM KIẾM & LỌC -->
+            <form action="/employees" method="get" class="mb-4">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" name="search" th:value="${searchQuery}" class="form-control" placeholder="🔍 Tìm theo Mã NV hoặc Tên...">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="department" class="form-select">
+                            <option value="">-- Tất cả phòng ban --</option>
+                            <option th:each="dept : ${departments}" th:value="${dept}" th:text="${dept}" th:selected="${dept == selectedDept}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select">
+                            <option value="">-- Tất cả trạng thái --</option>
+                            <option th:each="st : ${statuses}" th:value="${st}" th:text="${st}" th:selected="${st == selectedStatus}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100" style="background:#1e3a8a;"><i class="fa-solid fa-search"></i> Lọc</button>
+                        <a href="/employees" class="btn btn-outline-secondary"><i class="fa-solid fa-rotate-right"></i></a>
+                    </div>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Mã NV</th>
+                            <th>Họ và tên</th>
+                            <th>Phòng ban</th>
+                            <th>Bộ phận</th>
+                            <th>Chức vụ</th>
+                            <th>SĐT</th>
+                            <th>Trạng thái</th>
+                            <th class="text-center">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="emp : ${employees}">
+                            <td class="fw-bold" style="color:#1e3a8a;" th:text="${emp.employeeCode}">NV001</td>
+                            <td class="fw-medium" th:text="${emp.fullName}">Nguyễn Văn A</td>
+                            <td th:text="${emp.department}">IT</td>
+                            <td th:text="${emp.division}">-</td>
+                            <td th:text="${emp.position}">Nhân viên</td>
+                            <td th:text="${emp.personalPhoneNumber}">0123456789</td>
+                            <td>
+                                <span class="badge-status-active" th:if="${emp.workStatus == 'Đang làm việc'}" th:text="${emp.workStatus}"></span>
+                                <span class="badge-status-maternity" th:if="${emp.workStatus == 'Nghỉ thai sản'}" th:text="${emp.workStatus}"></span>
+                                <span class="badge-status-resigned" th:unless="${emp.workStatus == 'Đang làm việc' or emp.workStatus == 'Nghỉ thai sản'}" th:text="${emp.workStatus != null ? emp.workStatus : 'Chưa xác định'}"></span>
+                            </td>
+                            <td class="text-center" style="white-space:nowrap;">
+                                <a th:href="@{/employees(id=${emp.id}, action='view')}" class="btn btn-sm btn-outline-info" title="Xem chi tiết"><i class="fa-solid fa-eye"></i></a>
+                                <a th:href="@{/employees(id=${emp.id}, action='edit')}" class="btn btn-sm btn-outline-primary" title="Sửa"><i class="fa-solid fa-pen"></i></a>
+                                <a th:href="@{/employees/delete/{id}(id=${emp.id})}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?');" title="Xóa"><i class="fa-solid fa-trash"></i></a>
+                            </td>
+                        </tr>
+                        <tr th:if="${employees.empty}">
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-users-slash fs-2 mb-2 d-block"></i>
+                                Chưa có nhân viên nào.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div><!-- End main-content -->
+
+
+    <!-- ===== MODAL THÊM / SỬA NHÂN VIÊN ===== -->
+    <div class="modal fade" id="employeeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; border-radius: 0;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-tie me-2"></i>Thông tin nhân viên</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="employeeForm" th:action="@{/employees/save}" method="post" th:object="${newEmployee}">
+                    <input type="hidden" th:field="*{id}">
+                    <div class="modal-body p-0">
+                        <!-- Tab Navigation -->
+                        <ul class="nav nav-tabs px-3 pt-2 border-bottom" id="employeeTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+                                    <i class="fa-solid fa-id-card me-1"></i>Thông tin chung
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact" type="button" role="tab">
+                                    <i class="fa-solid fa-address-book me-1"></i>Cá nhân &amp; Liên hệ
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="contract-tab" data-bs-toggle="tab" data-bs-target="#contract" type="button" role="tab">
+                                    <i class="fa-solid fa-file-contract me-1"></i>Hợp đồng &amp; BH
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="docs-tab" data-bs-toggle="tab" data-bs-target="#docs" type="button" role="tab">
+                                    <i class="fa-solid fa-folder-open me-1"></i>Hồ sơ đính kèm
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="family-tab" data-bs-toggle="tab" data-bs-target="#family" type="button" role="tab">
+                                    <i class="fa-solid fa-people-roof me-1"></i>Gia đình
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content p-4" id="employeeTabContent">
+
+                            <!-- ===== TAB 1: THÔNG TIN CHUNG ===== -->
+                            <div class="tab-pane fade show active" id="general" role="tabpanel">
+                                <div class="section-divider">Thông tin nhận dạng</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Mã số lao động <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" th:field="*{employeeCode}" placeholder="VD: NV001" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" th:field="*{fullName}" placeholder="Nguyễn Văn A" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Giới tính</label>
+                                        <select class="form-select" th:field="*{gender}">
+                                            <option value="">-- Chọn --</option>
+                                            <option value="Nam">Nam</option>
+                                            <option value="Nữ">Nữ</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="section-divider mt-4">Phân công tổ chức</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Phòng ban</label>
+                                        <input type="text" class="form-control" th:field="*{department}" placeholder="VD: IT, HR, Kế toán...">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Bộ phận</label>
+                                        <input type="text" class="form-control" th:field="*{division}" placeholder="VD: Hạ tầng, Phần mềm...">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Chức vụ</label>
+                                        <input type="text" class="form-control" th:field="*{position}" placeholder="VD: Trưởng phòng, Nhân viên...">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Chức danh chuyên môn</label>
+                                        <input type="text" class="form-control" th:field="*{professionalTitle}" placeholder="VD: Kỹ sư CNTT...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Chi nhánh</label>
+                                        <input type="text" class="form-control" th:field="*{branch}" placeholder="VD: Hà Nội, HCM...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Tình trạng hôn nhân</label>
+                                        <select class="form-select" th:field="*{maritalStatus}">
+                                            <option value="">-- Chọn --</option>
+                                            <option value="Độc thân">Độc thân</option>
+                                            <option value="Đã kết hôn">Đã kết hôn</option>
+                                            <option value="Đã ly hôn">Đã ly hôn</option>
+                                            <option value="Góa">Góa</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Nguồn tuyển dụng</label>
+                                        <input type="text" class="form-control" th:field="*{recruitmentSource}" placeholder="VD: Giới thiệu nội bộ, Job portal...">
+                                    </div>
+                                </div>
+                                <div class="section-divider mt-4">Trình độ học vấn</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Trình độ</label>
+                                        <select class="form-select" th:field="*{educationLevel}">
+                                            <option value="">-- Chọn --</option>
+                                            <option value="Trung cấp">Trung cấp</option>
+                                            <option value="Cao đẳng">Cao đẳng</option>
+                                            <option value="Đại học">Đại học</option>
+                                            <option value="Thạc sĩ">Thạc sĩ</option>
+                                            <option value="Tiến sĩ">Tiến sĩ</option>
+                                            <option value="Khác">Khác</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Chuyên ngành học</label>
+                                        <input type="text" class="form-control" th:field="*{major}" placeholder="VD: Công nghệ thông tin, Kinh tế...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ===== TAB 2: CÁ NHÂN & LIÊN HỆ ===== -->
+                            <div class="tab-pane fade" id="contact" role="tabpanel">
+                                <div class="section-divider">Thông tin cá nhân</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ngày sinh</label>
+                                        <input type="date" class="form-control" th:field="*{dob}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Số CCCD</label>
+                                        <input type="text" class="form-control" th:field="*{idCardNumber}" placeholder="012345678912">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ngày cấp CCCD</label>
+                                        <input type="date" class="form-control" th:field="*{idCardIssueDate}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Nơi cấp CCCD</label>
+                                        <input type="text" class="form-control" th:field="*{idCardIssuePlace}" placeholder="VD: Cục CA Hà Nội">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Mã số thuế cá nhân</label>
+                                        <input type="text" class="form-control" th:field="*{taxCode}" placeholder="VD: 1234567890">
+                                    </div>
+                                </div>
+
+                                <div class="section-divider mt-4">Liên hệ</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">SĐT cá nhân</label>
+                                        <input type="text" class="form-control" th:field="*{personalPhoneNumber}" placeholder="0912345678">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">SĐT công ty cấp</label>
+                                        <input type="text" class="form-control" th:field="*{companyPhoneNumber}" placeholder="024xxxxxxx">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Email cá nhân</label>
+                                        <input type="email" class="form-control" th:field="*{personalEmail}" placeholder="example@gmail.com">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Email công ty</label>
+                                        <input type="email" class="form-control" th:field="*{companyEmail}" placeholder="name@midomax.vn">
+                                    </div>
+                                </div>
+
+                                <div class="section-divider mt-4">Địa chỉ</div>
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label">Chỗ ở hiện tại</label>
+                                        <input type="text" class="form-control" th:field="*{currentAddress}" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Địa chỉ hộ khẩu thường trú (đầy đủ)</label>
+                                        <input type="text" class="form-control" th:field="*{permanentAddress}" placeholder="Địa chỉ đầy đủ theo sổ hộ khẩu">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Thôn/Xóm</label>
+                                        <input type="text" class="form-control" th:field="*{hamlet}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Phường/Xã</label>
+                                        <input type="text" class="form-control" th:field="*{ward}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Quận/Huyện</label>
+                                        <input type="text" class="form-control" th:field="*{district}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Tỉnh/Thành phố</label>
+                                        <input type="text" class="form-control" th:field="*{city}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ===== TAB 3: HỢP ĐỒNG & BẢO HIỂM ===== -->
+                            <div class="tab-pane fade" id="contract" role="tabpanel">
+                                <div class="section-divider">Thông tin hợp đồng</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ngày vào công ty</label>
+                                        <input type="date" class="form-control" th:field="*{joinDate}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ngày ký chính thức</label>
+                                        <input type="date" class="form-control" th:field="*{officialSignDate}">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Tháng ký</label>
+                                        <input type="number" class="form-control" th:field="*{signMonth}" min="1" max="12" placeholder="1-12">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Năm ký</label>
+                                        <input type="number" class="form-control" th:field="*{signYear}" min="2000" max="2100" placeholder="2024">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Số năm làm việc</label>
+                                        <input type="number" step="0.1" class="form-control" th:field="*{yearsOfWork}" placeholder="0.0">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Số HĐLĐ</label>
+                                        <input type="text" class="form-control" th:field="*{contractNumber}" placeholder="VD: HĐ-2024-001">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Tình trạng làm việc</label>
+                                        <select class="form-select" th:field="*{workStatus}">
+                                            <option value="">-- Chọn --</option>
+                                            <option value="Đang làm việc">Đang làm việc</option>
+                                            <option value="Nghỉ thai sản">Nghỉ thai sản</option>
+                                            <option value="Đã nghỉ việc">Đã nghỉ việc</option>
+                                            <option value="Thử việc">Thử việc</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Ghi chú</label>
+                                        <input type="text" class="form-control" th:field="*{note}" placeholder="Ghi chú thêm (nếu có)">
+                                    </div>
+                                </div>
+
+                                <div class="section-divider mt-4">Thai sản &amp; Nghỉ việc</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Thai sản từ ngày</label>
+                                        <input type="date" class="form-control" th:field="*{maternityLeaveFrom}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ngày đi làm lại</label>
+                                        <input type="date" class="form-control" th:field="*{returnToWorkDate}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ngày nghỉ việc</label>
+                                        <input type="date" class="form-control" th:field="*{resignDate}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Lý do nghỉ</label>
+                                        <input type="text" class="form-control" th:field="*{resignReason}" placeholder="Lý do nghỉ việc...">
+                                    </div>
+                                </div>
+
+                                <div class="section-divider mt-4">Bảo hiểm xã hội</div>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Số sổ bảo hiểm</label>
+                                        <input type="text" class="form-control" th:field="*{socialInsuranceNumber}" placeholder="VD: QG1234567">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Mức đóng bảo hiểm</label>
+                                        <input type="text" class="form-control" th:field="*{insurancePremium}" placeholder="VD: 5,000,000 đ">
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <div class="form-check mb-1">
+                                            <input class="form-check-input" type="checkbox" th:field="*{isInsurancePaidAtCompany}" id="chkInsurance">
+                                            <label class="form-check-label" for="chkInsurance">Đóng bảo hiểm tại công ty</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="section-divider mt-4">Ngân hàng</div>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Số tài khoản ngân hàng</label>
+                                        <input type="text" class="form-control" th:field="*{bankAccountNumber}" placeholder="VD: 1234567890123">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Ngân hàng</label>
+                                        <input type="text" class="form-control" th:field="*{bankName}" placeholder="VD: Vietcombank, BIDV...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Chi nhánh ngân hàng</label>
+                                        <input type="text" class="form-control" th:field="*{bankBranch}" placeholder="VD: Chi nhánh Hà Nội">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ===== TAB 4: HỒ SƠ ĐÍNH KÈM ===== -->
+                            <div class="tab-pane fade" id="docs" role="tabpanel">
+                                <p class="text-muted mb-3" style="font-size:13px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Đánh dấu (✓) các loại hồ sơ đã nhận được từ nhân viên.</p>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docResume}" id="docResume">
+                                            <label for="docResume"><i class="fa-solid fa-scroll me-1 text-muted"></i>Sơ yếu lý lịch</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docIdCard}" id="docIdCard">
+                                            <label for="docIdCard"><i class="fa-solid fa-id-card me-1 text-muted"></i>CCCD/CMND</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docHealthCert}" id="docHealthCert">
+                                            <label for="docHealthCert"><i class="fa-solid fa-stethoscope me-1 text-muted"></i>Giấy khám sức khỏe</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docDegree}" id="docDegree">
+                                            <label for="docDegree"><i class="fa-solid fa-graduation-cap me-1 text-muted"></i>Bằng cấp / Chứng chỉ</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docPhoto}" id="docPhoto">
+                                            <label for="docPhoto"><i class="fa-solid fa-image me-1 text-muted"></i>Ảnh 3x4</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docCv}" id="docCv">
+                                            <label for="docCv"><i class="fa-solid fa-file-lines me-1 text-muted"></i>CV cá nhân</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docSocialInsurance}" id="docSocialInsurance">
+                                            <label for="docSocialInsurance"><i class="fa-solid fa-shield-halved me-1 text-muted"></i>Sổ BH &amp; Tờ rời</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docParentId}" id="docParentId">
+                                            <label for="docParentId"><i class="fa-solid fa-id-badge me-1 text-muted"></i>CCCD Bố/Mẹ</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docHrConfirmation}" id="docHrConfirmation">
+                                            <label for="docHrConfirmation"><i class="fa-solid fa-clipboard-check me-1 text-muted"></i>Xác nhận nhân sự</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docDriverLicense}" id="docDriverLicense">
+                                            <label for="docDriverLicense"><i class="fa-solid fa-car me-1 text-muted"></i>Bằng lái xe</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docBirthCert}" id="docBirthCert">
+                                            <label for="docBirthCert"><i class="fa-solid fa-baby me-1 text-muted"></i>Giấy khai sinh</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="doc-check-item">
+                                            <input class="form-check-input" type="checkbox" th:field="*{docHouseholdRegistration}" id="docHouseholdRegistration">
+                                            <label for="docHouseholdRegistration"><i class="fa-solid fa-house-user me-1 text-muted"></i>Photo hộ khẩu</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ===== TAB 5: GIA ĐÌNH ===== -->
+                            <div class="tab-pane fade" id="family" role="tabpanel">
+                                <!-- Bố -->
+                                <div class="section-divider">Thông tin bố</div>
+                                <div class="family-row">
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label">Họ và tên</label>
+                                            <input type="text" class="form-control" th:field="*{fatherName}" placeholder="Họ tên bố">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Năm sinh</label>
+                                            <input type="text" class="form-control" th:field="*{fatherYob}" placeholder="VD: 1965">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Số điện thoại</label>
+                                            <input type="text" class="form-control" th:field="*{fatherPhone}" placeholder="0912345678">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Mẹ -->
+                                <div class="section-divider mt-4">Thông tin mẹ</div>
+                                <div class="family-row">
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label">Họ và tên</label>
+                                            <input type="text" class="form-control" th:field="*{motherName}" placeholder="Họ tên mẹ">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Năm sinh</label>
+                                            <input type="text" class="form-control" th:field="*{motherYob}" placeholder="VD: 1968">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Số điện thoại</label>
+                                            <input type="text" class="form-control" th:field="*{motherPhone}" placeholder="0912345678">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vợ/Chồng -->
+                                <div class="section-divider mt-4">Thông tin vợ/chồng</div>
+                                <div class="family-row">
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label">Họ và tên</label>
+                                            <input type="text" class="form-control" th:field="*{spouseName}" placeholder="Họ tên vợ/chồng">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Năm sinh</label>
+                                            <input type="text" class="form-control" th:field="*{spouseYob}" placeholder="VD: 1995">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Số điện thoại</label>
+                                            <input type="text" class="form-control" th:field="*{spousePhone}" placeholder="0912345678">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Số con -->
+                                <div class="section-divider mt-4">Con cái</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Số con</label>
+                                        <input type="number" min="0" class="form-control" th:field="*{numberOfChildren}" placeholder="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div><!-- End tab-content -->
+                    </div><!-- End modal-body -->
+
+                    <div class="modal-footer border-top">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-xmark me-1"></i>Đóng
+                        </button>
+                        <button type="submit" id="btnSave" class="btn btn-primary px-4" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Lưu thông tin
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL IMPORT EXCEL ===== -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #15803d, #22c55e); color:white;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-import me-2"></i>Nhập dữ liệu từ Excel</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form th:action="@{/employees/import}" method="post" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Chọn file Excel (.xlsx)</label>
+                            <input class="form-control" type="file" name="file" accept=".xlsx,.xls" required>
+                        </div>
+                        <div class="alert alert-info py-2 mb-0" style="font-size:13px;">
+                            <i class="fa-solid fa-circle-info me-1"></i>File Excel cần có cấu trúc các cột tương ứng với form mẫu (xuất file mẫu bằng nút <strong>Xuất Excel</strong>).
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-success"><i class="fa-solid fa-upload me-1"></i>Tải lên</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        // Sidebar toggle
+        const toggleBtn = document.getElementById('toggle-btn');
+        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+
+        if (mobileToggleBtn) {
+            mobileToggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                sidebar.classList.add('active');
+            });
+        }
+
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (window.innerWidth > 991) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            } else {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 991 && sidebar.classList.contains('active')) {
+                if (!sidebar.contains(e.target) && e.target !== mobileToggleBtn) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+
+        /*<![CDATA[*/
+        var openModal = /*[[${openModal}]]*/ false;
+        var viewMode  = /*[[${viewMode}]]*/ false;
+
+        if (openModal) {
+            document.addEventListener("DOMContentLoaded", function() {
+                var myModal = new bootstrap.Modal(document.getElementById('employeeModal'));
+                myModal.show();
+
+                if (viewMode) {
+                    // Disable all form inputs in view mode
+                    var form = document.getElementById('employeeForm');
+                    Array.from(form.elements).forEach(function(el) {
+                        if (!el.classList.contains('nav-link') && !el.hasAttribute('data-bs-dismiss') && el.type !== 'hidden') {
+                            el.disabled = true;
+                        }
+                    });
+                    var btnSave = document.getElementById('btnSave');
+                    if (btnSave) btnSave.style.display = 'none';
+
+                    // Change modal title to "Chi tiết nhân viên"
+                    var modalTitle = document.querySelector('#employeeModal .modal-title');
+                    if (modalTitle) modalTitle.innerHTML = '<i class="fa-solid fa-eye me-2"></i>Chi tiết nhân viên';
+                }
+            });
+        }
+        /*]]>*/
+    </script>
+</body>
+</html>
+

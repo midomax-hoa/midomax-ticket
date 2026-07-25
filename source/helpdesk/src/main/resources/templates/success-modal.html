@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="successModal">
+    <!-- Success Ticket Modal -->
+    <div class="modal fade" id="successTicketModal" tabindex="-1" aria-hidden="true" th:if="${successTicket != null}">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 380px; margin: 1.75rem auto; padding: 0 15px;">
+            <div class="modal-content" style="background: transparent; border: none; box-shadow: none;">
+                <div class="modal-body p-0">
+                    <div style="filter: drop-shadow(0 15px 30px rgba(0,0,0,0.2)); width: 100%;">
+                        <!-- TICKET CONTAINER -->
+                        <div style="background: #ffffff; border-radius: 20px; position: relative; width: 100%;
+                                    -webkit-mask-image: radial-gradient(circle at 0px calc(100% - 160px), transparent 18px, black 19px), radial-gradient(circle at 100% calc(100% - 160px), transparent 18px, black 19px);
+                                    -webkit-mask-size: 51% 100%; -webkit-mask-position: left, right; -webkit-mask-repeat: no-repeat;
+                                    mask-image: radial-gradient(circle at 0px calc(100% - 160px), transparent 18px, black 19px), radial-gradient(circle at 100% calc(100% - 160px), transparent 18px, black 19px);
+                                    mask-size: 51% 100%; mask-position: left, right; mask-repeat: no-repeat;">
+                            
+                            <!-- TOP HALF -->
+                            <div style="padding: 40px 30px calc(40px + 10px); text-align: center;">
+                                <div style="width: 64px; height: 64px; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 32px; color: #10b981;">
+                                    <i class="fa-solid fa-check"></i>
+                                </div>
+                                <h4 class="fw-bold text-dark mb-2">Thành công!</h4>
+                                <p class="text-muted mb-4" style="font-size: 14px;">Yêu cầu hỗ trợ của bạn đã được<br>gửi tới bộ phận IT</p>
+                                
+                                <div class="d-flex justify-content-between text-start mb-3">
+                                    <div>
+                                        <small class="text-muted d-block mb-1" style="font-size: 11px; text-transform: uppercase; font-weight: 600;">MÃ TICKET</small>
+                                        <span class="fw-bold" style="font-size: 16px; color: #1e3a8a;" th:text="${successTicket.getTicketCode()}">T001</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted d-block mb-1" style="font-size: 11px; text-transform: uppercase; font-weight: 600;">DANH MỤC</small>
+                                        <span class="fw-bold text-dark" style="font-size: 16px;"
+                                              th:text="${categoryLabels[successTicket.category] ?: successTicket.category}">Phần mềm</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-start mb-4">
+                                    <small class="text-muted d-block mb-1" style="font-size: 11px; text-transform: uppercase; font-weight: 600;">THỜI GIAN TẠO</small>
+                                    <span class="fw-bold text-dark" style="font-size: 15px;" th:text="${#temporals.format(successTicket.createdAt, 'dd/MM/yyyy &bull; HH:mm')}">19/06/2026 &bull; 10:15</span>
+                                    <div th:if="${successTicket.estimatedCompletionTime != null}" class="mt-2 text-primary" style="background: #eff6ff; padding: 8px 12px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                                        <small class="text-primary d-block mb-1" style="font-size: 11px; text-transform: uppercase; font-weight: 700;"><i class="fa-solid fa-calendar-check me-1"></i>DỰ KIẾN HOÀN THÀNH</small>
+                                        <span class="fw-bold" style="font-size: 14.5px; color: #1e3a8a;" th:text="${#temporals.format(successTicket.estimatedCompletionTime, 'HH:mm &bull; dd/MM/yyyy')}">16:30 &bull; 19/06/2026</span>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex align-items-center p-3 text-start" style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; margin-right: 15px; font-size: 14px;" th:text="${#strings.substring(successTicket.reporterName, 0, 1).toUpperCase()}">M</div>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 14px;" th:text="${successTicket.reporterName}">Midomax User</h6>
+                                        <small class="text-muted" style="font-size: 11px;">MIDOMAX IT DESK</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DASHED LINE (Absolutely positioned at bottom: 160px to match cutouts) -->
+                            <div style="position: absolute; bottom: 160px; left: 24px; right: 24px; border-top: 2px dashed #cbd5e1; transform: translateY(50%);"></div>
+
+                            <!-- BOTTOM HALF (Exactly 160px height to align with mask cutouts) -->
+                            <div style="height: 160px; padding: 25px 30px; background: #f8fafc; text-align: center; border-top: 1px solid rgba(0,0,0,0.02);">
+                                <!-- Barcode -->
+                                <div style="display: flex; justify-content: center; height: 40px; margin-bottom: 8px; opacity: 0.85;">
+                                    <div style="width: 3px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 5px; height: 100%; background: #0f172a; margin-right: 4px;"></div>
+                                    <div style="width: 2px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 4px; height: 100%; background: #0f172a; margin-right: 3px;"></div>
+                                    <div style="width: 1px; height: 100%; background: #0f172a; margin-right: 4px;"></div>
+                                    <div style="width: 5px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 3px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 2px; height: 100%; background: #0f172a; margin-right: 5px;"></div>
+                                    <div style="width: 4px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 1px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 6px; height: 100%; background: #0f172a; margin-right: 3px;"></div>
+                                    <div style="width: 2px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 4px; height: 100%; background: #0f172a; margin-right: 4px;"></div>
+                                    <div style="width: 2px; height: 100%; background: #0f172a; margin-right: 2px;"></div>
+                                    <div style="width: 5px; height: 100%; background: #0f172a; margin-right: 0;"></div>
+                                </div>
+                                <small class="text-dark fw-bold" style="font-size: 14px; letter-spacing: 6px;" th:text="${successTicket.getTicketCode()}">T001</small>
+                                
+                                <button type="button" class="btn w-100 mt-3 fw-bold shadow-sm" style="background: #ffffff; color: #1e3a8a; border-radius: 10px; padding: 10px; transition: 0.2s; border: 1px solid #e2e8f0;" data-bs-dismiss="modal">Đóng vé</button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Script to show modal -->
+    <script th:if="${successTicket != null}">
+        document.addEventListener('DOMContentLoaded', function() {
+            var successModal = new bootstrap.Modal(document.getElementById('successTicketModal'));
+            successModal.show();
+        });
+    </script>
+</div>
+</body>
+</html>

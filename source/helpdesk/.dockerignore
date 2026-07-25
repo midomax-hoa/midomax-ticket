@@ -1,0 +1,17 @@
+target/
+.mvn/
+.settings/
+.apt_generated/
+.apt_generated_tests/
+.classpath
+.project
+*.zip
+*.sql
+*.exe
+backup_codebase_extracted/
+backup_temp/
+recovered_june28/
+recovery_tools/
+restored_20h/
+src/main/resources/static/uploads/
+src/main/resources/application-local.properties

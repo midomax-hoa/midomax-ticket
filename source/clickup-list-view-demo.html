@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midomax - ClickUp Style List View Dashboard</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Midomax Color Palette (Light Theme + Navy Accent) */
+            --primary-navy: #1e3a8a;
+            --primary-navy-hover: #1e40af;
+            --primary-navy-light: #eff6ff;
+            
+            --bg-body: #f8fafc;
+            --bg-white: #ffffff;
+            --bg-sidebar: #0f172a;
+            --bg-hover: #f1f5f9;
+            --bg-active: #e2e8f0;
+            
+            --text-main: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --text-light: #f8fafc;
+            
+            --border-color: #e2e8f0;
+            --border-light: #f1f5f9;
+            
+            /* Status Colors */
+            --status-in-progress-bg: #f3e8ff;
+            --status-in-progress-text: #7e22ce;
+            --status-in-progress-dot: #a855f7;
+            
+            --status-todo-bg: #f1f5f9;
+            --status-todo-text: #475569;
+            --status-todo-dot: #64748b;
+            
+            --status-completed-bg: #dcfce7;
+            --status-completed-text: #15803d;
+            --status-completed-dot: #22c55e;
+
+            /* Priority Colors */
+            --priority-urgent: #ef4444;
+            --priority-high: #f97316;
+            --priority-normal: #3b82f6;
+            --priority-low: #94a3b8;
+            
+            --sidebar-width: 250px;
+            --header-height: 64px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-sidebar);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #3b82f6, var(--primary-navy));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 16px;
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-menu {
+            padding: 20px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex-grow: 1;
+        }
+
+        .menu-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 600;
+            padding: 8px 12px;
+            margin-top: 12px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+
+        .menu-item.active {
+            background-color: var(--primary-navy);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+        }
+
+        .menu-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        /* --- MAIN WRAPPER --- */
+        .main-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- HEADER --- */
+        .top-header {
+            height: var(--header-height);
+            background-color: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 5;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb span.current {
+            color: var(--primary-navy);
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            position: relative;
+            width: 260px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px 8px 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-body);
+            font-size: 13px;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary-navy);
+            background-color: var(--bg-white);
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .user-profile:hover {
+            background-color: var(--bg-hover);
+        }
+
+        .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        /* --- MAIN CONTENT AREA (CLICKUP LIST VIEW) --- */
+        .main-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* View Toolbar */
+        .view-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--bg-white);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .view-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .view-tab:hover {
+            background-color: var(--bg-hover);
+            color: var(--text-main);
+        }
+
+        .view-tab.active {
+            background-color: var(--primary-navy-light);
+            color: var(--primary-navy);
+            font-weight: 600;
+            border-color: rgba(30, 58, 138, 0.2);
+        }
+
+        .view-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            outline: none;
+        }
+
+        .btn-outline {
+            background-color: var(--bg-white);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--bg-hover);
+            color: var(--text-main);
+            border-color: #cbd5e1;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-navy);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(30, 58, 138, 0.2);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-navy-hover);
+            box-shadow: 0 4px 8px rgba(30, 58, 138, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* --- LIST VIEW CONTAINER --- */
+        .list-view-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .task-group {
+            background-color: var(--bg-white);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Group Header */
+        .group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            background-color: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .group-header:hover {
+            background-color: #fcfcfd;
+        }
+
+        .group-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .collapse-toggle {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            transition: transform 0.2s ease, background-color 0.2s;
+        }
+
+        .group-header:hover .collapse-toggle {
+            background-color: var(--bg-hover);
+            color: var(--text-main);
+        }
+
+        .task-group.collapsed .collapse-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        /* Badge themes */
+        .badge-in-progress {
+            background-color: var(--status-in-progress-bg);
+            color: var(--status-in-progress-text);
+        }
+        .badge-in-progress .status-dot { background-color: var(--status-in-progress-dot); }
+
+        .badge-todo {
+            background-color: var(--status-todo-bg);
+            color: var(--status-todo-text);
+        }
+        .badge-todo .status-dot { background-color: var(--status-todo-dot); }
+
+        .badge-completed {
+            background-color: var(--status-completed-bg);
+            color: var(--status-completed-text);
+        }
+        .badge-completed .status-dot { background-color: var(--status-completed-dot); }
+
+        .task-count {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+            background: var(--bg-hover);
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        /* Group Content (Collapse target) */
+        .group-content {
+            max-height: 2000px;
+            opacity: 1;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out;
+        }
+
+        .task-group.collapsed .group-content {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        /* --- CSS GRID TABLE STRUCTURE --- */
+        .grid-table {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        /* Standard Grid Columns: 
+           1. Name (minmax 280px, 1fr)
+           2. Assignee (160px)
+           3. Due Date (140px)
+           4. Priority (140px)
+           5. Update/Status (160px) 
+        */
+        .grid-row {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) 160px 140px 140px 160px;
+            align-items: center;
+            border-bottom: 1px solid var(--border-light);
+            transition: background-color 0.15s ease;
+        }
+
+        .grid-header {
+            background-color: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .grid-cell {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .grid-header .grid-cell {
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .task-row:hover {
+            background-color: var(--primary-navy-light);
+        }
+
+        /* Cell Styling details */
+        .task-name {
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .task-checkbox {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 2px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: transparent;
+            font-size: 10px;
+        }
+
+        .task-row:hover .task-checkbox {
+            border-color: var(--primary-navy);
+        }
+
+        .task-checkbox.checked {
+            background-color: #22c55e;
+            border-color: #22c55e;
+            color: white;
+        }
+
+        .assignee-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 10px 4px 4px;
+            border-radius: 16px;
+            background-color: var(--bg-hover);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .assignee-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background-color: var(--primary-navy);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .date-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .date-chip i {
+            color: var(--text-muted);
+        }
+
+        .date-chip.overdue {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .date-chip.overdue i {
+            color: #ef4444;
+        }
+
+        .priority-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background-color: var(--bg-hover);
+        }
+
+        .priority-flag {
+            font-size: 12px;
+        }
+
+        .priority-urgent { color: var(--priority-urgent); background-color: #fef2f2; }
+        .priority-high { color: var(--priority-high); background-color: #fff7ed; }
+        .priority-normal { color: var(--priority-normal); background-color: #eff6ff; }
+        .priority-low { color: var(--priority-low); background-color: #f8fafc; }
+
+        .update-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* --- QUICK ADD ROW --- */
+        .quick-add-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background-color: var(--bg-white);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .quick-add-row:hover {
+            background-color: var(--primary-navy-light);
+            color: var(--primary-navy);
+        }
+
+        .quick-add-row i {
+            font-size: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            background-color: var(--bg-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .quick-add-row:hover i {
+            background-color: var(--primary-navy);
+            color: white;
+        }
+
+        /* New Task Input state animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .task-row.new-task {
+            animation: fadeIn 0.3s ease-out;
+            background-color: #f0fdf4;
+        }
+        
+        .task-input-temp {
+            border: 1px solid var(--primary-navy);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 80%;
+            outline: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon">M</div>
+            <div class="logo-text">MIDOMAX</div>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-label">Quản lý chung</div>
+            <a class="menu-item active"><i class="fa-solid fa-list-check"></i> Danh sách công việc</a>
+            <a class="menu-item"><i class="fa-solid fa-chart-pie"></i> Báo cáo tổng quan</a>
+            <a class="menu-item"><i class="fa-solid fa-calendar-days"></i> Lịch biểu (Calendar)</a>
+            <a class="menu-item"><i class="fa-solid fa-user-group"></i> Nhóm phụ trách</a>
+            
+            <div class="menu-label">Hệ thống Helpdesk</div>
+            <a class="menu-item"><i class="fa-solid fa-ticket"></i> Yêu cầu hỗ trợ (Tickets)</a>
+            <a class="menu-item"><i class="fa-solid fa-folder-tree"></i> Cơ sở kiến thức</a>
+            <a class="menu-item"><i class="fa-solid fa-gear"></i> Cài đặt hệ thống</a>
+        </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+        
+        <!-- TOP HEADER -->
+        <header class="top-header">
+            <div class="header-left">
+                <div class="breadcrumb">
+                    <i class="fa-solid fa-house" style="color: var(--text-muted);"></i>
+                    <span>/</span>
+                    <span>Dự án Helpdesk</span>
+                    <span>/</span>
+                    <span class="current">Danh sách công việc</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Tìm kiếm công việc, ticket...">
+                </div>
+                <button class="btn btn-outline" style="padding: 8px 12px;">
+                    <i class="fa-regular fa-bell"></i>
+                </button>
+                <div class="user-profile">
+                    <div class="avatar">NV</div>
+                    <div style="font-size: 13px; font-weight: 600;">Nguyễn Văn A</div>
+                    <i class="fa-solid fa-chevron-down" style="font-size: 11px; color: var(--text-muted);"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT (LIST VIEW) -->
+        <main class="main-content">
+            
+            <!-- View Toolbar -->
+            <div class="view-toolbar">
+                <div class="view-tabs">
+                    <div class="view-tab active"><i class="fa-solid fa-list"></i> Danh sách (List)</div>
+                    <div class="view-tab"><i class="fa-solid fa-table-columns"></i> Bảng (Board)</div>
+                    <div class="view-tab"><i class="fa-regular fa-calendar"></i> Lịch (Calendar)</div>
+                    <div class="view-tab"><i class="fa-solid fa-timeline"></i> Biểu đồ Gantt</div>
+                </div>
+                <div class="view-actions">
+                    <button class="btn btn-outline"><i class="fa-solid fa-filter"></i> Bộ lọc</button>
+                    <button class="btn btn-outline"><i class="fa-solid fa-layer-group"></i> Nhóm theo: Trạng thái</button>
+                    <button class="btn btn-primary" onclick="triggerGlobalAdd()"><i class="fa-solid fa-plus"></i> Thêm công việc</button>
+                </div>
+            </div>
+
+            <!-- List View Container -->
+            <div class="list-view-container" id="listViewContainer">
+                
+                <!-- GROUP 1: IN PROGRESS -->
+                <div class="task-group" id="group-in-progress">
+                    <!-- Group Header -->
+                    <div class="group-header" onclick="toggleGroup('group-in-progress')">
+                        <div class="group-title-wrapper">
+                            <div class="collapse-toggle">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                            <div class="status-badge badge-in-progress">
+                                <span class="status-dot"></span>
+                                IN PROGRESS (Đang xử lý)
+                            </div>
+                            <span class="task-count">3</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </div>
+                    </div>
+
+                    <!-- Group Content (Grid) -->
+                    <div class="group-content">
+                        <div class="grid-table">
+                            <!-- Header Row -->
+                            <div class="grid-row grid-header">
+                                <div class="grid-cell">Tên công việc</div>
+                                <div class="grid-cell">Người phụ trách</div>
+                                <div class="grid-cell">Hạn chót</div>
+                                <div class="grid-cell">Độ ưu tiên</div>
+                                <div class="grid-cell">Cập nhật</div>
+                            </div>
+
+                            <!-- Task Rows -->
+                            <div class="grid-row task-row">
+                                <div class="grid-cell task-name">
+                                    <div class="task-checkbox" onclick="toggleTaskCheck(this)"><i class="fa-solid fa-check"></i></div>
+                                    <span>Khắc phục lỗi hiển thị tiếng Việt trên Top Header</span>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="assignee-chip">
+                                        <div class="assignee-avatar">TH</div>
+                                        <span>Trần Hùng</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="date-chip overdue">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        <span>07/07/2026</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="priority-chip priority-urgent">
+                                        <i class="fa-solid fa-flag priority-flag"></i>
+                                        <span>Khẩn cấp</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <span class="update-text">10 phút trước</span>
+                                </div>
+                            </div>
+
+                            <div class="grid-row task-row">
+                                <div class="grid-cell task-name">
+                                    <div class="task-checkbox" onclick="toggleTaskCheck(this)"><i class="fa-solid fa-check"></i></div>
+                                    <span>Tối ưu hóa query Database cho chức năng Ticket</span>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="assignee-chip">
+                                        <div class="assignee-avatar" style="background-color: #0d9488;">LM</div>
+                                        <span>Lê Minh</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="date-chip">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        <span>08/07/2026</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="priority-chip priority-high">
+                                        <i class="fa-solid fa-flag priority-flag"></i>
+                                        <span>Cao</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <span class="update-text">1 giờ trước</span>
+                                </div>
+                            </div>
+
+                            <div class="grid-row task-row">
+                                <div class="grid-cell task-name">
+                                    <div class="task-checkbox" onclick="toggleTaskCheck(this)"><i class="fa-solid fa-check"></i></div>
+                                    <span>Tích hợp API đồng bộ user từ Azure AD</span>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="assignee-chip">
+                                        <div class="assignee-avatar" style="background-color: #7c3aed;">AD</div>
+                                        <span>Admin</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="date-chip">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        <span>10/07/2026</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="priority-chip priority-normal">
+                                        <i class="fa-solid fa-flag priority-flag"></i>
+                                        <span>Bình thường</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <span class="update-text">Hôm qua</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Add Task Button -->
+                        <div class="quick-add-row" onclick="quickAddTask('group-in-progress', 'in-progress')">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>+ Thêm công việc nhanh</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GROUP 2: TO DO -->
+                <div class="task-group" id="group-todo">
+                    <!-- Group Header -->
+                    <div class="group-header" onclick="toggleGroup('group-todo')">
+                        <div class="group-title-wrapper">
+                            <div class="collapse-toggle">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                            <div class="status-badge badge-todo">
+                                <span class="status-dot"></span>
+                                TO DO (Chưa thực hiện)
+                            </div>
+                            <span class="task-count">2</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </div>
+                    </div>
+
+                    <!-- Group Content (Grid) -->
+                    <div class="group-content">
+                        <div class="grid-table">
+                            <!-- Header Row -->
+                            <div class="grid-row grid-header">
+                                <div class="grid-cell">Tên công việc</div>
+                                <div class="grid-cell">Người phụ trách</div>
+                                <div class="grid-cell">Hạn chót</div>
+                                <div class="grid-cell">Độ ưu tiên</div>
+                                <div class="grid-cell">Cập nhật</div>
+                            </div>
+
+                            <!-- Task Rows -->
+                            <div class="grid-row task-row">
+                                <div class="grid-cell task-name">
+                                    <div class="task-checkbox" onclick="toggleTaskCheck(this)"><i class="fa-solid fa-check"></i></div>
+                                    <span>Thiết kế lại giao diện màn hình chi tiết Ticket</span>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="assignee-chip">
+                                        <div class="assignee-avatar" style="background-color: #ea580c;">PA</div>
+                                        <span>Phương Anh</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="date-chip">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        <span>12/07/2026</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="priority-chip priority-normal">
+                                        <i class="fa-solid fa-flag priority-flag"></i>
+                                        <span>Bình thường</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <span class="update-text">2 ngày trước</span>
+                                </div>
+                            </div>
+
+                            <div class="grid-row task-row">
+                                <div class="grid-cell task-name">
+                                    <div class="task-checkbox" onclick="toggleTaskCheck(this)"><i class="fa-solid fa-check"></i></div>
+                                    <span>Viết tài liệu hướng dẫn sử dụng cho người dùng cuối</span>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="assignee-chip">
+                                        <div class="assignee-avatar" style="background-color: #475569;">KT</div>
+                                        <span>Kiểm thử</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="date-chip">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        <span>15/07/2026</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="priority-chip priority-low">
+                                        <i class="fa-solid fa-flag priority-flag"></i>
+                                        <span>Thấp</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <span class="update-text">3 ngày trước</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Add Task Button -->
+                        <div class="quick-add-row" onclick="quickAddTask('group-todo', 'todo')">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>+ Thêm công việc nhanh</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GROUP 3: COMPLETED -->
+                <div class="task-group" id="group-completed">
+                    <!-- Group Header -->
+                    <div class="group-header" onclick="toggleGroup('group-completed')">
+                        <div class="group-title-wrapper">
+                            <div class="collapse-toggle">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                            <div class="status-badge badge-completed">
+                                <span class="status-dot"></span>
+                                COMPLETED (Đã hoàn thành)
+                            </div>
+                            <span class="task-count">1</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </div>
+                    </div>
+
+                    <!-- Group Content (Grid) -->
+                    <div class="group-content">
+                        <div class="grid-table">
+                            <!-- Header Row -->
+                            <div class="grid-row grid-header">
+                                <div class="grid-cell">Tên công việc</div>
+                                <div class="grid-cell">Người phụ trách</div>
+                                <div class="grid-cell">Hạn chót</div>
+                                <div class="grid-cell">Độ ưu tiên</div>
+                                <div class="grid-cell">Cập nhật</div>
+                            </div>
+
+                            <!-- Task Rows -->
+                            <div class="grid-row task-row" style="opacity: 0.7;">
+                                <div class="grid-cell task-name">
+                                    <div class="task-checkbox checked" onclick="toggleTaskCheck(this)"><i class="fa-solid fa-check"></i></div>
+                                    <span style="text-decoration: line-through; color: var(--text-secondary);">Cập nhật phiên bản Spring Boot 3.4.1 và JDK 17</span>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="assignee-chip">
+                                        <div class="assignee-avatar">TH</div>
+                                        <span>Trần Hùng</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="date-chip">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        <span>05/07/2026</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <div class="priority-chip priority-high">
+                                        <i class="fa-solid fa-flag priority-flag"></i>
+                                        <span>Cao</span>
+                                    </div>
+                                </div>
+                                <div class="grid-cell">
+                                    <span class="update-text">Đã xong 2 ngày trước</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Add Task Button -->
+                        <div class="quick-add-row" onclick="quickAddTask('group-completed', 'completed')">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>+ Thêm công việc nhanh</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT XỬ LÝ TƯƠNG TÁC -->
+    <script>
+        /**
+         * 1. Hàm đóng/mở (Collapse/Expand) nhóm công việc
+         */
+        function toggleGroup(groupId) {
+            const groupEl = document.getElementById(groupId);
+            if (!groupEl) return;
+            
+            // Toggle class 'collapsed'
+            groupEl.classList.toggle('collapsed');
+        }
+
+        /**
+         * 2. Hàm Thêm công việc nhanh (+ Thêm công việc nhanh)
+         */
+        function quickAddTask(groupId, statusType) {
+            const groupEl = document.getElementById(groupId);
+            if (!groupEl) return;
+
+            // Đảm bảo group đang mở khi thêm task
+            groupEl.classList.remove('collapsed');
+
+            const gridTable = groupEl.querySelector('.grid-table');
+            const countEl = groupEl.querySelector('.task-count');
+
+            // Tạo phần tử row mới
+            const newRow = document.createElement('div');
+            newRow.className = 'grid-row task-row new-task';
+
+            // Thiết lập nội dung cho hàng mới
+            newRow.innerHTML = `
+                <div class="grid-cell task-name">
+                    <div class="task-checkbox" onclick="toggleTaskCheck(this)"><i class="fa-solid fa-check"></i></div>
+                    <input type="text" class="task-input-temp" placeholder="Nhập tên công việc và nhấn Enter..." autofocus />
+                </div>
+                <div class="grid-cell">
+                    <div class="assignee-chip" style="background-color: var(--primary-navy-light); color: var(--primary-navy);">
+                        <i class="fa-solid fa-user-plus" style="font-size: 11px;"></i>
+                        <span>Chỉ định</span>
+                    </div>
+                </div>
+                <div class="grid-cell">
+                    <div class="date-chip">
+                        <i class="fa-regular fa-calendar"></i>
+                        <span>Hôm nay</span>
+                    </div>
+                </div>
+                <div class="grid-cell">
+                    <div class="priority-chip priority-normal">
+                        <i class="fa-solid fa-flag priority-flag"></i>
+                        <span>Bình thường</span>
+                    </div>
+                </div>
+                <div class="grid-cell">
+                    <span class="update-text">Vừa tạo</span>
+                </div>
+            `;
+
+            // Thêm hàng mới vào cuối grid-table
+            gridTable.appendChild(newRow);
+
+            // Cập nhật số lượng task trên header của nhóm
+            if (countEl) {
+                let currentCount = parseInt(countEl.innerText) || 0;
+                countEl.innerText = currentCount + 1;
+            }
+
+            // Xử lý sự kiện khi nhập xong (nhấn Enter hoặc mất focus)
+            const inputEl = newRow.querySelector('.task-input-temp');
+            if (inputEl) {
+                inputEl.focus();
+
+                const saveTask = () => {
+                    const taskTitle = inputEl.value.trim() || 'Công việc mới chưa đặt tên';
+                    const parentCell = inputEl.parentElement;
+                    
+                    // Thay thế input bằng text cố định
+                    const textSpan = document.createElement('span');
+                    textSpan.innerText = taskTitle;
+                    if (statusType === 'completed') {
+                        textSpan.style.textDecoration = 'line-through';
+                        textSpan.style.color = 'var(--text-secondary)';
+                        parentCell.querySelector('.task-checkbox').classList.add('checked');
+                    }
+                    
+                    parentCell.replaceChild(textSpan, inputEl);
+                    newRow.classList.remove('new-task');
+                };
+
+                inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        saveTask();
+                    }
+                });
+
+                inputEl.addEventListener('blur', () => {
+                    if (inputEl.parentElement) {
+                        saveTask();
+                    }
+                });
+            }
+        }
+
+        /**
+         * Hàm bổ trợ: Toggle check/uncheck task
+         */
+        function toggleTaskCheck(checkboxEl) {
+            checkboxEl.classList.toggle('checked');
+            const row = checkboxEl.closest('.task-row');
+            const textSpan = row.querySelector('.task-name span:not(.task-checkbox)');
+            
+            if (checkboxEl.classList.contains('checked')) {
+                textSpan.style.textDecoration = 'line-through';
+                textSpan.style.color = 'var(--text-secondary)';
+                row.style.opacity = '0.7';
+            } else {
+                textSpan.style.textDecoration = 'none';
+                textSpan.style.color = 'var(--text-main)';
+                row.style.opacity = '1';
+            }
+        }
+
+        /**
+         * Hàm nút "+ Thêm công việc" trên Toolbar chính
+         */
+        function triggerGlobalAdd() {
+            // Mặc định thêm vào nhóm TO DO
+            quickAddTask('group-todo', 'todo');
+            
+            // Cuộn xuống nhóm TO DO để người dùng thấy
+            const todoEl = document.getElementById('group-todo');
+            if (todoEl) {
+                todoEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    </script>
+</body>
+</html>

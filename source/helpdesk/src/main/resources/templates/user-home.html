@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang chủ - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <link rel="stylesheet" th:href="@{/css/time-theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ticket-rig.css}">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #e2e8f0;
+            color: #333;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* SIDEBAR CSS - ORIGINAL COLORS WITH GOOEY NOTCH */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            z-index: 1000;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            overflow-x: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none; /* Chrome/Safari/Opera */
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding-left: 25px;
+        }
+
+        #toggle-btn {
+            cursor: pointer;
+            color: #4b5563;
+            font-size: 20px;
+            transition: 0.2s;
+            padding: 5px;
+        }
+
+        #toggle-btn:hover {
+            color: #1e3a8a;
+            transform: scale(1.1);
+        }
+
+        .brand-text {
+            color: #1e3a8a;
+            font-weight: 800;
+            font-size: 22px;
+            letter-spacing: 1px;
+            margin: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            gap: 5px;
+            position: relative;
+        }
+
+        .sidebar-menu a {
+            position: relative;
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            color: #4b5563;
+            font-size: 15px;
+            text-decoration: none;
+            transition: 0.3s;
+            padding-left: 25px;
+            font-weight: 600;
+        }
+
+        .sidebar-menu a:hover {
+            color: #1e3a8a;
+            background: #f8fafc;
+        }
+
+        .sidebar-menu a span {
+            display: inline-block;
+            margin-left: 15px;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar-menu a .icon-wrapper {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            transition: 0.3s;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        /* The Gooey Notch Effect for Active Item */
+        .sidebar-menu a.active {
+            color: #1e3a8a;
+            background: #e2e8f0; /* Blends with body background */
+            border-radius: 30px 0 0 30px;
+            margin-left: 20px; /* Leaves a 20px white strip on the left */
+            padding-left: 5px; /* Adjust padding to keep icon aligned (20+5 = 25px) */
+            width: calc(100% - 20px + 2px); /* Overlap right side */
+            margin-right: -2px;
+            z-index: 10;
+        }
+
+        .sidebar-menu a.active:hover {
+            background: #e2e8f0;
+        }
+
+        /* Top outer curve */
+        .sidebar-menu a.active::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border-radius: 0 0 20px 0;
+            box-shadow: 10px 10px 0 10px #e2e8f0;
+        }
+
+        /* Bottom outer curve */
+        .sidebar-menu a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border-radius: 0 20px 0 0;
+            box-shadow: 10px -10px 0 10px #e2e8f0;
+        }
+
+        /* The circle inside the active notch */
+        .sidebar-menu a.active .icon-wrapper {
+            background: #eff6ff; /* Original light blue active color */
+            color: #1e3a8a;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.1);
+        }
+
+        /* Collapsed Sidebar styles */
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            padding-left: 0;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .sidebar-menu a span {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-menu a {
+            padding-left: 20px;
+        }
+
+        .sidebar.collapsed .sidebar-menu a.active {
+            margin-left: 10px;
+            padding-left: 10px;
+            width: calc(100% - 10px + 2px);
+        }
+
+        /* ACCOUNT SECTION AT BOTTOM */
+        .sidebar-bottom {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 25px;
+            background: transparent;
+            text-decoration: none;
+            transition: 0.3s;
+            cursor: pointer;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .sidebar-bottom:hover {
+            background: #f8fafc;
+        }
+
+        .sidebar-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+        }
+
+        .sidebar-user-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar-user-name {
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .sidebar-logout {
+            margin-left: auto;
+            color: #94a3b8;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        
+        .sidebar-bottom:hover .sidebar-logout {
+            color: #ef4444;
+            transform: translateX(3px);
+        }
+
+        .sidebar.collapsed .sidebar-bottom {
+            padding: 15px 0;
+            justify-content: center;
+        }
+        
+        .sidebar.collapsed .sidebar-user-info,
+        .sidebar.collapsed .sidebar-logout {
+            display: none;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 30px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
+
+        .topbar {
+            background: #ffffff;
+            padding: 15px 30px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e5e7eb;
+        }
+
+        .admin-badge {
+            border: 1px solid #e5e7eb;
+            color: #1e3a8a;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+        }
+
+        /* WELCOME BANNER */
+        .welcome-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            border-radius: 20px;
+            padding: 40px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .welcome-banner::after {
+            content: '\f5fc';
+            /* fa-laptop-code */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: -20px;
+            bottom: -40px;
+            font-size: 180px;
+            color: rgba(255, 255, 255, 0.1);
+            transform: rotate(-15deg);
+        }
+
+        .welcome-banner h1 {
+            font-weight: 800;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .welcome-banner p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 0;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        /* QUICK ACTION CARDS */
+        .section-title {
+            font-weight: 800;
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: #3b82f6;
+        }
+
+        .quick-action-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            display: block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            height: 100%;
+        }
+
+        .quick-action-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1);
+            border-color: #bfdbfe;
+        }
+
+        .qa-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .quick-action-card:hover .qa-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .qa-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #1e3a8a;
+        }
+
+        .qa-desc {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Icon Colors */
+        .ic-dashboard {
+            background: #eff6ff;
+            color: #3b82f6;
+        }
+
+        .ic-ticket {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .ic-network {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .ic-asset {
+            background: #fef9c3;
+            color: #eab308;
+        }
+
+        .ic-hr {
+            background: #f3e8ff;
+            color: #a855f7;
+        }
+
+        .ic-user {
+            background: #ffedd5;
+            color: #f97316;
+        }
+
+        @media (max-width: 991px) {
+            #mobile-toggle-btn {
+                display: block !important;
+            }
+
+            .sidebar {
+                left: -100% !important;
+                width: 80% !important;
+                max-width: 320px;
+                transition: all 0.3s ease !important;
+                z-index: 9999 !important;
+            }
+
+            .sidebar.active {
+                left: 0 !important;
+                box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5) !important;
+            }
+
+
+
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 15px !important;
+            }
+
+            .topbar {
+                padding: 12px 15px !important;
+                margin-bottom: 20px !important;
+                top: 0;
+                border-radius: 0 0 12px 12px;
+            }
+
+            .welcome-banner {
+                padding: 30px 20px;
+            }
+
+            .welcome-banner h1 {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .topbar {
+                padding: 10px 12px !important;
+                margin-bottom: 15px !important;
+            }
+
+            .topbar h4 {
+                font-size: 15px !important;
+            }
+
+            .topbar small {
+                font-size: 10px !important;
+            }
+
+            #mobile-toggle-btn {
+                margin-right: 8px !important;
+                font-size: 18px !important;
+            }
+
+            .admin-badge {
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+            }
+
+            .admin-badge i {
+                margin-right: 4px !important;
+            }
+        }
+
+        /* NEW USER HOME STAT CARDS */
+        .stat-card-home {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .stat-card-home:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+        .stat-card-home-info h5 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .stat-card-home-info h3 {
+            font-size: 32px;
+            font-weight: 800;
+            color: #1e3a8a;
+            margin: 0;
+        }
+        .stat-card-home-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .icon-open { background: #fffbeb; color: #d97706; }
+        .icon-progress { background: #eff6ff; color: #2563eb; }
+        .icon-resolved { background: #f0fdf4; color: #16a34a; }
+
+        /* Fix for large dropdown text in some mobile simulations */
+        @media (max-width: 991px) {
+            .form-control, .form-select {
+                font-size: 13px !important;
+            }
+            .form-select option {
+                font-size: 13px !important;
+            }
+        }
+        /* Choices.js custom styling to match Bootstrap */
+        .choices[data-type*="select-one"] .choices__inner {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            min-height: 38px;
+            padding: 4px 12px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .choices__list--dropdown .choices__item {
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('home')}"></div>
+
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn"
+                    style="display: none; cursor: pointer; font-size: 22px; color: #1e3a8a; margin-right: 15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color: #1e3a8a;">MIDOMAX IT PORTAL</h4>
+                    <small class="text-muted">Cổng thông tin quản trị hệ thống</small>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer;"></i>
+            </div>
+        </div>
+
+        <!-- WELCOME BANNER -->
+        <div class="welcome-banner">
+    <h1>Chào bạn, <span th:text="${username}">User</span>! 👋</h1>
+    <p>Hôm nay là một ngày tuyệt vời để tối ưu hóa hệ thống. Hiện tại không có sự cố mạng nào nghiêm trọng. Hãy bắt đầu công việc của bạn bằng cách chọn các phân hệ bên dưới.</p>
+</div>
+
+        <!-- MÁY TÍNH TICKET + LỐI TẮT trên tấm giấy kẻ ô.
+             Dùng CHUNG fragment với trang Admin (fragments/ticket-rig.html), chỉ khác
+             bộ số: trang này chỉ đếm ticket của chính người đang đăng nhập. -->
+        <div class="rig-panel">
+
+            <div th:replace="~{fragments/ticket-rig :: rigMachine(
+                    ${openCount + progressCount + resolvedCount},
+                    ${openCount + progressCount + resolvedCount}, 'Ticket của tôi',
+                    ${openCount}, 'Đang mở',
+                    ${progressCount}, 'Đang xử lý',
+                    ${resolvedCount}, 'đã xong',
+                    ${openCount + progressCount}, 'chưa xong')}"></div>
+
+            <!-- Con mèo ngủ cạnh máy -->
+            <svg class="rig-cat" viewBox="0 0 180 100" aria-hidden="true">
+                <path class="cat-tail" d="M50 58 q-42 12 -50 -8 q28 -10 48 -4 z" fill="#8A93A0" />
+                <ellipse cx="106" cy="66" rx="56" ry="27" fill="#9AA3B0" />
+                <ellipse cx="106" cy="60" rx="44" ry="17" fill="#AEB6C2" opacity=".55" />
+                <circle cx="150" cy="46" r="25" fill="#9AA3B0" />
+                <path d="M134 30 l2 -16 l13 11 z" fill="#7E8794" />
+                <path d="M158 26 l12 -12 l3 16 z" fill="#7E8794" />
+                <path d="M140 48 q6 5 12 0" fill="none" stroke="#59616D" stroke-width="2.5" stroke-linecap="round" />
+                <path d="M160 48 q6 5 12 0" fill="none" stroke="#59616D" stroke-width="2.5" stroke-linecap="round" />
+                <path d="M44 72 q22 -6 44 -2" fill="none" stroke="#828B98" stroke-width="3" opacity=".8" />
+            </svg>
+
+            <!-- Sticky notes bên dưới máy, stagger bằng JS -->
+            <div class="sc-grid" id="sc-grid-user">
+
+                <a href="#" class="sc" data-bs-toggle="modal" data-bs-target="#createTicketModal"
+                   sec:authorize="!hasRole('ADMIN')">
+                    <div class="sc-ic"><i class="fa-solid fa-circle-plus"></i></div>
+                    <div class="sc-label">Tạo Ticket Mới</div>
+                </a>
+
+                <a href="/ticket-management" class="sc">
+                    <div class="sc-ic"><i class="fa-solid fa-ticket"></i></div>
+                    <div class="sc-label">Ticket của tôi</div>
+                </a>
+
+                <a href="/dashboard" class="sc">
+                    <div class="sc-ic"><i class="fa-solid fa-chart-pie"></i></div>
+                    <div class="sc-label">Dashboard</div>
+                </a>
+
+                <a href="/schedule" class="sc">
+                    <div class="sc-ic"><i class="fa-solid fa-calendar-days"></i></div>
+                    <div class="sc-label">Lịch Trình</div>
+                </a>
+
+                <a href="/assets" class="sc" sec:authorize="hasAnyRole('ADMIN','MANAGER') or hasAuthority('GROUP_HELPDESK')">
+                    <div class="sc-ic"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div class="sc-label">Tài sản &amp; Công cụ</div>
+                </a>
+
+                <a href="/employees" class="sc" sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+                    <div class="sc-ic"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="sc-label">Quản lý nhân sự</div>
+                </a>
+
+            </div>
+
+        </div>
+
+    </div> <!-- End main-content -->
+
+    <!-- MODAL TẠO TICKET DÀNH CHO USER -->
+    <!-- Unified Modals Fragment -->
+    <div th:replace="~{fragments/ticket-modals :: ticketModals}"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/time-theme.js}"></script>
+    <script th:replace="~{fragments/ticket-rig :: rigScript}"></script>
+    <!-- Success Modal Fragment -->
+    <div th:replace="~{success-modal :: successModal}"></div>
+</body>
+
+</html>

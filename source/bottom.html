@@ -1,0 +1,696 @@
+    <!-- MODAL 1: CREATE NEW REPORT/TASK -->
+    <div class="modal fade" id="createReportModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-layer-group me-2"></i>Thêm Nhiệm Vụ & Báo Cáo Công Việc Mới</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/work-reports/create}" method="post">
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Tên Dự Án / Hạng Mục Lớn <span class="text-danger">*</span></label>
+                                <input type="text" name="projectName" class="form-control shadow-sm" placeholder="VD: Hệ thống Helpdesk v2, Hạ tầng Mạng..." list="projectSuggestions">
+                                <datalist id="projectSuggestions">
+                                    <option th:each="p : ${projectNames}" th:value="${p}"></option>
+                                    <option value="Hệ thống Helpdesk v2"></option>
+                                    <option value="Nâng cấp Hạ tầng Mạng"></option>
+                                    <option value="Ứng dụng Mobile ClickUp IT"></option>
+                                </datalist>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Lập Trình Viên / IT Phụ Trách <span class="text-danger">*</span></label>
+                                <select name="assignee" class="form-select shadow-sm">
+                                    <option th:each="a : ${assignees}" th:value="${a}" th:text="${a.toUpperCase()}" th:selected="${a == currentUser}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Người Cùng Theo Dõi (Watchers)</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center bg-white shadow-sm" type="button" data-bs-toggle="dropdown" style="height: 38px; border-color: #dee2e6;">
+                                        <span><i class="fa-solid fa-users me-2 text-muted"></i>Chọn người theo dõi...</span>
+                                        <i class="fa-solid fa-caret-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2 shadow" style="max-height: 180px; overflow-y: auto;">
+                                        <li th:each="a : ${assignees}" class="form-check m-1">
+                                            <input class="form-check-input" type="checkbox" name="watchers" th:value="${a}" th:id="'watcher-chk-' + ${a}">
+                                            <label class="form-check-label small fw-bold text-dark" th:for="'watcher-chk-' + ${a}" th:text="${a.toUpperCase()}"></label>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small text-dark">Tên Nhiệm Vụ / Tính Năng Chi Tiết <span class="text-danger">*</span></label>
+                                <input type="text" name="taskTitle" class="form-control shadow-sm" placeholder="VD: Tích hợp giao diện Kanban, Code API đồng bộ Azure...">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Trạng Thái Ban Đầu</label>
+                                <select name="status" class="form-select shadow-sm">
+                                    <option value="PLANNING">Lên Kế Hoạch (Planning)</option>
+                                    <option value="PROGRESS">Đang Triển Khai (In Progress)</option>
+                                    <option value="TESTING">Kiểm Thử (Testing)</option>
+                                    <option value="COMPLETED">Hoàn Thành (Completed)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Tiến Độ Ban Đầu (%)</label>
+                                <div class="d-flex align-items-center gap-3">
+                                    <input type="range" name="progressPercentage" class="form-range flex-grow-1" min="0" max="100" step="5" value="0" id="createProgressRange" oninput="document.getElementById('createProgressVal').innerText = this.value + '%'">
+                                    <span class="fw-bold text-primary fs-5" id="createProgressVal" style="min-width: 50px;">0%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small text-dark">Thời Gian Dự Kiến Hoàn Thành / Hạn Chót (Tùy chọn)</label>
+                                <input type="text" name="dueDateStr" id="reportDueDate" class="form-control shadow-sm bg-white" placeholder="-- Chọn giờ và ngày hạn chót --">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small text-dark">Nhật Ký Báo Cáo / Ghi Chú Làm Việc</label>
+                                <textarea name="dailyReport" class="form-control shadow-sm" rows="3" placeholder="Nhập tóm tắt công việc đã làm, tiến độ triển khai hoặc khó khăn vướng mắc..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light px-4 py-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary fw-bold px-4" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none;"><i class="fa-solid fa-paper-plane me-2"></i>Lưu Hạng Mục</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: UPDATE PROGRESS & REPORT NOTE -->
+    <div class="modal fade" id="updateReportModal" tabindex="-1">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i>Cập Nhật Tiến Độ & Nhật Ký</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/work-reports/update}" method="post">
+                    <input type="hidden" name="id" id="updateReportId">
+                    <div class="modal-body p-4">
+                        <h6 class="fw-bold text-primary mb-3" id="updateTaskTitle">Task Title</h6>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">Trạng Thái Hiện Tại</label>
+                            <select name="status" id="updateStatusSelect" class="form-select shadow-sm">
+                                <option value="PLANNING">Lên Kế Hoạch (Planning)</option>
+                                <option value="PROGRESS">Đang Triển Khai (In Progress)</option>
+                                <option value="TESTING">Kiểm Thử (Testing)</option>
+                                <option value="COMPLETED">Hoàn Thành (Completed)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">Tiến Độ Tích Lũy (%)</label>
+                            <div class="d-flex align-items-center gap-3">
+                                <input type="range" name="progressPercentage" id="updateProgressRange" class="form-range flex-grow-1" min="0" max="100" step="5" oninput="document.getElementById('updateProgressVal').innerText = this.value + '%'">
+                                <span class="fw-bold text-primary fs-5" id="updateProgressVal" style="min-width: 50px;">0%</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">Thêm Người Theo Dõi Mới (Tùy chọn, cách nhau bằng dấu phẩy)</label>
+                            <input type="text" name="watchers" id="updateReportWatchers" class="form-control shadow-sm" placeholder="VD: tin, trung, admin...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">Báo Cáo / Ghi Chú Mới (Sẽ ghi đè lên nhật ký cũ)</label>
+                            <textarea name="dailyReport" id="updateReportNote" class="form-control shadow-sm" rows="4" placeholder="Cập nhật tiến độ bạn vừa thực hiện..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light px-4 py-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-primary fw-bold px-4" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none;"><i class="fa-solid fa-floppy-disk me-2"></i>Cập Nhật</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: INLINE ASSIGN -->
+    <div class="modal fade" id="inlineAssignModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title fw-bold m-0"><i class="fa-solid fa-user-tag me-2"></i>Phân công & Theo dõi</h6>
+                    <button type="button" class="btn-close btn-close-white" style="font-size: 10px;" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="inlineAssignReportId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Người phụ trách:</label>
+                        <select id="inlineAssigneeSelect" class="form-select form-select-sm shadow-sm">
+                            <option value="">-- Chưa giao --</option>
+                            <option th:each="a : ${assignees}" th:value="${a}" th:text="${a.toUpperCase()}"></option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-dark">Người theo dõi (Watchers):</label>
+                        <input type="text" id="inlineWatchersInput" class="form-control form-control-sm shadow-sm" placeholder="VD: tin, trung, admin">
+                    </div>
+                    <button class="btn btn-primary btn-sm w-100 mt-2 fw-bold" onclick="saveInlineAssign()">Lưu Phân Công</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: INLINE STATUS -->
+    <div class="modal fade" id="inlineStatusModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title fw-bold m-0"><i class="fa-solid fa-arrows-spin me-2"></i>Đổi Trạng Thái</h6>
+                    <button type="button" class="btn-close btn-close-white" style="font-size: 10px;" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 text-center d-flex flex-column gap-2">
+                    <input type="hidden" id="inlineStatusReportId">
+                    <button class="btn btn-light border w-100 fw-bold text-start" style="color: #7e22ce; background: #f3e8ff;" onclick="saveInlineStatus('PLANNING')"><i class="fa-solid fa-lightbulb me-2"></i>Lên Kế Hoạch</button>
+                    <button class="btn btn-light border w-100 fw-bold text-start" style="color: #1d4ed8; background: #dbeafe;" onclick="saveInlineStatus('PROGRESS')"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang Triển Khai</button>
+                    <button class="btn btn-light border w-100 fw-bold text-start" style="color: #b45309; background: #fef9c3;" onclick="saveInlineStatus('TESTING')"><i class="fa-solid fa-vial me-2"></i>Kiểm Thử</button>
+                    <button class="btn btn-light border w-100 fw-bold text-start" style="color: #15803d; background: #dcfce7;" onclick="saveInlineStatus('COMPLETED')"><i class="fa-solid fa-check-double me-2"></i>Hoàn Thành</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: INLINE DUE DATE -->
+    <div class="modal fade" id="inlineDateModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title fw-bold m-0"><i class="fa-solid fa-calendar-day me-2"></i>Hạn Chót</h6>
+                    <button type="button" class="btn-close btn-close-white" style="font-size: 10px;" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="inlineDateReportId">
+                    <div class="mb-3">
+                        <input type="text" id="inlineDatePicker" class="form-control shadow-sm" placeholder="Chọn ngày giờ...">
+                    </div>
+                    <button class="btn btn-primary btn-sm w-100 fw-bold" onclick="saveInlineDate()">Lưu Hạn Chót</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: TASK DETAIL (ClickUp Style) -->
+    <div class="modal fade task-detail-modal" id="taskDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1100px;">
+            <div class="modal-content" style="height: 85vh;">
+                <!-- HEADER -->
+                <div class="task-detail-header d-flex align-items-start">
+                    <div>
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <span class="project-badge fs-6" id="detailProjectName">Project Name</span>
+                            <span class="status-badge fs-6" id="detailStatusBadge">Status</span>
+                        </div>
+                        <h4 class="fw-bold m-0 text-dark" id="detailTaskTitle" style="font-size: 24px;">Task Title</h4>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary rounded-circle" style="width: 40px; height: 40px;" data-bs-dismiss="modal"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                
+                <!-- BODY -->
+                <div class="modal-body p-0 d-flex flex-row" style="height: calc(85vh - 100px);">
+                    <!-- LEFT COLUMN: Details & Subtasks -->
+                    <div class="flex-grow-1 p-4" style="overflow-y: auto; background: #ffffff; border-right: 1px solid #e2e8f0; width: 65%;">
+                        <div class="row mb-4 bg-light p-3 rounded-3 border">
+                            <div class="col-md-6">
+                                <label class="text-muted fw-bold small text-uppercase mb-1">Người Phụ Trách</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="assignee-avatar bg-primary" style="width: 24px; height: 24px; font-size: 11px;"><i class="fa-solid fa-user"></i></span>
+                                    <span class="fw-bold text-dark" id="detailAssignee">TIN</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-muted fw-bold small text-uppercase mb-1">Hạn Chót</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fa-regular fa-calendar text-danger"></i>
+                                    <span class="fw-bold text-dark" id="detailDueDate">01/07/2026</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-align-left text-muted me-2"></i>Mô tả & Ghi chú Báo Cáo</h6>
+                            <div class="p-3 bg-light rounded-3 border text-dark" id="detailDailyReport" style="min-height: 100px; white-space: pre-wrap;">
+                                Mô tả chi tiết...
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-diagram-project text-muted me-2"></i>Nhiệm vụ con (<span id="detailSubtaskCount">0</span>)</h6>
+                            </div>
+                            <div id="detailSubtaskList" class="d-flex flex-column gap-2 mb-3">
+                                <!-- Subtasks injected here via JS -->
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mt-2">
+                                <i class="fa-solid fa-plus text-primary"></i>
+                                <input type="text" class="form-control border-0 bg-light shadow-none" id="detailNewSubtaskInput" placeholder="Thêm việc con mới... [Nhấn Enter để lưu]">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- RIGHT COLUMN: Comments & Activity -->
+                    <div class="d-flex flex-column bg-light" style="width: 35%;">
+                        <div class="p-3 border-bottom bg-white d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-comments text-primary me-2"></i>Thảo luận & Hoạt động</h6>
+                        </div>
+                        <div class="flex-grow-1 p-3" id="detailCommentsFeed" style="overflow-y: auto;">
+                            <!-- Comments injected here via JS -->
+                        </div>
+                        <div class="p-3 bg-white border-top">
+                            <div class="input-group">
+                                <input type="text" class="form-control shadow-none border-secondary" id="detailNewCommentText" placeholder="Gõ @ để tag người khác...">
+                                <button class="btn btn-primary fw-bold" onclick="sendTaskComment()"><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+    <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>
+
+    <script>
+        // INIT FLATPICKR
+        flatpickr("#reportDueDate", {
+            enableTime: true,
+            time_24hr: true,
+            minDate: "today",
+            locale: "vn",
+            dateFormat: "Y-m-d H:i",
+            altInput: true,
+            altFormat: "H:i d/m/Y"
+        });
+
+        // VIEW TOGGLE LOGIC
+        document.getElementById('mobile-toggle-btn').addEventListener('click', function() {
+            document.getElementById('main-content').classList.toggle('expanded');
+        });
+
+        // TOGGLE STATUS BAND IN LIST VIEW
+        function toggleStatusBand(bandId) {
+            const rows = document.querySelectorAll('.band-row-' + bandId);
+            const icon = document.getElementById('band-icon-' + bandId);
+            let isHidden = false;
+            rows.forEach(r => {
+                if(r.style.display === 'none') {
+                    if(!r.classList.contains('subtask-tree-row')) {
+                        r.style.display = 'table-row';
+                    }
+                } else {
+                    r.style.display = 'none';
+                    isHidden = true;
+                }
+            });
+            if(icon) {
+                if(isHidden) icon.style.transform = 'rotate(-90deg)';
+                else icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // TOGGLE SUBTASK TREE
+        function toggleSubtaskTree(reportId) {
+            const rows = document.querySelectorAll('.subtask-of-' + reportId);
+            const icon = document.getElementById('icon-subtask-' + reportId);
+            let isExpanded = false;
+            rows.forEach(r => {
+                if (r.style.display === 'none' || r.style.display === '') {
+                    r.style.display = 'table-row';
+                    isExpanded = true;
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+            if (icon) {
+                if (isExpanded) icon.style.transform = 'rotate(90deg)';
+                else icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function addSubTaskInline(reportId, title) {
+            if (!title || title.trim() === '') return;
+            const formData = new URLSearchParams();
+            formData.append('workReportId', reportId);
+            formData.append('title', title.trim());
+            formData.append('completed', 'false');
+
+            fetch('/work-reports/subtasks/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            }).then(res => {
+                location.reload();
+            });
+        }
+
+        function toggleSubTaskStatus(subtaskId, isCompleted) {
+            const formData = new URLSearchParams();
+            formData.append('id', subtaskId);
+            formData.append('completed', isCompleted);
+
+            fetch('/work-reports/subtasks/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            }).then(res => {
+                location.reload();
+            });
+        }
+
+        function deleteSubTaskItem(subtaskId, parentReportId) {
+            if(!confirm('Xóa việc con này?')) return;
+            fetch('/work-reports/subtasks/delete/' + subtaskId, {
+                method: 'POST'
+            }).then(res => {
+                location.reload();
+            });
+        }
+
+        function openUpdateModalFromBtn(btn) {
+            const id = btn.getAttribute('data-id');
+            const progress = btn.getAttribute('data-progress');
+            const status = btn.getAttribute('data-status');
+            const note = btn.getAttribute('data-note');
+            const title = btn.getAttribute('data-title');
+            const watchers = btn.getAttribute('data-watchers');
+            
+            document.getElementById('updateReportId').value = id;
+            document.getElementById('updateTaskTitle').innerText = title || ('Nhiệm vụ #' + id);
+            
+            const pRange = document.getElementById('updateProgressRange');
+            if (pRange) {
+                pRange.value = progress;
+                document.getElementById('updateProgressVal').innerText = progress + '%';
+            }
+            
+            const sel = document.getElementById('updateStatusSelect');
+            if (sel) sel.value = status || 'PLANNING';
+            
+            const tArea = document.getElementById('updateReportNote');
+            if (tArea) tArea.value = note || '';
+
+            const wInput = document.getElementById('updateReportWatchers');
+            if (wInput) wInput.value = watchers || '';
+
+            const modalEl = document.getElementById('updateReportModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        function openQuickCreateModal(band) {
+            const createModalEl = document.getElementById('createReportModal');
+            const statusSelect = createModalEl.querySelector('select[name="status"]');
+            if (statusSelect) statusSelect.value = band;
+            const modal = bootstrap.Modal.getInstance(createModalEl) || new bootstrap.Modal(createModalEl);
+            modal.show();
+        }
+
+        // INLINE EDITING FUNCTIONS
+        function openInlineAssignModal(id, assignee, watchers) {
+            document.getElementById('inlineAssignReportId').value = id;
+            const sel = document.getElementById('inlineAssigneeSelect');
+            if (sel) sel.value = assignee || '';
+            document.getElementById('inlineWatchersInput').value = watchers && watchers !== 'null' ? watchers : '';
+            const modalEl = document.getElementById('inlineAssignModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        function openInlineAssignModalFromEl(el) {
+            const id = el.getAttribute('data-id');
+            const assignee = el.getAttribute('data-assignee') || '';
+            const watchers = el.getAttribute('data-watchers') || '';
+            openInlineAssignModal(id, assignee, watchers);
+        }
+
+        function saveInlineAssign() {
+            const id = document.getElementById('inlineAssignReportId').value;
+            const assignee = document.getElementById('inlineAssigneeSelect').value;
+            const watchers = document.getElementById('inlineWatchersInput').value;
+            const formData = new URLSearchParams();
+            formData.append('id', id);
+            formData.append('assignee', assignee);
+            formData.append('watchers', watchers);
+
+            fetch('/work-reports/update-inline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(res => res.text())
+            .then(data => {
+                if (data === 'success') location.reload();
+                else alert('Lỗi khi cập nhật phân công!');
+            });
+        }
+
+        function openInlineStatusModal(id, status) {
+            document.getElementById('inlineStatusReportId').value = id;
+            const modalEl = document.getElementById('inlineStatusModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        function openInlineStatusModalFromEl(el) {
+            const id = el.getAttribute('data-id');
+            const status = el.getAttribute('data-status') || 'PLANNING';
+            openInlineStatusModal(id, status);
+        }
+
+        function saveInlineStatus(status) {
+            const id = document.getElementById('inlineStatusReportId').value;
+            const formData = new URLSearchParams();
+            formData.append('id', id);
+            formData.append('status', status);
+
+            fetch('/work-reports/update-inline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(res => res.text())
+            .then(data => {
+                if (data === 'success') location.reload();
+                else alert('Lỗi khi cập nhật trạng thái!');
+            });
+        }
+
+        function openInlineDateModal(id) {
+            document.getElementById('inlineDateReportId').value = id;
+            const pickerEl = document.getElementById('inlineDatePicker');
+            if (pickerEl && !pickerEl._flatpickr) {
+                flatpickr(pickerEl, {
+                    enableTime: true, time_24hr: true, minDate: "today", locale: "vn",
+                    dateFormat: "Y-m-d H:i", altInput: true, altFormat: "H:i d/m/Y"
+                });
+            }
+            const modalEl = document.getElementById('inlineDateModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        function saveInlineDate() {
+            const id = document.getElementById('inlineDateReportId').value;
+            const dateStr = document.getElementById('inlineDatePicker').value;
+            if (!dateStr) return;
+            const formData = new URLSearchParams();
+            formData.append('id', id);
+            formData.append('dueDate', dateStr);
+
+            fetch('/work-reports/update-inline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(res => res.text())
+            .then(data => {
+                if (data === 'success') location.reload();
+                else alert('Lỗi khi cập nhật hạn chót!');
+            });
+        }
+
+        // TASK DETAIL MODAL & COMMENTS
+        let currentDetailReportId = null;
+        function openTaskDetailModal(id) {
+            currentDetailReportId = id;
+            fetch('/work-reports/detail/' + id)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.report) { alert('Không tìm thấy thông tin tác vụ!'); return; }
+                const r = data.report;
+                document.getElementById('detailTaskTitle').innerText = r.taskTitle;
+                document.getElementById('detailProjectName').innerText = r.projectName || '--';
+                document.getElementById('detailAssignee').innerText = r.assignee ? r.assignee.toUpperCase() : '--';
+                if (r.dueDate) {
+                    const dt = new Date(r.dueDate);
+                    document.getElementById('detailDueDate').innerText = dt.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+                } else {
+                    document.getElementById('detailDueDate').innerText = '-- Chưa đặt --';
+                }
+                document.getElementById('detailDailyReport').innerText = r.dailyReport && r.dailyReport.trim() !== '' ? r.dailyReport : 'Chưa có ghi chú báo cáo...';
+                
+                const badge = document.getElementById('detailStatusBadge');
+                if (badge) {
+                    badge.className = 'status-badge m-0 ' + (r.status === 'PLANNING' ? 'status-planning' : (r.status === 'PROGRESS' ? 'status-progress' : (r.status == 'TESTING' ? 'status-testing' : 'status-completed')));
+                    badge.innerHTML = '<i class="fa-solid ' + (r.status === 'PLANNING' ? 'fa-lightbulb' : (r.status === 'PROGRESS' ? 'fa-spinner fa-spin' : (r.status == 'TESTING' ? 'fa-vial' : 'fa-check'))) + '"></i> ' + (r.status === 'PLANNING' ? 'TO DO' : (r.status === 'PROGRESS' ? 'IN PROGRESS' : (r.status === 'TESTING' ? 'TESTING' : 'DONE')));
+                }
+
+                // Render Subtasks
+                const subListEl = document.getElementById('detailSubtaskList');
+                const subtasks = data.subtasks || [];
+                document.getElementById('detailSubtaskCount').innerText = subtasks.length;
+                subListEl.innerHTML = '';
+                subtasks.forEach(st => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'd-flex align-items-center justify-content-between p-2 bg-white border rounded-3';
+                    itemDiv.innerHTML = `
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="checkbox" class="form-check-input m-0 cursor-pointer" ${st.completed ? 'checked' : ''} onchange="toggleSubTaskStatus(${st.id}, this.checked)">
+                            <span class="small fw-medium ${st.completed ? 'text-decoration-line-through text-muted' : ''}">${st.title}</span>
+                        </div>
+                        <span class="badge bg-light text-dark border small">${st.assignee || 'Assignee'}</span>
+                    `;
+                    subListEl.appendChild(itemDiv);
+                });
+
+                // Render Comments
+                renderCommentsList(data.comments || []);
+
+                // Show modal
+                const modalEl = document.getElementById('taskDetailModal');
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Lỗi kết nối khi tải chi tiết tác vụ!');
+            });
+        }
+
+        function renderCommentsList(comments) {
+            const feedEl = document.getElementById('detailCommentsFeed');
+            if (!comments || comments.length === 0) {
+                feedEl.innerHTML = '<div class="text-center py-5 text-muted small"><i class="fa-regular fa-comments fs-3 d-block mb-2"></i>Chưa có thảo luận nào. Hãy là người bắt đầu cuộc trò chuyện!</div>';
+                return;
+            }
+            feedEl.innerHTML = '';
+            comments.forEach(c => {
+                const bubble = document.createElement('div');
+                bubble.className = 'comment-bubble';
+                const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString('vi-VN') : 'Vừa xong';
+                // highlight @mentions in content
+                let formattedContent = (c.content || '').replace(/@(\w+)/g, '<span class="mention-tag">@$1</span>');
+                bubble.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-primary small"><i class="fa-solid fa-user-circle me-1"></i>${c.author || 'Anonymous'}</strong>
+                        <span class="text-muted" style="font-size: 11px;">${timeStr}</span>
+                    </div>
+                    <div class="small text-dark mt-1">${formattedContent}</div>
+                `;
+                feedEl.appendChild(bubble);
+            });
+            feedEl.scrollTop = feedEl.scrollHeight;
+        }
+
+        function sendTaskComment() {
+            if (!currentDetailReportId) return;
+            const inputEl = document.getElementById('detailNewCommentText');
+            const content = inputEl.value;
+            if (!content || !content.trim()) return;
+
+            const formData = new URLSearchParams();
+            formData.append('workReportId', currentDetailReportId);
+            formData.append('content', content.trim());
+
+            fetch('/work-reports/comments/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(res => res.json())
+            .then(newComment => {
+                inputEl.value = '';
+                // Reload detail to update feed
+                fetch('/work-reports/detail/' + currentDetailReportId)
+                .then(res => res.json())
+                .then(data => { renderCommentsList(data.comments || []); });
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Lỗi!');
+            });
+        }
+
+        function quickCreateTask(title, status) {
+            if (!title || !title.trim()) return;
+            const formData = new URLSearchParams();
+            formData.append('taskTitle', title.trim());
+            formData.append('status', status);
+            formData.append('projectName', 'Helpdesk v2');
+            formData.append('assignee', '');
+            
+            fetch('/work-reports/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(res => { location.reload(); })
+            .catch(err => { console.error(err); alert('Lỗi khi tạo nhiệm vụ mới!'); });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const detailSubInput = document.getElementById('detailNewSubtaskInput');
+            if (detailSubInput) {
+                detailSubInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (currentDetailReportId && this.value.trim()) {
+                            addSubTaskInline(currentDetailReportId, this.value.trim());
+                        }
+                    }
+                });
+            }
+
+            // @MENTION AUTOCOMPLETE LOGIC WITH TRIBUTE.JS
+            const allUserNames = [
+                <th:block th:each="u, stat : ${assignees}">
+                    { key: '<th:block th:text="${u}"></th:block>', value: '<th:block th:text="${u}"></th:block>' }<th:block th:if="${!stat.last}">,</th:block>
+                </th:block>
+            ];
+            if (allUserNames.length === 0) {
+                allUserNames.push({key:'tin', value:'tin'}, {key:'trinh', value:'trinh'}, {key:'dinh', value:'dinh'}, {key:'admin', value:'admin'}, {key:'support', value:'support'}, {key:'manager', value:'manager'});
+            }
+            
+            if (typeof Tribute !== 'undefined') {
+                const tribute = new Tribute({
+                    values: allUserNames,
+                    selectTemplate: function(item) {
+                        return '@' + item.original.value;
+                    },
+                    menuItemTemplate: function (item) {
+                        return '<div class="mention-item" style="padding: 5px 10px; display: flex; align-items: center; gap: 10px;"><div class="mention-avatar" style="width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px;">' + item.original.value.substring(0, 1).toUpperCase() + '</div><span class="fw-bold small text-dark">@' + item.original.value + '</span></div>';
+                    }
+                });
+                
+                const commentInput = document.getElementById('detailNewCommentText');
+                if (commentInput) tribute.attach(commentInput);
+                
+                const noteInput = document.getElementById('updateReportNote');
+                if (noteInput) tribute.attach(noteInput);
+                
+                const watchersInput = document.getElementById('inlineWatchersInput');
+                if (watchersInput) tribute.attach(watchersInput);
+                
+                const updateWatchersInput = document.getElementById('updateReportWatchers');
+                if (updateWatchersInput) tribute.attach(updateWatchersInput);
+            }
+        });
+    </script>
+</body>
+</html>

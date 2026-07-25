@@ -1,0 +1,796 @@
+﻿<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo cáo công việc & Quản lý Dự án - Midomax IT Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #e2e8f0;
+            color: #333;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 30px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
+
+        .topbar {
+            background: #ffffff;
+            padding: 15px 30px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e2e8f0;
+        }
+
+        /* CLICKUP BANNER */
+        .clickup-banner {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%);
+            border-radius: 20px;
+            padding: 35px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+            margin-bottom: 30px;
+        }
+
+        .clickup-banner::after {
+            content: '\f0ae';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: -10px;
+            bottom: -30px;
+            font-size: 160px;
+            color: rgba(255, 255, 255, 0.1);
+            transform: rotate(-10deg);
+        }
+
+        .clickup-banner h1 {
+            font-weight: 800;
+            font-size: 28px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .clickup-banner p {
+            font-size: 15px;
+            opacity: 0.9;
+            margin: 0;
+            max-width: 650px;
+            line-height: 1.5;
+        }
+
+        /* STAT CARDS */
+        .stat-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-icon {
+            width: 54px;
+            height: 54px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .stat-title {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1e293b;
+        }
+
+        /* FILTER BAR & VIEW TOGGLE */
+        .filter-bar {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 18px 24px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .view-btn {
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #64748b;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active, .view-btn:hover {
+            background: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+        }
+
+        /* TABLE LIST VIEW */
+        .table-container {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            overflow: hidden;
+        }
+
+        .table thead th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 12.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 14px 18px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .table tbody td {
+            padding: 16px 18px;
+            vertical-align: middle;
+            font-size: 14px;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .project-badge {
+            background: #e0e7ff;
+            color: #4338ca;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 12px;
+            display: inline-block;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-planning { background: #f3e8ff; color: #7e22ce; }
+        .status-progress { background: #dbeafe; color: #1d4ed8; }
+        .status-testing { background: #fef9c3; color: #b45309; }
+        .status-completed { background: #dcfce7; color: #15803d; }
+
+        .progress-bar-container {
+            width: 100%;
+            background: #e2e8f0;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.4s ease;
+        }
+
+        .assignee-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4f46e5, #3b82f6);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+            margin-right: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .watcher-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #64748b;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 11px;
+            margin-left: -8px;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtask-row {
+            background-color: #f8fafc !important;
+            border-left: 3px solid #4f46e5;
+        }
+
+        .subtask-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .subtask-item:last-child {
+            border-bottom: none;
+        }
+
+        .subtask-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #4f46e5;
+        }
+
+        /* KANBAN BOARD VIEW */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+
+        .kanban-col {
+            background: #f8fafc;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            padding: 16px;
+            min-height: 500px;
+        }
+
+        .kanban-col-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 14px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .kanban-card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .kanban-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.08);
+            border-color: #cbd5e1;
+        }
+
+        /* MODAL STYLES */
+        .modal-content {
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #4f46e5, #3b82f6);
+            color: white;
+            border-radius: 20px 20px 0 0;
+            padding: 20px 25px;
+        }
+
+        /* CLICKUP/ASANA STATUS BAND LIST VIEW */
+        .status-band-header {
+            background: #f8fafc;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+            border-top: 2px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .status-band-header:hover { background: #f1f5f9; }
+        .band-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .band-in-progress { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+        .band-to-do { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .band-testing { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+        .band-completed { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
+
+        .subtask-tree-row {
+            background: #fafaf9;
+            border-bottom: 1px dashed #e2e8f0;
+            transition: background 0.15s;
+        }
+        .subtask-tree-row:hover { background: #f1f5f9; }
+        .tree-connector {
+            display: inline-block; width: 20px; color: #cbd5e1; font-family: monospace; font-size: 16px; margin-right: 5px;
+        }
+        .inline-edit-pill {
+            cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+            display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 6px;
+        }
+        .inline-edit-pill:hover {
+            transform: scale(1.04); box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+            background: #f1f5f9;
+        }
+
+        /* @MENTION AUTOCOMPLETE DROPDOWN */
+        .mention-dropdown {
+            position: absolute; z-index: 99999; background: white; border: 1px solid #cbd5e1;
+            border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 220px; overflow-y: auto;
+            width: 260px; display: none; padding: 6px 0;
+        }
+        .mention-item {
+            padding: 8px 15px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.1s;
+        }
+        .mention-item:hover, .mention-item.active { background: #f1f5f9; }
+        .mention-avatar {
+            width: 28px; height: 28px; border-radius: 50%; background: #4f46e5; color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;
+        }
+
+        /* TASK DETAIL DRAWER / MODAL */
+        .task-detail-modal .modal-content { border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .task-detail-header { background: #f8fafc; padding: 20px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .comment-bubble { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; }
+        .comment-bubble.my-comment { background: #eff6ff; border-color: #bfdbfe; }
+        .mention-tag { color: #2563eb; font-weight: 600; background: #dbeafe; padding: 1px 6px; border-radius: 4px; display: inline-block; }
+
+        @media (max-width: 991px) {
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 15px !important; }
+        }
+    </style>
+    
+    <!-- Tribute.js CSS for @mentions -->
+    <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css">
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('work-reports')}"></div>
+
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display: none; cursor: pointer; font-size: 22px; color: #4f46e5; margin-right: 15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color: #1e293b;">CLICKUP WORKSPACE - IT PORTAL</h4>
+                    <small class="text-muted">Quản lý dự án, theo dõi tiến độ & Báo cáo công việc phát triển</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-primary fw-bold px-4 py-2" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);" data-bs-toggle="modal" data-bs-target="#createReportModal">
+                    <i class="fa-solid fa-plus me-2"></i>Thêm Nhiệm Vụ / Báo Cáo
+                </button>
+            </div>
+        </div>
+
+        <!-- CLICKUP BANNER -->
+        <div class="clickup-banner">
+            <h1><i class="fa-solid fa-layer-group"></i> Không Gian Làm Việc Dev Team</h1>
+            <p>Đồng bộ tiến độ dự án, ghi nhận báo cáo công việc hàng ngày/tuần theo mốc thời gian thực Việt Nam. Nâng cao hiệu suất và kết nối toàn diện cho các bạn IT Dev.</p>
+        </div>
+
+        <!-- STAT CARDS -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #e0e7ff; color: #4f46e5;"><i class="fa-solid fa-list-check"></i></div>
+                    <div>
+                        <div class="stat-title">Tổng Hạng Mục</div>
+                        <div class="stat-value" th:text="${totalCount}">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #f3e8ff; color: #9333ea;"><i class="fa-solid fa-lightbulb"></i></div>
+                    <div>
+                        <div class="stat-title">Lên Kế Hoạch</div>
+                        <div class="stat-value" th:text="${planningCount}">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #dbeafe; color: #2563eb;"><i class="fa-solid fa-code"></i></div>
+                    <div>
+                        <div class="stat-title">Đang Triển Khai</div>
+                        <div class="stat-value" th:text="${progressCount}">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #dcfce7; color: #16a34a;"><i class="fa-solid fa-check-double"></i></div>
+                    <div>
+                        <div class="stat-title">Đã Hoàn Thành</div>
+                        <div class="stat-value" th:text="${completedCount}">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTER BAR & VIEW TOGGLE -->
+        <div class="filter-bar">
+            <form method="get" action="/work-reports" class="d-flex flex-wrap align-items-center gap-3">
+                <input type="hidden" name="view" th:value="${currentView}">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="fw-bold small text-muted">Dự án:</label>
+                    <select name="project" class="form-select form-select-sm" style="width: 180px; border-radius: 8px;" onchange="this.form.submit()">
+                        <option value="ALL" th:selected="${currentProject == 'ALL' || currentProject == null}">-- Tất cả dự án --</option>
+                        <option th:each="p : ${projectNames}" th:value="${p}" th:text="${p}" th:selected="${currentProject == p}"></option>
+                    </select>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="fw-bold small text-muted">Phân công:</label>
+                    <select name="assignee" class="form-select form-select-sm" style="width: 150px; border-radius: 8px;" onchange="this.form.submit()">
+                        <option value="ALL" th:selected="${currentAssignee == 'ALL' || currentAssignee == null}">-- Tất cả IT --</option>
+                        <option th:each="a : ${assignees}" th:value="${a}" th:text="${a.toUpperCase()}" th:selected="${currentAssignee == a}"></option>
+                    </select>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="fw-bold small text-muted">Trạng thái:</label>
+                    <select name="status" class="form-select form-select-sm" style="width: 160px; border-radius: 8px;" onchange="this.form.submit()">
+                        <option value="ALL" th:selected="${currentStatus == 'ALL' || currentStatus == null}">-- Tất cả --</option>
+                        <option value="PLANNING" th:selected="${currentStatus == 'PLANNING'}">Lên Kế Hoạch</option>
+                        <option value="PROGRESS" th:selected="${currentStatus == 'PROGRESS'}">Đang Triển Khai</option>
+                        <option value="TESTING" th:selected="${currentStatus == 'TESTING'}">Kiểm Thử</option>
+                        <option value="COMPLETED" th:selected="${currentStatus == 'COMPLETED'}">Hoàn Thành</option>
+                    </select>
+                </div>
+            </form>
+
+            <div class="d-flex align-items-center gap-2">
+                <a th:href="@{/work-reports(view='list', project=${currentProject}, assignee=${currentAssignee}, status=${currentStatus})}" class="view-btn" th:classappend="${currentView == 'list' || currentView == null} ? 'active' : ''">
+                    <i class="fa-solid fa-list-ul"></i> Danh Sách
+                </a>
+                <a th:href="@{/work-reports(view='kanban', project=${currentProject}, assignee=${currentAssignee}, status=${currentStatus})}" class="view-btn" th:classappend="${currentView == 'kanban'} ? 'active' : ''">
+                    <i class="fa-solid fa-table-columns"></i> Bảng Kanban
+                </a>
+            </div>
+        </div>
+
+        <!-- ALERT MESSAGE -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show fw-bold shadow-sm" style="border-radius: 12px; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- VIEW 1: TABLE LIST VIEW -->
+        <div th:if="${currentView == 'list' || currentView == null}" class="table-container">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">#ID</th>
+                            <th style="width: 180px;">Dự Án</th>
+                            <th style="width: 250px;">Công Việc / Nhiệm Vụ</th>
+                            <th style="width: 140px;">Phân Công</th>
+                            <th style="width: 160px;">Trạng Thái</th>
+                            <th style="width: 180px;">Tiến Độ (%)</th>
+                            <th style="width: 150px;">Hạn Chót</th>
+                            <th>Báo Cáo Tiến Độ Gần Nhất</th>
+                            <th style="width: 110px; text-align: center;">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody th:if="${#lists.isEmpty(reports)}">
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted fw-bold">
+                                <i class="fa-solid fa-folder-open fs-2 mb-2 d-block"></i>
+                                Chưa có hạng mục công việc nào. Hãy nhấn nút "Thêm Nhiệm Vụ / Báo Cáo" ở trên!
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody th:unless="${#lists.isEmpty(reports)}" th:each="band : ${ {'PROGRESS','PLANNING','TESTING','COMPLETED'} }" th:id="'tbody-band-' + ${band}">
+                        <!-- BAND HEADER -->
+                        <tr class="status-band-header" th:onclick="'toggleStatusBand(\'' + ${band} + '\')'">
+                            <td colspan="9" class="py-2 px-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-chevron-down text-muted" th:id="'band-icon-' + ${band}" style="transition: transform 0.2s;"></i>
+                                        <span class="band-pill" th:classappend="${band == 'PROGRESS' ? 'band-in-progress' : (band == 'PLANNING' ? 'band-to-do' : (band == 'TESTING' ? 'band-testing' : 'band-completed'))}">
+                                            <i class="fa-solid" th:classappend="${band == 'PROGRESS' ? 'fa-spinner fa-spin' : (band == 'PLANNING' ? 'fa-lightbulb' : (band == 'TESTING' ? 'fa-vial' : 'fa-check'))}"></i>
+                                            <span th:text="${band == 'PROGRESS' ? 'IN PROGRESS (Đang triển khai)' : (band == 'PLANNING' ? 'TO DO (Lên kế hoạch)' : (band == 'TESTING' ? 'TESTING (Kiểm thử)' : 'DONE (Hoàn thành)'))}">Status</span>
+                                        </span>
+                                    </div>
+                                    <button class="btn btn-sm btn-light border fw-bold text-primary" th:onclick="'openQuickCreateModal(\'' + ${band} + '\'); event.stopPropagation();'" title="Thêm nhanh nhiệm vụ vào nhóm này">
+                                        <i class="fa-solid fa-plus me-1"></i> Thêm nhiệm vụ
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- TASKS IN THIS BAND -->
+                        <th:block th:each="r : ${reports}" th:if="${(r.status == null ? 'PLANNING' : #strings.toUpperCase(r.status)) == band}">
+                            <tr th:class="'band-row-' + ${band}">
+                                <td class="fw-bold text-muted" th:text="'#' + ${r.id}">#1</td>
+                                <td>
+                                    <span class="project-badge" th:text="${r.projectName != null ? r.projectName : 'Dự án'}">Helpdesk v2</span>
+                                </td>
+                                <td class="fw-bold text-dark">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button class="btn btn-sm btn-link text-decoration-none p-0 text-muted" th:onclick="'toggleSubtaskTree(' + ${r.id} + ')'" title="Mở rộng / Thu gọn nhiệm vụ con">
+                                            <i class="fa-solid fa-chevron-right" th:id="'icon-subtask-' + ${r.id}" style="transition: transform 0.2s;"></i>
+                                        </button>
+                                        <a href="javascript:void(0)" class="text-decoration-none text-dark fw-bold hover-primary" th:onclick="'openTaskDetailModal(' + ${r.id} + ')'" th:text="${r.taskTitle != null ? r.taskTitle : 'Nhiệm vụ'}">Tích hợp ClickUp</a>
+                                        <span class="badge bg-light text-muted border small" style="font-size: 11px; cursor: pointer;" th:onclick="'toggleSubtaskTree(' + ${r.id} + ')'" th:text="${subtasksMap != null && subtasksMap.get(r.id) != null ? #lists.size(subtasksMap.get(r.id)) : 0} + ' việc con'">0 việc con</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="inline-edit-pill"
+                                         th:data-id="${r.id}"
+                                         th:data-assignee="${r.assignee != null ? r.assignee : ''}"
+                                         th:data-watchers="${r.watchers != null ? r.watchers : ''}"
+                                         onclick="openInlineAssignModalFromEl(this)"
+                                         title="Click để đổi người thực hiện / theo dõi">
+                                        <span class="assignee-avatar" th:text="${r.assignee != null && !r.assignee.isEmpty() ? #strings.substring(r.assignee, 0, 1).toUpperCase() : 'U'}">T</span>
+                                        <span class="fw-bold small me-1" th:text="${r.assignee != null ? r.assignee.toUpperCase() : 'UNASSIGNED'}">TIN</span>
+                                        <span th:if="${r.watchers != null && !r.watchers.isEmpty()}" class="d-inline-flex align-items-center ms-1">
+                                            <span th:each="w : ${#strings.listSplit(r.watchers, ',')}" class="watcher-avatar" th:text="${w != null && !w.isEmpty() ? #strings.substring(w, 0, 1).toUpperCase() : 'W'}" th:title="'Watchers: ' + ${w}">W</span>
+                                        </span>
+                                        <i class="fa-solid fa-user-tag ms-1 text-muted small"></i>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="inline-edit-pill"
+                                         th:data-id="${r.id}"
+                                         th:data-status="${r.status != null ? r.status : 'PLANNING'}"
+                                         onclick="openInlineStatusModalFromEl(this)"
+                                         title="Click để đổi trạng thái">
+                                        <span class="status-badge m-0" th:classappend="${(r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PLANNING' ? 'status-planning' : ((r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PROGRESS' ? 'status-progress' : ((r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'TESTING' ? 'status-testing' : 'status-completed'))}">
+                                            <i class="fa-solid" th:classappend="${(r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PLANNING' ? 'fa-lightbulb' : ((r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PROGRESS' ? 'fa-spinner fa-spin' : ((r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'TESTING' ? 'fa-vial' : 'fa-check'))}"></i>
+                                            <span th:text="${(r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PLANNING' ? 'Lên Kế Hoạch' : ((r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PROGRESS' ? 'Đang Triển Khai' : ((r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'TESTING' ? 'Kiểm Thử' : 'Hoàn Thành'))}">Status</span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar-fill" th:style="'width: ' + (${r.progressPercentage != null ? r.progressPercentage : 0}) + '%; background: ' + ((${r.progressPercentage != null ? r.progressPercentage : 0}) == 100 ? '#16a34a' : ((${r.progressPercentage != null ? r.progressPercentage : 0}) > 50 ? '#2563eb' : '#9333ea')) + ';'"></div>
+                                        </div>
+                                        <span class="fw-bold small text-dark" style="min-width: 38px;" th:text="${r.progressPercentage != null ? r.progressPercentage : 0} + '%'">0%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="inline-edit-pill" th:onclick="'openInlineDateModal(' + ${r.id} + ')'" title="Click để gia hạn / đặt hạn chót">
+                                        <span th:if="${r.dueDate != null}" class="badge bg-light text-dark border fw-medium small">
+                                            <i class="fa-solid fa-calendar me-1 text-primary"></i><span th:text="${#temporals.format(r.dueDate, 'HH:mm dd/MM')}">01/07</span>
+                                        </span>
+                                        <span th:if="${r.dueDate == null}" class="text-muted small"><i class="fa-regular fa-calendar-plus me-1"></i>Hạn chót</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="small text-secondary" style="max-height: 45px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" th:text="${r.dailyReport != null && !r.dailyReport.isEmpty() ? r.dailyReport : 'Chưa có ghi chú báo cáo...'}">Report note</div>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-light border text-primary me-1"
+                                            th:data-id="${r.id}"
+                                            th:data-progress="${r.progressPercentage != null ? r.progressPercentage : 0}"
+                                            th:data-status="${r.status != null ? r.status : 'PLANNING'}"
+                                            th:data-note="${r.dailyReport != null ? r.dailyReport : ''}"
+                                            th:data-title="${r.taskTitle != null ? r.taskTitle : ''}"
+                                            th:data-watchers="${r.watchers != null ? r.watchers : ''}"
+                                            onclick="openUpdateModalFromBtn(this)"
+                                            title="Cập nhật tiến độ & ghi nhật ký">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <form th:action="@{/work-reports/delete/{id}(id=${r.id})}" method="post" style="display: inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hạng mục này?');">
+                                        <button type="submit" class="btn btn-sm btn-light border text-danger" title="Xóa">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- SUBTASK TREE ROWS -->
+                            <tr th:if="${subtasksMap != null && subtasksMap.get(r.id) != null}" th:each="st : ${subtasksMap.get(r.id)}" th:id="'subtask-item-' + ${st.id}" th:class="'subtask-tree-row subtask-of-' + ${r.id} + ' band-row-' + ${band}" style="display: none;">
+                                <td></td>
+                                <td></td>
+                                <td colspan="3" class="ps-3 py-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="tree-connector">└─</span>
+                                        <input type="checkbox" class="form-check-input m-0 shadow-none cursor-pointer" th:checked="${st.completed}" th:onchange="'toggleSubTaskStatus(' + ${st.id} + ', this.checked)'">
+                                        <span class="fw-medium text-dark small" th:classappend="${st.completed} ? 'text-decoration-line-through text-muted' : ''" th:text="${st.title}">Subtask title</span>
+                                    </div>
+                                </td>
+                                <td colspan="3">
+                                    <span th:if="${st.assignee != null && !st.assignee.isEmpty()}" class="badge bg-light text-dark border"><i class="fa-solid fa-user me-1 text-primary"></i><span th:text="${st.assignee}">Assignee</span></span>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-link text-danger p-0 m-0" th:onclick="'deleteSubTaskItem(' + ${st.id} + ', ' + ${r.id} + ')'" title="Xóa subtask"><i class="fa-solid fa-xmark"></i></button>
+                                </td>
+                            </tr>
+                            <!-- QUICK ADD SUBTASK ROW -->
+                            <tr th:id="'subtask-add-' + ${r.id}" th:class="'subtask-tree-row subtask-of-' + ${r.id} + ' band-row-' + ${band}" style="display: none; background: #f8fafc;">
+                                <td></td>
+                                <td></td>
+                                <td colspan="7" class="ps-3 py-1">
+                                    <div class="d-flex align-items-center gap-2" style="max-width: 450px;">
+                                        <span class="tree-connector">└─</span>
+                                        <i class="fa-solid fa-plus text-primary small"></i>
+                                        <input type="text" class="form-control form-control-sm border-0 bg-transparent shadow-none small fw-medium" th:id="'new-subtask-input-' + ${r.id}" placeholder="Thêm việc con... [Nhấn Enter để lưu nhanh]" th:onkeydown="'if(event.key === \'Enter\') { addSubTaskInline(' + ${r.id} + ', this.value); }'">
+                                    </div>
+                                </td>
+                            </tr>
+                        </th:block>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIEW 2: KANBAN BOARD VIEW -->
+        <div th:if="${currentView == 'kanban'}" class="kanban-board">
+            <!-- COL 1: PLANNING -->
+            <div class="kanban-col">
+                <div class="kanban-col-header" style="color: #7e22ce;">
+                    <span><i class="fa-solid fa-lightbulb me-2"></i>LÊN KẾ HOẠCH</span>
+                    <span class="badge bg-purple bg-opacity-10 text-purple" style="background: #f3e8ff; color: #7e22ce;" th:text="${planningCount}">0</span>
+                </div>
+                <div th:each="r : ${reports}" th:if="${(r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PLANNING'}" class="kanban-card"
+                     th:data-id="${r.id}"
+                     th:data-progress="${r.progressPercentage != null ? r.progressPercentage : 0}"
+                     th:data-status="${r.status != null ? r.status : 'PLANNING'}"
+                     th:data-note="${r.dailyReport != null ? r.dailyReport : ''}"
+                     th:data-title="${r.taskTitle != null ? r.taskTitle : ''}"
+                     th:data-watchers="${r.watchers != null ? r.watchers : ''}"
+                     onclick="openUpdateModalFromBtn(this)">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="project-badge" th:text="${r.projectName != null ? r.projectName : 'Dự án'}">Project</span>
+                        <span class="fw-bold small text-muted" th:text="'#' + ${r.id}">#1</span>
+                    </div>
+                    <h6 class="fw-bold mb-3 text-dark" th:text="${r.taskTitle != null ? r.taskTitle : 'Nhiệm vụ'}">Task Title</h6>
+                    <div class="progress-bar-container mb-3">
+                        <div class="progress-bar-fill" th:style="'width: ' + (${r.progressPercentage != null ? r.progressPercentage : 0}) + '%; background: #9333ea;'"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center small text-muted">
+                        <div>
+                            <span class="assignee-avatar" style="width: 26px; height: 26px; font-size: 11px;" th:text="${r.assignee != null && !r.assignee.isEmpty() ? #strings.substring(r.assignee, 0, 1).toUpperCase() : 'U'}">T</span>
+                            <span class="fw-bold text-dark" th:text="${r.assignee != null ? r.assignee.toUpperCase() : 'UNASSIGNED'}">TIN</span>
+                            <span th:if="${r.watchers != null && !r.watchers.isEmpty()}" class="d-inline-flex align-items-center ms-1">
+                                <span th:each="w : ${#strings.listSplit(r.watchers, ',')}" class="watcher-avatar" style="width: 20px; height: 20px; font-size: 9px; margin-left: -5px;" th:text="${w != null && !w.isEmpty() ? #strings.substring(w, 0, 1).toUpperCase() : 'W'}" th:title="'Watchers: ' + ${w}">W</span>
+                            </span>
+                        </div>
+                        <span th:if="${r.dueDate != null}"><i class="fa-regular fa-clock me-1"></i><span th:text="${#temporals.format(r.dueDate, 'dd/MM')}">01/07</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COL 2: PROGRESS -->
+            <div class="kanban-col">
+                <div class="kanban-col-header" style="color: #1d4ed8;">
+                    <span><i class="fa-solid fa-spinner fa-spin me-2"></i>ĐANG TRIỂN KHAI</span>
+                    <span class="badge bg-blue bg-opacity-10 text-blue" style="background: #dbeafe; color: #1d4ed8;" th:text="${progressCount}">0</span>
+                </div>
+                <div th:each="r : ${reports}" th:if="${(r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'PROGRESS'}" class="kanban-card"
+                     th:data-id="${r.id}"
+                     th:data-progress="${r.progressPercentage != null ? r.progressPercentage : 0}"
+                     th:data-status="${r.status != null ? r.status : 'PLANNING'}"
+                     th:data-note="${r.dailyReport != null ? r.dailyReport : ''}"
+                     th:data-title="${r.taskTitle != null ? r.taskTitle : ''}"
+                     th:data-watchers="${r.watchers != null ? r.watchers : ''}"
+                     onclick="openUpdateModalFromBtn(this)">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="project-badge" th:text="${r.projectName != null ? r.projectName : 'Dự án'}">Project</span>
+                        <span class="fw-bold small text-muted" th:text="'#' + ${r.id}">#1</span>
+                    </div>
+                    <h6 class="fw-bold mb-3 text-dark" th:text="${r.taskTitle != null ? r.taskTitle : 'Nhiệm vụ'}">Task Title</h6>
+                    <div class="progress-bar-container mb-3">
+                        <div class="progress-bar-fill" th:style="'width: ' + (${r.progressPercentage != null ? r.progressPercentage : 0}) + '%; background: #2563eb;'"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center small text-muted">
+                        <div>
+                            <span class="assignee-avatar" style="width: 26px; height: 26px; font-size: 11px;" th:text="${r.assignee != null && !r.assignee.isEmpty() ? #strings.substring(r.assignee, 0, 1).toUpperCase() : 'U'}">T</span>
+                            <span class="fw-bold text-dark" th:text="${r.assignee != null ? r.assignee.toUpperCase() : 'UNASSIGNED'}">TIN</span>
+                            <span th:if="${r.watchers != null && !r.watchers.isEmpty()}" class="d-inline-flex align-items-center ms-1">
+                                <span th:each="w : ${#strings.listSplit(r.watchers, ',')}" class="watcher-avatar" style="width: 20px; height: 20px; font-size: 9px; margin-left: -5px;" th:text="${w != null && !w.isEmpty() ? #strings.substring(w, 0, 1).toUpperCase() : 'W'}" th:title="'Watchers: ' + ${w}">W</span>
+                            </span>
+                        </div>
+                        <span th:if="${r.dueDate != null}"><i class="fa-regular fa-clock me-1"></i><span th:text="${#temporals.format(r.dueDate, 'dd/MM')}">01/07</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COL 3: TESTING -->
+            <div class="kanban-col">
+                <div class="kanban-col-header" style="color: #b45309;">
+                    <span><i class="fa-solid fa-vial me-2"></i>KIỂM THỬ</span>
+                    <span class="badge bg-yellow bg-opacity-10 text-yellow" style="background: #fef9c3; color: #b45309;" th:text="${testingCount}">0</span>
+                </div>
+                <div th:each="r : ${reports}" th:if="${(r.status != null ? #strings.toUpperCase(r.status) : 'PLANNING') == 'TESTING'}" class="kanban-card"
+                     th:data-id="${r.id}"
+                     th:data-progress="${r.progressPercentage != null ? r.progressPercentage : 0}"
+                     th:data-status="${r.status != null ? r.status : 'PLANNING'}"
+                     th:data-note="${r.dailyReport != null ? r.dailyReport : ''}"
+                     th:data-title="${r.taskTitle != null ? r.taskTitle : ''}"
+                     th:data-watchers="${r.watchers != null ? r.watchers : ''}"
+                     onclick="openUpdateModalFromBtn(this)">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="project-badge" th:text="${r.projectName != null ? r.projectName : 'Dự án'}">Project</span>
+                        <span class="fw-bold small text-muted" th:text="'#' + ${r.id}">#1</span>
+                    </div>
+                    <h6 class="fw-bold mb-3 text-dark" th:text="${r.taskTitle != null ? r.taskTitle : 'Nhiệm vụ'}">Task Title</h6>
+                    <div class="progress-bar-container mb-3">
+                        <div class="progress-bar-fill" th:style="'width: ' + (${r.progressPercentage != null ? r.progressPercentage : 0}) + '%; background: #eab308;'"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center small text-muted">
+                        <div>
+                      

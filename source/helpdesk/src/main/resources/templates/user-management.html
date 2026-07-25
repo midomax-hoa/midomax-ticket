@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý User - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Include Toastr for notifications -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+
+
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); border: 1px solid #e5e7eb; }
+        
+        .btn-sync { background: linear-gradient(135deg, #00a4ef, #0078d4); color: white; border: none; font-weight: 600; padding: 8px 16px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 120, 212, 0.2); transition: all 0.3s ease; }
+        .btn-sync:hover { transform: translateY(-2px); box-shadow: 0 6px 12px -2px rgba(0, 120, 212, 0.3); color: white; }
+        
+        /* ===== WIDGET / TABLE ===== */
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 15px 12px; white-space: nowrap; }
+        .table-custom td { padding: 12px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
+        .table-custom tbody tr:hover { background-color: #f8fafc; }
+
+        /* ===== BADGE ===== */
+        .role-badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; text-align: center; min-width: 90px; }
+        .role-admin { background-color: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; }
+        .role-it { background-color: #eff6ff; color: #3b82f6; border: 1px solid #93c5fd; }
+        .role-user { background-color: #f0fdf4; color: #22c55e; border: 1px solid #86efac; }
+
+        /* ===== NHÓM CHUYÊN MÔN IT + NGUỒN TÀI KHOẢN ===== */
+        .group-badge { padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block; margin: 1px 2px 1px 0; background: #f8fafc; border: 1px solid #e2e8f0; }
+        .source-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; display: inline-block; white-space: nowrap; }
+        .source-local { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .source-m365 { background: #eff6ff; color: #0078d4; border: 1px solid #93c5fd; }
+        .btn-add-local { background: #1e3a8a; color: #fff; border: none; font-weight: 600; padding: 8px 16px; border-radius: 8px; transition: all 0.3s ease; }
+        .btn-add-local:hover { transform: translateY(-2px); background: #1e40af; color: #fff; }
+        .it-groups-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #f8fafc; }
+
+        /* Modal tweaks */
+        .modal-header-ms { background: linear-gradient(135deg, #00a4ef, #0078d4); color: white; }
+        .spinner-container { display: flex; justify-content: center; align-items: center; padding: 40px; flex-direction: column; gap: 15px; color: #64748b; }
+        
+        @media (max-width: 991px) {
+            #mobile-toggle-btn { display: block !important; }
+            .sidebar { left: -100% !important; width: 80% !important; max-width: 320px; transition: all 0.3s ease !important; z-index: 9999 !important; }
+            .sidebar.active { left: 0 !important; box-shadow: 0 0 0 10000px rgba(0,0,0,0.5) !important; }
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 15px !important; }
+            .topbar { padding: 12px 15px !important; margin-bottom: 20px !important; border-radius: 0 0 12px 12px; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== SIDEBAR ===== -->
+    <div th:replace="~{fragments/sidebar :: sidebar('users')}"></div>
+    
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Quản lý Phân Quyền User</h4>
+                    <small class="text-muted">Danh sách người dùng và cấp quyền hệ thống</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-add-local" id="btnAddLocalUser">
+                    <i class="fa-solid fa-user-plus me-2"></i>Thêm user local
+                </button>
+                <button class="btn btn-sync" id="btnSyncMicrosoft">
+                    <i class="fa-brands fa-microsoft me-2"></i>Đồng bộ từ Microsoft 365
+                </button>
+                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#1e3a8a'" onmouseout="this.style.color='#6b7280'"></i>
+            </div>
+        </div>
+
+        <!-- TABLE CARD -->
+        <div class="widget-card">
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>#ID</th>
+                            <th>Họ và tên</th>
+                            <th>Email</th>
+                            <th>Vai trò (Role)</th>
+                            <th>Nhóm chuyên môn IT</th>
+                            <th>Nguồn</th>
+                            <th class="text-center">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="user : ${users}">
+                            <td class="fw-medium text-muted" th:text="${user.id}">1</td>
+                            <td class="fw-bold" style="color:#1e3a8a;" th:text="${user.fullName}">Nguyễn Văn A</td>
+                            <td th:text="${user.email}">user@midomax.vn</td>
+                            <td>
+                                <span th:if="${user.role == 'ROLE_ADMIN'}" class="role-badge role-admin"><i class="fa-solid fa-user-shield me-1"></i> Admin</span>
+                                <span th:if="${user.role == 'ROLE_IT'}" class="role-badge role-it"><i class="fa-solid fa-headset me-1"></i> IT Support</span>
+                                <span th:if="${user.role == 'ROLE_USER' || user.role == null || user.role == ''}" class="role-badge role-user"><i class="fa-solid fa-user me-1"></i> User</span>
+                            </td>
+                            <td>
+                                <span th:each="g : ${user.itGroups}" class="group-badge"
+                                      th:style="'color:' + ${g.color}">
+                                    <i th:class="${g.icon} + ' me-1'"></i><span th:text="${g.label}">Phần mềm</span>
+                                </span>
+                                <span th:if="${user.itGroups.empty}" class="text-muted small">—</span>
+                            </td>
+                            <td>
+                                <span th:if="${user.local}" class="source-badge source-local"><i class="fa-solid fa-key me-1"></i>Local</span>
+                                <span th:unless="${user.local}" class="source-badge source-m365"><i class="fa-brands fa-microsoft me-1"></i>365</span>
+                            </td>
+                            <td class="text-center" style="white-space:nowrap;">
+                                <button class="btn btn-sm btn-outline-primary btn-edit-role" title="Phân quyền"
+                                        th:attr="data-id=${user.id}, data-fullname=${user.fullName}, data-role=${user.role != null ? user.role : 'ROLE_USER'}, data-groups=${#strings.listJoin(user.itGroups, ',')}">
+                                    <i class="fa-solid fa-user-pen"></i>
+                                </button>
+                                <button th:if="${user.local}" class="btn btn-sm btn-outline-secondary btn-reset-password" title="Đặt lại mật khẩu"
+                                        th:attr="data-id=${user.id}, data-fullname=${user.fullName}">
+                                    <i class="fa-solid fa-key"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger btn-delete-user" title="Xóa"
+                                        th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr th:if="${users.empty}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-users-slash fs-2 mb-2 d-block"></i>
+                                Chưa có user nào trong hệ thống. Hãy thêm user local hoặc đồng bộ từ Microsoft 365.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div><!-- End main-content -->
+
+
+    <!-- ===== MODAL SYNC MICROSOFT 365 ===== -->
+    <div class="modal fade" id="syncModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header modal-header-ms">
+                    <h5 class="modal-title fw-bold"><i class="fa-brands fa-microsoft me-2"></i>Đồng bộ User từ Microsoft 365</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div id="syncLoading" class="spinner-container">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="fw-medium">Đang lấy dữ liệu từ Microsoft Graph API...</p>
+                    </div>
+                    
+                    <div id="syncContent" style="display: none; padding: 20px;">
+                        <div class="alert alert-info py-2" role="alert">
+                            <i class="fa-solid fa-circle-info me-2"></i>Chọn các user bạn muốn đưa vào hệ thống và xác định quyền cho họ.
+                        </div>
+                        
+                        <!-- Search Box for Modal -->
+                        <div class="mb-3">
+                            <input type="text" id="msUserSearch" class="form-control" placeholder="🔍 Tìm kiếm user theo tên hoặc email...">
+                        </div>
+
+                        <div class="table-responsive" style="max-height: 50vh;">
+                            <table class="table table-custom table-hover" id="msUsersTable">
+                                <thead style="position: sticky; top: 0; background: #fff; z-index: 1;">
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" class="form-check-input" id="selectAllMsUsers">
+                                        </th>
+                                        <th>Họ và tên</th>
+                                        <th>Email / UPN</th>
+                                        <th>Phòng ban</th>
+                                        <th style="width: 200px;">Gán Quyền</th>
+                                        <th style="width: 100px;" class="text-center">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="msUsersTableBody">
+                                    <!-- Render via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" id="btnSyncSelected" style="background:#0078d4; border:none;" disabled>
+                        <i class="fa-solid fa-cloud-arrow-down me-2"></i>Đồng bộ (<span id="selectedCount">0</span>) User
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL EDIT ROLE ===== -->
+    <div class="modal fade" id="editRoleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: #f8fafc;">
+                    <h5 class="modal-title fw-bold" style="color:#1e3a8a;"><i class="fa-solid fa-user-shield me-2"></i>Cập nhật Quyền User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="editUserId">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Họ và tên</label>
+                        <input type="text" class="form-control fw-bold" id="editUserFullName" readonly style="background: #f1f5f9;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Chọn quyền hạn <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editUserRole">
+                            <option value="ROLE_USER">👤 User (Người dùng tiêu chuẩn)</option>
+                            <option value="ROLE_IT">🎧 IT Support (Nhân viên IT xử lý Ticket)</option>
+                            <option value="ROLE_ADMIN">🛡️ Admin (Quản trị toàn hệ thống)</option>
+                        </select>
+                        <div class="form-text">User: chỉ giao diện người dùng. IT Support: thêm quản lý ticket và báo cáo công việc.</div>
+                    </div>
+                    <div class="mb-2" id="editItGroupsWrapper" style="display:none;">
+                        <label class="form-label fw-medium">Nhóm chuyên môn IT</label>
+                        <div class="it-groups-box">
+                            <div class="form-check" th:each="g : ${itGroups}">
+                                <input class="form-check-input edit-it-group" type="checkbox"
+                                       th:value="${g.name()}" th:id="'edit_group_' + ${g.name()}">
+                                <label class="form-check-label" th:for="'edit_group_' + ${g.name()}">
+                                    <i th:class="${g.icon} + ' me-1'" th:style="'color:' + ${g.color}"></i>
+                                    <span th:text="${g.label}">Phần mềm</span>
+                                </label>
+                            </div>
+                            <div class="form-text mt-2 mb-0">Chỉ để phân loại và định tuyến ticket — không thay đổi quyền truy cập.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveRole" style="background:#1e3a8a; border:none;">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Lưu thay đổi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL THÊM USER LOCAL ===== -->
+    <div class="modal fade" id="addLocalModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: #f8fafc;">
+                    <h5 class="modal-title fw-bold" style="color:#1e3a8a;"><i class="fa-solid fa-user-plus me-2"></i>Thêm User Local</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-secondary py-2 small" role="alert">
+                        <i class="fa-solid fa-circle-info me-2"></i>Tài khoản local đăng nhập bằng form (tên đăng nhập + mật khẩu), không cần Microsoft 365.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="newUserFullName" placeholder="Nguyễn Văn A">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Tên đăng nhập / Email <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="newUserEmail" placeholder="vd: nguyenvana hoặc nguyenvana@midomax.vn">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Mật khẩu ban đầu <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="newUserPassword" placeholder="Tối thiểu 6 ký tự">
+                        <div class="form-text">Mật khẩu hiển thị dạng chữ để anh sao chép gửi cho user. Có thể đặt lại sau bằng nút 🔑.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Chọn quyền hạn <span class="text-danger">*</span></label>
+                        <select class="form-select" id="newUserRole">
+                            <option value="ROLE_USER">👤 User (Người dùng tiêu chuẩn)</option>
+                            <option value="ROLE_IT">🎧 IT Support (Nhân viên IT xử lý Ticket)</option>
+                            <option value="ROLE_ADMIN">🛡️ Admin (Quản trị toàn hệ thống)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2" id="newItGroupsWrapper" style="display:none;">
+                        <label class="form-label fw-medium">Nhóm chuyên môn IT</label>
+                        <div class="it-groups-box">
+                            <div class="form-check" th:each="g : ${itGroups}">
+                                <input class="form-check-input new-it-group" type="checkbox"
+                                       th:value="${g.name()}" th:id="'new_group_' + ${g.name()}">
+                                <label class="form-check-label" th:for="'new_group_' + ${g.name()}">
+                                    <i th:class="${g.icon} + ' me-1'" th:style="'color:' + ${g.color}"></i>
+                                    <span th:text="${g.label}">Phần mềm</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveLocalUser" style="background:#1e3a8a; border:none;">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Tạo tài khoản
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL ĐẶT LẠI MẬT KHẨU ===== -->
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: #f8fafc;">
+                    <h5 class="modal-title fw-bold" style="color:#1e3a8a;"><i class="fa-solid fa-key me-2"></i>Đặt lại mật khẩu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="resetUserId">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Họ và tên</label>
+                        <input type="text" class="form-control fw-bold" id="resetUserFullName" readonly style="background: #f1f5f9;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Mật khẩu mới <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="resetUserPassword" placeholder="Tối thiểu 6 ký tự">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveResetPassword" style="background:#1e3a8a; border:none;">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Đặt lại
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    
+    <script>
+        toastr.options = { "positionClass": "toast-top-right", "timeOut": "3000" };
+
+
+
+        // ==========================================
+        // 1. DELETE USER FUNCTIONALITY
+        // ==========================================
+        $('.btn-delete-user').click(function() {
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+            if(confirm(`Bạn có chắc chắn muốn xóa user "${name}" khỏi hệ thống không?`)) {
+                $.ajax({
+                    url: '/api/admin/users/' + id,
+                    type: 'DELETE',
+                    success: function(res) {
+                        toastr.success(res);
+                        setTimeout(() => location.reload(), 1000);
+                    },
+                    error: function(err) {
+                        toastr.error(err.responseText || "Lỗi khi xóa user");
+                    }
+                });
+            }
+        });
+
+        // ==========================================
+        // 2. EDIT ROLE FUNCTIONALITY
+        // ==========================================
+        // Nhóm chuyên môn chỉ có ý nghĩa với IT Support, nên ẩn đi với role khác.
+        function toggleItGroups(roleSelectId, wrapperId) {
+            $(wrapperId).toggle($(roleSelectId).val() === 'ROLE_IT');
+        }
+
+        $('#editUserRole').change(() => toggleItGroups('#editUserRole', '#editItGroupsWrapper'));
+        $('#newUserRole').change(() => toggleItGroups('#newUserRole', '#newItGroupsWrapper'));
+
+        function checkedGroups(selector) {
+            return $(selector + ':checked').map(function() { return this.value; }).get();
+        }
+
+        $('.btn-edit-role').click(function() {
+            const id = $(this).data('id');
+            const fullname = $(this).data('fullname');
+            const role = $(this).data('role');
+            const groups = String($(this).data('groups') || '').split(',').filter(g => g);
+
+            $('#editUserId').val(id);
+            $('#editUserFullName').val(fullname);
+            $('#editUserRole').val(role);
+
+            $('.edit-it-group').prop('checked', false);
+            groups.forEach(g => $('.edit-it-group[value="' + g + '"]').prop('checked', true));
+            toggleItGroups('#editUserRole', '#editItGroupsWrapper');
+
+            new bootstrap.Modal(document.getElementById('editRoleModal')).show();
+        });
+
+        $('#btnSaveRole').click(function() {
+            const id = $('#editUserId').val();
+            const role = $('#editUserRole').val();
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang lưu...');
+
+            $.ajax({
+                url: '/api/admin/users/update-role',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id: id, role: role, itGroups: checkedGroups('.edit-it-group') }),
+                success: function(res) {
+                    toastr.success(res);
+                    setTimeout(() => location.reload(), 1000);
+                },
+                error: function(err) {
+                    toastr.error(err.responseText || "Lỗi cập nhật quyền");
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk me-2"></i>Lưu thay đổi');
+                }
+            });
+        });
+
+        // ==========================================
+        // 2b. THÊM USER LOCAL
+        // ==========================================
+        $('#btnAddLocalUser').click(function() {
+            $('#newUserFullName, #newUserEmail, #newUserPassword').val('');
+            $('#newUserRole').val('ROLE_USER');
+            $('.new-it-group').prop('checked', false);
+            toggleItGroups('#newUserRole', '#newItGroupsWrapper');
+            new bootstrap.Modal(document.getElementById('addLocalModal')).show();
+        });
+
+        $('#btnSaveLocalUser').click(function() {
+            const payload = {
+                fullName: $('#newUserFullName').val().trim(),
+                email: $('#newUserEmail').val().trim(),
+                password: $('#newUserPassword').val(),
+                role: $('#newUserRole').val(),
+                itGroups: checkedGroups('.new-it-group')
+            };
+
+            if (!payload.fullName || !payload.email) {
+                toastr.warning("Vui lòng nhập họ tên và tên đăng nhập");
+                return;
+            }
+            if (payload.password.length < 6) {
+                toastr.warning("Mật khẩu phải có ít nhất 6 ký tự");
+                return;
+            }
+
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tạo...');
+
+            $.ajax({
+                url: '/api/admin/users/create-local',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function(res) {
+                    toastr.success(res);
+                    setTimeout(() => location.reload(), 1000);
+                },
+                error: function(err) {
+                    toastr.error(err.responseText || "Lỗi khi tạo user");
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk me-2"></i>Tạo tài khoản');
+                }
+            });
+        });
+
+        // ==========================================
+        // 2c. ĐẶT LẠI MẬT KHẨU
+        // ==========================================
+        $('.btn-reset-password').click(function() {
+            $('#resetUserId').val($(this).data('id'));
+            $('#resetUserFullName').val($(this).data('fullname'));
+            $('#resetUserPassword').val('');
+            new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+        });
+
+        $('#btnSaveResetPassword').click(function() {
+            const password = $('#resetUserPassword').val();
+            if (password.length < 6) {
+                toastr.warning("Mật khẩu phải có ít nhất 6 ký tự");
+                return;
+            }
+
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang lưu...');
+
+            $.ajax({
+                url: '/api/admin/users/reset-password',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id: $('#resetUserId').val(), password: password }),
+                success: function(res) {
+                    toastr.success(res);
+                    setTimeout(() => location.reload(), 1000);
+                },
+                error: function(err) {
+                    toastr.error(err.responseText || "Lỗi khi đặt lại mật khẩu");
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk me-2"></i>Đặt lại');
+                }
+            });
+        });
+
+        // ==========================================
+        // 3. SYNC FROM MICROSOFT 365
+        // ==========================================
+        let msUsersList = [];
+        const syncModal = new bootstrap.Modal(document.getElementById('syncModal'));
+        
+        $('#btnSyncMicrosoft').click(function() {
+            syncModal.show();
+            $('#syncLoading').css('display', 'flex');
+            $('#syncContent').hide();
+            $('#btnSyncSelected').prop('disabled', true);
+            
+            // Fetch users
+            $.ajax({
+                url: '/api/admin/microsoft-users',
+                type: 'GET',
+                success: function(users) {
+                    msUsersList = users;
+                    renderMsUsersTable(users);
+                    $('#syncLoading').hide();
+                    $('#syncContent').fadeIn();
+                },
+                error: function(err) {
+                    $('#syncLoading').html('<div class="text-danger"><i class="fa-solid fa-triangle-exclamation fs-1 mb-3"></i><p>Lỗi kết nối Microsoft 365. Cần đăng nhập tài khoản có quyền admin Azure.</p></div>');
+                }
+            });
+        });
+
+        function renderMsUsersTable(users) {
+            const tbody = $('#msUsersTableBody');
+            tbody.empty();
+            
+            if(users.length === 0) {
+                tbody.html('<tr><td colspan="6" class="text-center py-4">Không tìm thấy user nào hoặc chưa có token hợp lệ.</td></tr>');
+                return;
+            }
+            
+            users.forEach((u) => {
+                const origIndex = msUsersList.findIndex(item => item.email === u.email);
+                const tr = `
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input user-checkbox" data-index="${origIndex}" value="${u.email}">
+                        </td>
+                        <td class="fw-medium">${u.fullName}</td>
+                        <td class="text-muted">${u.email}</td>
+                        <td>${u.department || '-'}</td>
+                        <td>
+                            <select class="form-select form-select-sm user-role-select" id="role_${origIndex}">
+                                <option value="ROLE_USER">User</option>
+                                <option value="ROLE_IT">IT Support</option>
+                                <option value="ROLE_ADMIN">Admin</option>
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-primary btn-sync-single" data-index="${origIndex}">
+                                Phân quyền
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(tr);
+            });
+            updateSelectedCount();
+        }
+
+        // Search in Modal
+        $('#msUserSearch').on('keyup', function() {
+            const val = $(this).val().toLowerCase();
+            if(!val) {
+                renderMsUsersTable(msUsersList);
+                return;
+            }
+            const filtered = msUsersList.filter(u => 
+                (u.fullName && u.fullName.toLowerCase().includes(val)) || 
+                (u.email && u.email.toLowerCase().includes(val))
+            );
+            renderMsUsersTable(filtered);
+        });
+
+        // Checkbox events
+        $('#selectAllMsUsers').change(function() {
+            $('.user-checkbox').prop('checked', $(this).prop('checked'));
+            updateSelectedCount();
+        });
+        
+        $(document).on('change', '.user-checkbox', function() {
+            updateSelectedCount();
+            if($('.user-checkbox:not(:checked)').length > 0) {
+                $('#selectAllMsUsers').prop('checked', false);
+            } else if ($('.user-checkbox').length > 0) {
+                $('#selectAllMsUsers').prop('checked', true);
+            }
+        });
+
+        function updateSelectedCount() {
+            const count = $('.user-checkbox:checked').length;
+            $('#selectedCount').text(count);
+            $('#btnSyncSelected').prop('disabled', count === 0);
+        }
+
+        // Sync Single User
+        $(document).on('click', '.btn-sync-single', function() {
+            const index = $(this).data('index');
+            const user = msUsersList[index];
+            const role = $(`#role_${index}`).val();
+            
+            const payload = {
+                email: user.email,
+                fullName: user.fullName,
+                role: role
+            };
+            
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+            
+            syncUserCall(payload, function(success, msg) {
+                if(success) {
+                    btn.removeClass('btn-primary').addClass('btn-success').html('<i class="fa-solid fa-check"></i> Đã đồng bộ');
+                    toastr.success(`Đã đồng bộ: ${user.fullName}`);
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    btn.prop('disabled', false).html('Phân quyền');
+                    toastr.error(`Lỗi: ${msg}`);
+                }
+            });
+        });
+
+        // Sync Multiple Selected Users
+        $('#btnSyncSelected').click(function() {
+            const checked = $('.user-checkbox:checked');
+            if(checked.length === 0) return;
+            
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang đồng bộ...');
+            
+            let successCount = 0;
+            let errorCount = 0;
+            let completed = 0;
+            
+            checked.each(function() {
+                const index = $(this).data('index');
+                const user = msUsersList[index];
+                const role = $(`#role_${index}`).val();
+                
+                const payload = { email: user.email, fullName: user.fullName, role: role };
+                
+                syncUserCall(payload, function(success) {
+                    if(success) successCount++;
+                    else errorCount++;
+                    
+                    completed++;
+                    if(completed === checked.length) {
+                        toastr.info(`Đồng bộ hoàn tất. Thành công: ${successCount}, Lỗi: ${errorCount}`);
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                });
+            });
+        });
+
+        function syncUserCall(payload, callback) {
+            $.ajax({
+                url: '/api/admin/users/add-from-365',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function(res) {
+                    callback(true, res);
+                },
+                error: function(err) {
+                    callback(false, err.responseText);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

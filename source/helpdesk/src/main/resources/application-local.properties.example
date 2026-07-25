@@ -1,0 +1,13 @@
+# Copy file nay thanh application-local.properties roi dien gia tri that.
+# File application-local.properties da duoc gitignore, KHONG bao gio day len git.
+# Chi dung khi chay dev tren may ca nhan.
+
+spring.datasource.password=mat-khau-mysql-cua-may-ban
+
+spring.security.oauth2.client.registration.microsoft.client-id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+spring.security.oauth2.client.registration.microsoft.client-secret=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+spring.security.oauth2.client.provider.microsoft.issuer-uri=https://login.microsoftonline.com/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/v2.0
+
+azure.graph.client-id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+azure.graph.tenant-id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+azure.graph.client-secret=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

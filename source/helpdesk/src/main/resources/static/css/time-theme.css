@@ -1,0 +1,403 @@
+/* ===================================================
+   TIME-OF-DAY THEME — Midomax Helpdesk
+   Giờ VN (UTC+7):
+     05:00–11:59  → Buổi sáng (morning)
+     12:00–13:59  → Buổi trưa (noon)
+     14:00–17:59  → Buổi chiều / hoàng hôn (evening)
+     18:00–04:59  → Buổi tối (night)
+=================================================== */
+
+/* ── Sky canvas (full-page background) ── */
+#time-sky {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    transition: background 2s ease, opacity 2s ease;
+    pointer-events: none;
+}
+
+/* ── Haze: dải sương mờ sát chân trời, tạo chiều sâu như Apple Weather ── */
+.sky-haze {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 2s ease;
+    background: linear-gradient(180deg,
+        transparent 0%, transparent 45%,
+        rgba(255,255,255,.10) 70%,
+        rgba(255,255,255,.22) 100%);
+}
+
+/* ── Vignette: tối nhẹ 4 góc, giữ mắt vào giữa trang ── */
+.sky-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(120% 90% at 50% 35%,
+        transparent 45%, rgba(0,0,0,.16) 80%, rgba(0,0,0,.32) 100%);
+}
+
+/* ── Stars (night only) ── */
+.sky-stars {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.9) 0%, transparent 100%),
+        radial-gradient(1px 1px at 25% 55%, rgba(255,255,255,.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 40% 12%, rgba(255,255,255,.8) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 38%, rgba(255,255,255,.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 75% 70%, rgba(255,255,255,.9) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 15%, rgba(255,255,255,.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 15% 80%, rgba(255,255,255,.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 50% 90%, rgba(255,255,255,.8) 0%, transparent 100%),
+        radial-gradient(1px 1px at 85% 48%, rgba(255,255,255,.6) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 33% 65%, rgba(255,255,255,.9) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 68% 5%,  rgba(255,255,255,.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 5%  40%, rgba(255,255,255,.8) 0%, transparent 100%),
+        radial-gradient(1px 1px at 95% 85%, rgba(255,255,255,.6) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 2s ease;
+    animation: twinkle 4s infinite alternate;
+}
+
+@keyframes twinkle {
+    0%   { opacity: 0.6; }
+    50%  { opacity: 1;   }
+    100% { opacity: 0.7; }
+}
+
+/* ── Celestial body (sun / moon) ──
+   Không còn đĩa tròn cứng: ánh sáng toả ra từ một quầng mềm, viền tan dần
+   vào nền trời giống lớp bloom trong Weather của Apple. */
+.sky-celestial {
+    position: absolute;
+    border-radius: 50%;
+    transition: all 2s ease;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    filter: blur(0.5px);
+}
+
+/* ── Clouds ──
+   Mây thật được sinh từ nhiễu fractal (SVG feTurbulence): vân mây có hình
+   khối, tơi xốp và bất quy tắc như ảnh chụp, KHÔNG phải vệt blur.
+   Hai lớp chồng nhau (xa/gần) trôi khác tốc độ để tạo chiều sâu (parallax). */
+.sky-clouds {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 2.5s ease;
+}
+
+.sky-clouds::before,
+.sky-clouds::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* Rộng hơn màn để khi trôi ngang không bao giờ lộ mép. Một ảnh duy nhất
+       phủ kín (cover), KHÔNG lặp → tuyệt đối không có đường ghép/seam. */
+    width: 150%;
+    height: 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    will-change: transform;
+}
+
+/* Lớp BÓNG: cùng vân với lớp trắng (cùng seed 29) nhưng tô XÁM và nằm dưới,
+   lệch xuống vài px → thành đáy mây xám khuất nắng, cho mây có chiều dày
+   như ảnh chụp thật. */
+.sky-clouds::before {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1400'%20height='900'%3E%3Cfilter%20id='c'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.008'%20numOctaves='7'%20seed='29'/%3E%3CfeColorMatrix%20values='0%200%200%200%200.45%200%200%200%200%200.50%200%200%200%200%200.58%200%200%200%20-2.3%201.4'/%3E%3C/filter%3E%3Crect%20width='1400'%20height='900'%20filter='url(%23c)'/%3E%3C/svg%3E");
+    top: 14px;
+    opacity: .5;
+    filter: blur(5px);
+    animation: cloudSwayNear 105s ease-in-out infinite alternate;
+}
+
+/* Lớp SÁNG: cùng vân, tô trắng, đè lệch LÊN TRÊN lớp bóng — đỉnh mây bắt nắng */
+.sky-clouds::after {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1400'%20height='900'%3E%3Cfilter%20id='c'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.008'%20numOctaves='7'%20seed='29'/%3E%3CfeColorMatrix%20values='0%200%200%200%201%200%200%200%200%201%200%200%200%200%201%200%200%200%20-2.6%201.5'/%3E%3C/filter%3E%3Crect%20width='1400'%20height='900'%20filter='url(%23c)'/%3E%3C/svg%3E");
+    top: -6px;
+    opacity: .9;
+    filter: blur(3px);
+    animation: cloudSwayNear 105s ease-in-out infinite alternate;
+}
+
+/* Trôi qua lại trong biên (dừng ở -33.3% = -50% bề rộng màn) nên hai mép
+   của lớp mây rộng 150% luôn nằm ngoài khung nhìn — không lộ điểm nối. */
+@keyframes cloudSwayFar  { from { transform: translateX(0); }      to { transform: translateX(-33.3%); } }
+@keyframes cloudSwayNear { from { transform: translateX(-4%); }    to { transform: translateX(-30%); } }
+
+/* ── Rain: các vệt NGẮN RỜI rơi xuống, chỉ hiện khi body.wx-rain ──
+   Mỗi lớp là một ô SVG chứa vài nét mưa ngắn rải rác → tile lại thành mưa
+   thưa tự nhiên, KHÔNG phải đường kẻ chéo liền suốt màn. Hai lớp gần/xa
+   rơi lệch tốc độ cho có chiều sâu. */
+.sky-rain {
+    position: absolute;
+    inset: -20% 0;
+    opacity: 0;
+    transition: opacity 2s ease;
+    pointer-events: none;
+    background-image:
+        url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='140'%3E%3Cg%20stroke='%23ffffff'%20stroke-width='1.4'%20stroke-linecap='round'%20stroke-opacity='0.5'%3E%3Cline%20x1='18'%20y1='8'%20x2='11'%20y2='32'/%3E%3Cline%20x1='52'%20y1='2'%20x2='45'%20y2='26'/%3E%3Cline%20x1='83'%20y1='16'%20x2='76'%20y2='40'/%3E%3Cline%20x1='34'%20y1='50'%20x2='27'%20y2='74'/%3E%3Cline%20x1='68'%20y1='60'%20x2='61'%20y2='84'/%3E%3Cline%20x1='12'%20y1='92'%20x2='5'%20y2='116'/%3E%3Cline%20x1='90'%20y1='100'%20x2='83'%20y2='124'/%3E%3Cline%20x1='50'%20y1='106'%20x2='43'%20y2='130'/%3E%3C/g%3E%3C/svg%3E"),
+        url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='150'%20height='200'%3E%3Cg%20stroke='%23ffffff'%20stroke-width='1'%20stroke-linecap='round'%20stroke-opacity='0.3'%3E%3Cline%20x1='30'%20y1='14'%20x2='24'%20y2='34'/%3E%3Cline%20x1='96'%20y1='40'%20x2='90'%20y2='60'/%3E%3Cline%20x1='58'%20y1='84'%20x2='52'%20y2='104'/%3E%3Cline%20x1='128'%20y1='120'%20x2='122'%20y2='140'/%3E%3Cline%20x1='16'%20y1='150'%20x2='10'%20y2='170'/%3E%3Cline%20x1='84'%20y1='168'%20x2='78'%20y2='188'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 100px 140px, 150px 200px;
+    animation: rainFall .7s linear infinite;
+}
+/* Một animation điều cả 2 lớp (background-position là 1 thuộc tính chung).
+   Mỗi lớp dịch đúng bằng chiều cao ô của nó → lặp liền mạch, không giật. */
+@keyframes rainFall {
+    from { background-position: 0 0,      0 0; }
+    to   { background-position: -18px 140px, -14px 200px; }
+}
+
+/* ── Trạng thái thời tiết thật (Open-Meteo gán wx-* qua time-theme.js) ──
+   Đặt SAU các rule theo khung giờ để thắng về specificity/cascade. */
+
+/* Nhiều mây: mây dày kín hơn, nắng/trăng mờ đi, trời bớt rực */
+body.wx-cloudy #time-sky .sky-clouds { opacity: .95; }
+body.wx-cloudy #time-sky .sky-celestial { opacity: .3; }
+body.wx-cloudy #time-sky { filter: saturate(.85) brightness(.96); }
+
+/* Mưa: trời xám sẫm, mây đen kín, tắt nắng, hiện vệt mưa */
+body.wx-rain #time-sky { filter: saturate(.6) brightness(.82); }
+body.wx-rain #time-sky .sky-clouds {
+    opacity: 1;
+    filter: brightness(.75) saturate(.7);
+}
+body.wx-rain #time-sky .sky-celestial { opacity: 0; }
+body.wx-rain #time-sky .sky-rain { opacity: .55; }
+/* Đêm mưa: vệt mưa mờ hơn cho khỏi chói trên nền tối */
+body.time-night.wx-rain #time-sky .sky-rain { opacity: .3; }
+
+/* Người dùng tắt hiệu ứng chuyển động thì mây đứng yên */
+@media (prefers-reduced-motion: reduce) {
+    .sky-clouds::before,
+    .sky-clouds::after { animation: none; }
+    .sky-stars { animation: none; }
+    .sky-rain { animation: none; }
+}
+
+/* ── Body overlay tint ── */
+body {
+    transition: background-color 2s ease, color 2s ease;
+}
+
+/* ─────────────────────────────────────────────────────────
+   MORNING  05:00 – 11:59
+   Sky: xanh nhạt-trắng ấm   Sun: vàng tươi   Clouds: trắng
+───────────────────────────────────────────────────────── */
+body.time-morning {
+    background-color: #7db4e4 !important;
+}
+body.time-morning #time-sky {
+    background: linear-gradient(180deg,
+        #4a94d6 0%, #62a6df 24%, #83bce8 48%,
+        #a7d1f0 70%, #cae4f6 88%, #e9f4fb 100%);
+}
+body.time-morning .sky-celestial {
+    width: 300px; height: 300px;
+    /* Đĩa sáng rõ (đặc tới ~18%), viền tan mềm trong vài %, rồi quầng loãng
+       toả ra tới 0 — thấy rõ mặt trời nhưng không có vòng cứng. */
+    background: radial-gradient(circle,
+        #fffdf4 0%, #fff7d0 12%, #ffe89f 18%,
+        rgba(255,222,130,.55) 26%, rgba(255,214,120,.24) 40%,
+        rgba(255,210,115,.07) 58%, rgba(255,210,115,0) 74%);
+    box-shadow: none;
+    top: 5%;
+    left: 73%;
+    z-index: 1;
+}
+body.time-morning .sky-clouds { opacity: 1; }
+body.time-morning .sky-haze   { opacity: .8; }
+
+/* ─────────────────────────────────────────────────────────
+   NOON  12:00 – 13:59
+   Sky: xanh đậm-trắng chói   Sun: trắng-vàng nhỏ+sáng
+───────────────────────────────────────────────────────── */
+body.time-noon {
+    background-color: #4f97d6 !important;
+}
+body.time-noon #time-sky {
+    background: linear-gradient(180deg,
+        #2f7fc4 0%, #4291d1 20%, #62a8de 44%,
+        #8fc3ea 70%, #bcdcf3 89%, #e6f2fb 100%);
+}
+body.time-noon .sky-celestial {
+    width: 280px; height: 280px;
+    background: radial-gradient(circle,
+        #ffffff 0%, #fffbe8 12%, #fff3bc 18%,
+        rgba(255,236,150,.55) 26%, rgba(255,230,140,.24) 40%,
+        rgba(255,228,135,.07) 58%, rgba(255,228,135,0) 74%);
+    box-shadow: none;
+    top: 4%;
+    left: 69%;
+    z-index: 1;
+}
+body.time-noon .sky-clouds { opacity: .9; }
+body.time-noon .sky-haze   { opacity: .7; }
+
+/* ─────────────────────────────────────────────────────────
+   EVENING (Chiều muộn) 14:00 – 16:59
+   Sky: xanh chiều ấm dần   Sun: vàng vàng hạ thấp góc phải
+───────────────────────────────────────────────────────── */
+body.time-evening {
+    background-color: #cfe0ec !important;
+}
+body.time-evening #time-sky {
+    background: linear-gradient(180deg,
+        #3f7bbf 0%, #5f9acd 22%, #8ab7dd 46%,
+        #b9d2e8 70%, #ddd6c6 88%, #f2ddbe 100%);
+}
+body.time-evening .sky-celestial {
+    width: 220px; height: 220px;
+    /* Nắng chiều vàng ấm, hạ thấp dần về góc phải */
+    background: radial-gradient(circle,
+        #fff8e2 0%, #ffe9ad 12%, #ffd27a 19%,
+        rgba(255,190,110,.5) 30%, rgba(255,170,100,.2) 48%,
+        rgba(255,170,100,.05) 64%, rgba(255,170,100,0) 78%);
+    box-shadow: none;
+    top: 30%;
+    left: 72%;
+}
+body.time-evening .sky-clouds {
+    opacity: .8;
+    filter: sepia(.14) saturate(1.1) brightness(1.05);
+}
+body.time-evening .sky-haze   { opacity: .55; }
+
+/* ─────────────────────────────────────────────────────────
+   NIGHT  18:00 – 04:59
+   Sky: xanh đen-tím   Moon: bạch lộ   Stars: hiện
+───────────────────────────────────────────────────────── */
+body.time-night {
+    background-color: #0f172a !important;
+    color: #cbd5e1 !important;
+}
+body.time-night #time-sky {
+    background: linear-gradient(180deg,
+        #05070f 0%, #0a1024 22%, #101a35 48%,
+        #1a2c4d 74%, #2a4468 92%, #3c5b80 100%);
+}
+body.time-night .sky-celestial {
+    width: 150px; height: 150px;
+    /* Mặt trăng: đĩa bạch lộ rõ, quầng lạnh loãng mờ quanh */
+    background: radial-gradient(circle,
+        #ffffff 0%, #f2f6ff 16%, #d9e3f4 30%,
+        rgba(198,212,236,.42) 44%, rgba(184,202,230,.14) 62%,
+        rgba(184,202,230,0) 78%);
+    box-shadow: 0 0 44px 6px rgba(200,218,255,.22);
+    top: 9%;
+    left: 73%;
+}
+body.time-night .sky-stars  { opacity: .85; }
+/* Ban đêm vẫn có mây, chỉ là những mảng tối ám xanh trôi trước sao */
+body.time-night .sky-clouds {
+    opacity: .55;
+    filter: brightness(.4) saturate(.7) hue-rotate(6deg);
+}
+body.time-night .sky-haze { opacity: .22; }
+
+/* ─────────────────────────────────────────────────────────
+   CARD / PANEL OVERRIDES per theme
+───────────────────────────────────────────────────────── */
+
+/* Tất cả theme: main-content trong suốt để lộ nền trời */
+body.time-morning .main-content,
+body.time-noon    .main-content,
+body.time-evening .main-content,
+body.time-night   .main-content {
+    background: transparent;
+}
+
+/* ── TOPBAR: trong suốt, glassmorphism, không nền trắng ── */
+.topbar {
+    background: rgba(255,255,255,0.15) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
+}
+.topbar h4, .topbar .fw-bold { color: #ffffff !important; text-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.topbar small, .topbar .text-muted { color: rgba(255,255,255,0.8) !important; }
+.topbar i { color: rgba(255,255,255,0.85) !important; }
+
+/* ── SIDEBAR: glassmorphism theo theme ── */
+.sidebar {
+    background: rgba(255,255,255,0.18) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-right: 1px solid rgba(255,255,255,0.25) !important;
+    box-shadow: 2px 0 20px rgba(0,0,0,0.12) !important;
+}
+.sidebar .brand-text { color: #ffffff !important; text-shadow: 0 1px 6px rgba(0,0,0,0.4); }
+.sidebar .sidebar-menu a { color: rgba(255,255,255,0.85) !important; }
+.sidebar .sidebar-menu a:hover { background: rgba(255,255,255,0.15) !important; color: #ffffff !important; }
+.sidebar .sidebar-menu a.active { color: #ffffff !important; }
+.sidebar .quantum-toggle { --uib-color: #ffffff !important; }
+.sidebar .sidebar-user-name { color: #ffffff !important; text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.sidebar .sidebar-user-role { color: rgba(255,255,255,0.7) !important; }
+.sidebar .sidebar-logout { color: rgba(255,255,255,0.7) !important; }
+.sidebar .sidebar-bottom { border-top-color: rgba(255,255,255,0.2) !important; }
+.sidebar .sidebar-bottom:hover { background: rgba(255,255,255,0.12) !important; }
+
+/* ── WELCOME BANNER: trong suốt, không nền riêng ── */
+.welcome-banner {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+.welcome-banner h1, .welcome-banner p { color: #ffffff !important; text-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+
+/* Night — darken panels */
+body.time-night .topbar {
+    background: rgba(15,23,42,0.6) !important;
+    border-color: rgba(100,120,180,.3) !important;
+}
+body.time-night .sidebar {
+    background: rgba(15,23,42,0.65) !important;
+    border-right-color: rgba(100,120,180,.25) !important;
+}
+body.time-night .quick-action-card {
+    background: rgba(15,23,42,.85) !important;
+    border-color: rgba(100,120,180,.25) !important;
+    color: #cbd5e1 !important;
+}
+body.time-night .qa-title { color: #93c5fd !important; }
+body.time-night .qa-desc  { color: #94a3b8 !important; }
+body.time-night .section-title { color: #93c5fd !important; }
+body.time-night .topbar i, body.time-night .sidebar .sidebar-menu a { color: rgba(148,163,184,0.9) !important; }
+body.time-night .topbar h4 { color: #93c5fd !important; text-shadow: none; }
+body.time-night .sidebar .brand-text { color: #93c5fd !important; text-shadow: none; }
+
+/* Trang chủ Admin: mặt bàn chứa máy tính + dãy phím lối tắt (.rig-deck/.sc). */
+body.time-night .rig-deck {
+    background-color: rgba(15,23,42,.72) !important;
+    background-image:
+        linear-gradient(to right, rgba(148,163,184,.16) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148,163,184,.16) 1px, transparent 1px) !important;
+    border-color: rgba(100,120,180,.25) !important;
+}
+/* Thẻ bài lối tắt tự có gradient màu nên ban đêm KHÔNG đổi nền —
+   chỉ giảm sáng nhẹ cho hợp trời tối. */
+body.time-night .sc { filter: brightness(.9); }
+
+/* 5 thẻ số liệu là note giấy kem — giữ nguyên màu giấy cả ngày lẫn đêm. */
+.note-head { text-transform: uppercase; }
+
+/* Morning sidebar & topbar tint */
+body.time-morning .sidebar { background: rgba(135,206,235,0.22) !important; }
+body.time-morning .topbar  { background: rgba(255,255,255,0.20) !important; }
+
+/* Noon */
+body.time-noon .sidebar { background: rgba(21,101,192,0.25) !important; }
+body.time-noon .topbar  { background: rgba(255,255,255,0.18) !important; }
+
+/* Evening (chiều muộn) */
+body.time-evening .sidebar { background: rgba(63,123,191,0.22) !important; }
+body.time-evening .topbar  { background: rgba(255,255,255,0.18) !important; }
+
+/* ── Welcome banner greeting text updated by JS ── */

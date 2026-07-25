@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài Liệu Báo Cáo - Midomax Helpdesk</title>
+    
+    <!-- GitHub Markdown CSS for beautiful styling -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
+    
+    <style>
+        body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+            background-color: #f6f8fa;
+        }
+        .markdown-body {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 767px) {
+            body {
+                padding: 15px;
+            }
+            .markdown-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <article class="markdown-body" id="content">
+        <!-- Content will be rendered here -->
+    </article>
+
+    <!-- Raw Markdown Content -->
+    <script type="text/template" id="markdown-content">
+# Tài Liệu Báo Cáo: Hệ Thống Midomax Helpdesk & HR Management
+
+Tài liệu này cung cấp cái nhìn tổng quan về kiến trúc, công nghệ và các chức năng chính của dự án `helpdesk` thuộc hệ thống Midomax, phục vụ cho mục đích thuyết trình và báo cáo tiến độ/kiến trúc.
+
+---
+
+## 1. Tổng Quan Dự Án (Project Overview)
+Dự án là một ứng dụng Web Monolithic được xây dựng dựa trên nền tảng **Java Spring Boot**. Hệ thống giải quyết hai bài toán chính cho doanh nghiệp:
+1. **Quản lý Hỗ trợ Kỹ thuật (Helpdesk/Ticketing System):** Tiếp nhận, xử lý và theo dõi các yêu cầu hỗ trợ từ người dùng.
+2. **Quản lý Nhân sự (Employee Management):** Lưu trữ và quản lý chi tiết hồ sơ nhân sự, hợp đồng, bảo hiểm và thông tin gia đình.
+
+---
+
+## 2. Ngăn Xếp Công Nghệ (Technology Stack)
+- **Backend:** Java 17, Spring Boot 3.5.x
+- **Bảo mật:** Spring Security 6 (Phân quyền Role-based: `ADMIN`, `USER`)
+- **Tương tác Cơ sở dữ liệu:** Spring Data JPA, Hibernate
+- **Cơ sở dữ liệu:** MySQL (thông qua `mysql-connector-j`)
+- **Frontend/Giao diện:** Thymeleaf (Server-side rendering), HTML/CSS/JS (Giao diện đáp ứng)
+- **Tiện ích:** 
+  - Lombok (Tối ưu hóa code Java)
+  - Apache POI (Hỗ trợ Import/Export dữ liệu ra file Excel)
+
+---
+
+## 3. Kiến Trúc Hệ Thống (Architecture)
+Hệ thống tuân thủ chặt chẽ mô hình **MVC (Model - View - Controller)** kết hợp với kiến trúc nhiều tầng (Layered Architecture):
+- **Controller Layer:** Nhận các HTTP Request từ client, xử lý phân quyền và trả về các View (Thymeleaf templates) hoặc JSON (cho các API gọi qua AJAX). (Ví dụ: `TicketController`, `EmployeeController`)
+- **Service Layer:** Chứa business logic, xử lý các nghiệp vụ phức tạp như upload file, xuất/nhập Excel, tính toán thống kê. (Ví dụ: `TicketService`, `EmployeeService`, `ExcelService`)
+- **Repository Layer:** Giao tiếp với MySQL thông qua các interface của Spring Data JPA.
+- **Entity Layer:** Các lớp ánh xạ (ORM) trực tiếp với bảng trong CSDL (`Employee`, `Ticket`).
+
+---
+
+## 4. Các Module & Tính Năng Chính (Core Modules)
+
+### 4.1. Module Quản Lý Hỗ Trợ (Ticket Management)
+Cho phép người dùng gửi yêu cầu hỗ trợ (IT, Hành chính, v.v.) và bộ phận chuyên trách tiếp nhận, xử lý.
+
+**Tính năng nổi bật:**
+- **Phân quyền hiển thị:** `USER` chỉ nhìn thấy ticket của mình, `ADMIN` nhìn thấy toàn bộ ticket của hệ thống.
+- **Tạo Ticket:** Hỗ trợ nhập tiêu đề, mô tả, độ ưu tiên, danh mục và **đính kèm hình ảnh minh họa**.
+- **Quy trình duyệt (Workflow):** Ticket có các trạng thái (OPEN, PROGRESS, RESOLVED), kèm theo luồng phê duyệt từ Quản lý (Manager Approval) và IT (IT Approval).
+- **Thao tác nhanh (AJAX):** Quản trị viên có thể phân công (Assign) hoặc cập nhật trạng thái (Priority, Status) trực tiếp trên lưới dữ liệu mà không cần tải lại trang (sử dụng Fetch API).
+- **Thống kê:** Đếm số lượng ticket theo các trạng thái (Tất cả, Đang mở, Đang xử lý, Đã đóng) để hiển thị trên Dashboard.
+
+### 4.2. Module Quản Lý Nhân Sự (Employee Management - HR)
+Quản lý toàn diện vòng đời và hồ sơ của một nhân sự trong công ty.
+
+**Tính năng nổi bật:**
+- **Quản lý Hồ sơ Chi tiết:** Lưu trữ hơn 50 trường thông tin bao gồm: Thông tin cá nhân, Thông tin hợp đồng & bảo hiểm, Thông tin gia đình (Bố, Mẹ, Vợ/Chồng, Con cái), và Danh sách người liên hệ khẩn cấp.
+- **Quản lý Hồ sơ Đính kèm:** Theo dõi tình trạng nộp các loại giấy tờ (CCCD, Sơ yếu lý lịch, Bằng cấp, Giấy khám sức khỏe...) thông qua hệ thống Checkbox.
+- **Import/Export Excel:** Tích hợp Apache POI cho phép xuất toàn bộ danh sách nhân sự ra file `.xlsx` và nhập (Import) hàng loạt nhân sự mới từ file Excel vào hệ thống.
+- **Tìm kiếm & Lọc:** Hỗ trợ lọc nhân sự theo tên, mã NV, phòng ban và trạng thái làm việc.
+
+<br>
+<hr>
+<br>
+
+# Cách Thức Hoạt Động (Operational Flow) - Midomax System
+
+Tài liệu này mô tả chi tiết luồng hoạt động, cách người dùng tương tác với hệ thống từ lúc đăng nhập cho đến khi thực hiện các nghiệp vụ chính (Quản lý Ticket và Quản lý Nhân sự).
+
+---
+
+## 1. Luồng Đăng Nhập & Điều Hướng Ban Đầu
+Hệ thống sử dụng **Spring Security** để kiểm soát truy cập và phân quyền.
+
+1. **Khởi đầu:** Khi một người dùng truy cập vào trang chủ (`/`), hệ thống sẽ kiểm tra trạng thái đăng nhập. Nếu chưa đăng nhập, người dùng bị chuyển hướng về trang `/login`.
+2. **Xác thực:** 
+   - Người dùng nhập Username/Password. 
+   - Hiện tại hệ thống hỗ trợ 2 vai trò: `USER` (nhân viên thường) và `ADMIN` (Quản trị viên IT/Hành chính).
+3. **Điều hướng thông minh (Smart Routing):**
+   - Nếu là **ADMIN**: Hệ thống tự động chuyển hướng đến `/admin-home` (Trang tổng quan dành cho quản trị).
+   - Nếu là **USER**: Hệ thống chuyển hướng đến `/user-home` (Trang tổng quan cá nhân).
+
+---
+
+## 2. Luồng Hoạt Động Của Nhân Viên (USER)
+
+Nhân viên (User) là người trực tiếp sử dụng hệ thống để gửi các yêu cầu hỗ trợ (Ticket).
+
+### 2.1. Trang Tổng Quan (User Home - `/user-home`)
+- Hiển thị thống kê cá nhân theo thời gian thực: Số lượng Ticket đang mở (OPEN), đang xử lý (PROGRESS), và đã hoàn thành (RESOLVED) do chính nhân viên đó tạo.
+- Cung cấp nút tạo yêu cầu hỗ trợ nhanh.
+
+### 2.2. Gửi Yêu Cầu Hỗ Trợ (Create Ticket)
+1. User click "Tạo Ticket mới".
+2. Điền form thông tin: Tiêu đề, Mô tả, Danh mục (Phần mềm, Phần cứng, Mạng...), và có thể **upload ảnh đính kèm** (chụp màn hình lỗi).
+3. **Hệ thống tự động xử lý ngầm:**
+   - Tự động lấy tên User đang đăng nhập làm `reporterName`.
+   - Gán mức độ ưu tiên mặc định là `LOW`.
+   - Trạng thái khởi tạo là `OPEN`.
+4. Ticket được đẩy vào hệ thống và hiển thị lên lưới dữ liệu của phòng IT.
+
+### 2.3. Theo Dõi Yêu Cầu (Ticket Management)
+- User truy cập `/ticket-management`.
+- Tại đây, hệ thống **chỉ hiển thị các ticket do chính user đó tạo**.
+- User có thể theo dõi tiến trình (đã được IT nào nhận chưa, trạng thái hiện tại là gì).
+
+---
+
+## 3. Luồng Hoạt Động Của Quản Trị Viên (ADMIN)
+
+Admin (IT, Hành chính, Nhân sự) có toàn quyền trên hệ thống để xử lý công việc và quản lý dữ liệu.
+
+### 3.1. Trang Tổng Quan (Admin Home & Dashboard)
+- **Admin Home (`/admin-home`):** Màn hình chào mừng và các lối tắt truy cập nhanh.
+- **Dashboard (`/dashboard`):** Bảng điều khiển nâng cao, hiển thị biểu đồ, thống kê tổng quát toàn hệ thống (Tổng số ticket, ticket theo trạng thái, ticket theo danh mục).
+
+### 3.2. Quản Lý & Xử Lý Ticket
+1. **Tiếp nhận Ticket:** Admin truy cập `/ticket-management` sẽ thấy **toàn bộ ticket** của tất cả nhân viên.
+2. **Gán việc (Assign):** Thông qua tính năng AJAX, Admin có thể gán nhanh một ticket đang OPEN cho một chuyên viên IT cụ thể (tin, trinh, dinh...).
+3. **Cập nhật trạng thái:** 
+   - Admin có thể thay đổi độ ưu tiên (Priority: HIGH/MED/LOW).
+   - Đổi trạng thái từ `OPEN` sang `PROGRESS` khi đang xử lý, và sang `RESOLVED` khi đã khắc phục xong.
+   - Thao tác này có thể thực hiện **inline** trực tiếp trên lưới (không cần tải lại trang) hoặc thông qua Modal chi tiết.
+4. **Tạo Ticket hộ:** Admin có đặc quyền tạo ticket thay cho người khác. Form tạo ticket của Admin sẽ hiển thị thêm các trường: Chọn người yêu cầu (User 1, User 2, hoặc người ngoài), chọn độ ưu tiên và gán thẳng người xử lý.
+5. **Xóa Ticket:** Admin có quyền xóa bỏ các ticket rác hoặc tạo nhầm.
+
+### 3.3. Quản Lý Nhân Sự (Employee Management - HR)
+1. **Truy cập:** Admin vào trang `/employees` để quản lý danh sách nhân sự.
+2. **Tìm kiếm & Lọc:** Lọc nhanh nhân viên theo Tên, Mã NV, Phòng ban, hoặc trạng thái (Đang làm việc/Nghỉ việc).
+3. **Thêm/Sửa Hồ sơ:**
+   - Admin click "Thêm mới" hoặc "Xem chi tiết" (Icon con mắt).
+   - Mở ra một Modal lớn chứa đầy đủ thông tin chia thành các Tab: Thông tin chung, Liên hệ cá nhân, Hợp đồng & Bảo hiểm, Gia đình (Danh sách con cái, người liên hệ khẩn cấp), và Hồ sơ đính kèm (Checkbox giấy tờ).
+   - Lưu trữ vào CSDL an toàn.
+4. **Nhập/Xuất Dữ liệu (Import/Export Excel):**
+   - **Export:** Hệ thống tự động tổng hợp toàn bộ dữ liệu từ CSDL, sinh ra file `NhanSu.xlsx` tải về máy Admin.
+   - **Import:** Admin chọn file Excel danh sách nhân sự, hệ thống phân tích (sử dụng Apache POI) và thêm hàng loạt vào hệ thống chỉ với một click.
+
+    </script>
+
+    <!-- Marked.js for parsing Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // Get the markdown content
+        const markdown = document.getElementById('markdown-content').innerHTML;
+        // Parse and render it
+        document.getElementById('content').innerHTML = marked.parse(markdown);
+    </script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+    <meta charset="utf-8">
+    <title>Hướng Dẫn Sử Dụng Hệ Thống</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+        @page {
+            margin: 2.5cm 2cm 2.5cm 2cm;
+            mso-page-orientation: portrait;
+        }
+        body { 
+            font-family: "Times New Roman", Times, serif; 
+            font-size: 13.5pt; 
+            line-height: 1.5; 
+            text-align: justify;
+        }
+        h1 { 
+            font-size: 20pt; 
+            text-align: center; 
+            color: #000; 
+            text-transform: uppercase; 
+            font-weight: bold; 
+            margin-top: 24pt;
+            margin-bottom: 24pt;
+        }
+        h2 { 
+            font-size: 16pt; 
+            font-weight: bold; 
+            margin-top: 24pt; 
+            margin-bottom: 12pt;
+            color: #000; 
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+        }
+        h3 { 
+            font-size: 14pt; 
+            font-weight: bold; 
+            margin-top: 18pt; 
+            margin-bottom: 6pt;
+            color: #000; 
+        }
+        p { 
+            margin-bottom: 12pt; 
+            margin-top: 0;
+        }
+        ul, ol { 
+            margin-bottom: 12pt; 
+            margin-top: 0;
+            margin-left: 20pt; 
+        }
+        li { 
+            margin-bottom: 8pt; 
+        }
+        strong {
+            font-weight: bold;
+        }
+        .highlight {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-left: 4px solid #0056b3;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>SỔ TAY HƯỚNG DẪN SỬ DỤNG<br>HỆ THỐNG MIDOMAX</h1>
+
+<div class="highlight">
+    <p><strong>Mục đích tài liệu:</strong> Tài liệu này được biên soạn nhằm hướng dẫn cán bộ, nhân viên trong công ty cách thao tác và sử dụng hệ thống phần mềm nội bộ (Midomax Helpdesk & HR) một cách đơn giản, nhanh chóng và hiệu quả nhất.</p>
+</div>
+
+<h2>PHẦN 1: TỔNG QUAN VÀ ĐĂNG NHẬP</h2>
+
+<p>Hệ thống Midomax là cổng thông tin nội bộ giúp bạn thực hiện hai công việc chính:</p>
+<ul>
+    <li><strong>Gửi yêu cầu hỗ trợ (Helpdesk):</strong> Báo cáo lỗi máy tính, mạng, phần mềm, hoặc yêu cầu văn phòng phẩm để bộ phận liên quan xử lý.</li>
+    <li><strong>Quản lý nhân sự (HR):</strong> Quản lý toàn bộ hồ sơ, hợp đồng, bảo hiểm của nhân viên (Dành riêng cho bộ phận Hành chính - Nhân sự).</li>
+</ul>
+
+<h3>1. Cách Đăng Nhập</h3>
+<ol>
+    <li>Mở trình duyệt web (Google Chrome, Cốc Cốc, hoặc Zalo PC).</li>
+    <li>Truy cập vào đường dẫn hệ thống nội bộ do công ty cung cấp.</li>
+    <li>Tại màn hình đăng nhập, nhập <strong>Tên đăng nhập</strong> và <strong>Mật khẩu</strong> của bạn.</li>
+    <li>Bấm nút <strong>"Đăng nhập"</strong>. Hệ thống sẽ tự động chuyển bạn đến giao diện làm việc phù hợp với bộ phận của bạn.</li>
+</ol>
+
+<h2>PHẦN 2: DÀNH CHO TẤT CẢ NHÂN VIÊN (CÁCH GỬI YÊU CẦU HỖ TRỢ)</h2>
+
+<p>Khi máy tính của bạn bị lỗi, cần cài phần mềm, hoặc mạng internet có vấn đề, bạn không cần phải gọi điện thoại hay nhắn tin, chỉ cần thực hiện các bước sau trên hệ thống:</p>
+
+<h3>1. Tạo yêu cầu hỗ trợ mới (Tạo Ticket)</h3>
+<ol>
+    <li>Tại màn hình trang chủ, hãy nhấn vào nút <strong>"Tạo Yêu Cầu Mới"</strong> (hoặc "Tạo Ticket").</li>
+    <li>Một bảng thông tin sẽ hiện ra, bạn cần điền đầy đủ:
+        <ul>
+            <li><strong>Tiêu đề:</strong> Ghi ngắn gọn vấn đề gặp phải (Ví dụ: <em>"Máy in phòng Kế toán không in được"</em>).</li>
+            <li><strong>Danh mục:</strong> Chọn loại sự cố tương ứng (Phần cứng, Phần mềm, Mạng, v.v.).</li>
+            <li><strong>Mô tả chi tiết:</strong> Miêu tả rõ hơn về lỗi hoặc yêu cầu của bạn.</li>
+            <li><strong>Đính kèm ảnh (Quan trọng):</strong> Bạn có thể chụp màn hình lỗi và tải hình ảnh lên để các bạn IT dễ hình dung lỗi hơn.</li>
+        </ul>
+    </li>
+    <li>Bấm nút <strong>"Gửi yêu cầu"</strong>. Ngay lập tức, yêu cầu của bạn sẽ được chuyển đến màn hình của bộ phận IT.</li>
+</ol>
+
+<h3>2. Theo dõi tiến độ yêu cầu</h3>
+<ul>
+    <li>Tại mục <strong>"Danh sách yêu cầu của tôi"</strong>, bạn có thể xem lại tất cả các yêu cầu mình đã gửi.</li>
+    <li>Bạn hãy để ý cột <strong>"Trạng thái"</strong> để biết tiến độ:
+        <ul>
+            <li><strong>OPEN (Đang mở):</strong> Yêu cầu vừa được gửi, đang chờ IT tiếp nhận.</li>
+            <li><strong>PROGRESS (Đang xử lý):</strong> Nhân viên IT đã nhận việc và đang tiến hành sửa chữa cho bạn.</li>
+            <li><strong>RESOLVED (Đã hoàn thành):</strong> Sự cố đã được xử lý xong.</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>PHẦN 3: DÀNH CHO BỘ PHẬN IT (XỬ LÝ YÊU CẦU)</h2>
+
+<p>Dành cho các bạn nhân viên IT/Kỹ thuật có nhiệm vụ trực hệ thống và hỗ trợ người dùng.</p>
+
+<h3>1. Tiếp nhận và phân công công việc</h3>
+<ol>
+    <li>Truy cập vào menu <strong>Quản lý Ticket</strong>. Bạn sẽ nhìn thấy toàn bộ các yêu cầu hỗ trợ từ tất cả các phòng ban gửi về.</li>
+    <li>Khi có một yêu cầu mới (trạng thái OPEN), bạn có thể tự nhận việc bằng cách chọn tên mình ở cột <strong>"Người phụ trách" (Assignee)</strong>.</li>
+</ol>
+
+<h3>2. Cập nhật tiến trình công việc</h3>
+<ol>
+    <li>Khi bắt đầu xuống sửa máy cho nhân viên, hãy đổi trạng thái yêu cầu sang <strong>PROGRESS (Đang xử lý)</strong>.</li>
+    <li>Bạn cũng có thể đánh giá mức độ nghiêm trọng của lỗi bằng cách chọn <strong>Độ ưu tiên (Cao/Trung bình/Thấp)</strong>.</li>
+    <li>Khi đã sửa xong, hãy đổi trạng thái sang <strong>RESOLVED (Hoàn thành)</strong> để hệ thống đóng yêu cầu lại. Người gửi cũng sẽ thấy được kết quả này.</li>
+</ol>
+
+<h2>PHẦN 4: DÀNH CHO BỘ PHẬN NHÂN SỰ (HR)</h2>
+
+<p>Dành riêng cho cán bộ Nhân sự sử dụng để quản lý hồ sơ nhân viên trong toàn công ty.</p>
+
+<h3>1. Xem danh sách nhân viên</h3>
+<ul>
+    <li>Truy cập menu <strong>Quản lý Nhân Sự</strong>. Tại đây có lưới danh sách tất cả nhân sự.</li>
+    <li>Bạn có thể tìm nhanh một nhân viên bằng ô <strong>Tìm kiếm</strong> (nhập tên hoặc mã nhân viên) hoặc dùng bộ lọc để lọc theo <strong>Phòng ban</strong>.</li>
+</ul>
+
+<h3>2. Thêm mới hoặc sửa hồ sơ nhân viên</h3>
+<ol>
+    <li>Bấm nút <strong>"Thêm mới"</strong> hoặc bấm vào biểu tượng <strong>Cây bút (Sửa)</strong> bên cạnh tên một nhân viên đang có.</li>
+    <li>Hệ thống cung cấp một biểu mẫu điện tử vô cùng chi tiết, được chia thành các Tab dễ nhìn:
+        <ul>
+            <li><strong>Thông tin chung:</strong> Họ tên, Mã NV, CCCD, Quê quán, Địa chỉ.</li>
+            <li><strong>Hợp đồng & Bảo hiểm:</strong> Ngày vào làm, Số hợp đồng, Số sổ Bảo hiểm, Mức đóng, Tài khoản ngân hàng, Chế độ thai sản.</li>
+            <li><strong>Gia đình & Liên hệ:</strong> Thêm thông tin Bố, Mẹ, Vợ/Chồng, và tạo danh sách con cái hoặc người liên hệ khẩn cấp.</li>
+            <li><strong>Hồ sơ đính kèm:</strong> Bạn chỉ cần tích vào các ô vuông (Sơ yếu lý lịch, Bằng cấp, Khám sức khỏe...) để ghi nhận nhân viên đó đã nộp giấy tờ gì cho công ty.</li>
+        </ul>
+    </li>
+    <li>Bấm <strong>"Lưu"</strong> để cập nhật thông tin vào hệ thống.</li>
+</ol>
+
+<h3>3. Xuất & Nhập file Excel (Import / Export)</h3>
+<ul>
+    <li><strong>Xuất danh sách (Export):</strong> Bấm nút "Xuất Excel", hệ thống sẽ tự động tải về máy bạn một file Excel chứa toàn bộ thông tin của tất cả nhân sự hiện tại để bạn làm báo cáo.</li>
+    <li><strong>Nhập danh sách (Import):</strong> Nếu bạn có một file Excel chứa hàng loạt nhân viên mới, hãy dùng tính năng "Nhập Excel", chọn file và bấm tải lên. Hệ thống sẽ tự động đọc file và tạo danh sách nhân viên mới mà không cần bạn phải gõ tay từng người.</li>
+</ul>
+
+</body>
+</html>

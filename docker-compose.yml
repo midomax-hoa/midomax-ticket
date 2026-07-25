@@ -1,0 +1,62 @@
+services:
+  helpdesk:
+    build:
+      context: ./source/helpdesk
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+
+      # Dia chi that cua he thong (dung cho link trong email va OAuth2)
+      APP_BASE_URL: ${APP_BASE_URL}
+      # Chay sau Traefik nen phai doc header X-Forwarded-*
+      FORWARD_HEADERS_STRATEGY: framework
+
+      # ===== MySQL (service ben ngoai) =====
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-helpdesk}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # validate = Hibernate chi kiem tra, khong tu sua bang tren DB that
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
+      JPA_SHOW_SQL: "false"
+      LOG_LEVEL_TRANSACTION: INFO
+      LOG_LEVEL_HIBERNATE: INFO
+      THYMELEAF_CACHE: "true"
+
+      # ===== MinIO (luu file dinh kem) =====
+      STORAGE_TYPE: s3
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_PATH_STYLE_ACCESS: "true"
+
+      # ===== Microsoft Entra ID / Graph =====
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+      AZURE_SENDER_EMAIL: ${AZURE_SENDER_EMAIL:-it01@midomax.vn}
+
+    expose:
+      - "8080"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+    networks:
+      - dokploy-network
+
+    # Ten mien va chung chi SSL cau hinh trong tab "Domains" cua Dokploy
+    # (Dokploy tu sinh label Traefik, khong khai tay o day de khoi trung nhau).
+
+networks:
+  dokploy-network:
+    external: true

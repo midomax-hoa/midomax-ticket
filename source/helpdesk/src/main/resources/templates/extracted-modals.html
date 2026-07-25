@@ -1,0 +1,342 @@
+<!-- MODAL CHI TI?T TICKET (PHUONG �N 2) -->
+<div class="modal fade" id="editTicketModal" tabindex="-1" aria-labelledby="editTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form action="/ticket/update" method="post"> <input type="hidden" name="id" id="detail-id">
+                <div class="modal-header bg-light border-bottom-0">
+                    <h5 class="modal-title fw-bold text-primary" id="detail-modal-title"><i
+                            class="fa-solid fa-ticket me-2"></i>Chi tiết Ticket</h5> <button type="button"
+                        class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4">
+                    <div class="row g-3">
+                        <div class="col-md-12"> <label class="form-label fw-bold text-muted small">
+                                Nội dung yêu cầu (chỉ đọc)</label> <input type="text" id="detail-title" name="title"
+                                class="form-control bg-light" value="" readonly> </div>
+                        <div class="col-md-12" id="detail-image-container" style="display: none;"> <label
+                                class="form-label fw-bold text-muted small">Hình ảnh đính kèm</label>
+                            <div class="mt-2 text-center border rounded p-2 bg-light"> <a href="#"
+                                    id="detail-image-link" target="_blank" title="Nhấn để xem ảnh phóng to"> <img
+                                        id="detail-image-preview" src="" alt="Hình ảnh đính kèm"
+                                        class="img-fluid rounded shadow-sm"
+                                        style="max-height: 250px; object-fit: contain;"> </a> </div>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Trạng thái</label>
+                            <select name="status" id="detail-status" class="form-select border-warning shadow-sm">
+                                <option value="open">Open Đang Mở)</option>
+                                <option value="progress">In Progress (Đang xử lý))</option>
+                                <option value="resolved">Resolved (Đã xong)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Mức độ ưu tiên</label>
+                            <select name="priority" id="detail-priority"
+                                class="form-select border-danger shadow-sm text-danger fw-bold">
+                                <option value="high">HIGH (Khẩn cấp)</option>
+                                <option value="med">MED (Trung bình)</option>
+                                <option value="low">LOW (Thấp)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Người xử lý (Phần
+                                cứng)</label> <select name="assignee" id="detail-assignee"
+                                class="form-select shadow-sm">
+                                <option value="">-- Chưa có --</option>
+                                <option value="kim">Kim</option>
+                                <option value="tin">Thành Tân</option>
+                                <option value="hung">Tuấn Hưng</option>
+                                <option value="bao">Quốc Bảo</option>
+                            </select> </div>
+                        <div class="col-md-6"> <label
+                                class="form-label fw-bold small text-dark">Thời gian dự kiến hoàn thành</label> <input
+                                type="text" name="estimatedCompletionTime" id="detail-estimatedCompletionTime"
+                                class="form-control shadow-sm bg-white" placeholder="-- Chọn ngày giờ hoàn thành --"> </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Danh mục</label>
+                            <select name="category" id="detail-category" class="form-select shadow-sm">
+                                <option value="network">Mạng</option>
+                                <option value="hardware">Phần cứng</option>
+                                <option value="software">Phần mềm</option>
+                                <option value="server">Máy chủ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12"> <label class="form-label fw-bold small text-dark">Ghi chú của Admin
+                                (Internal Notes)</label> <textarea name="notes" id="detail-notes"
+                                class="form-control shadow-sm" rows="3"
+                                placeholder="Nhập ghi chú hoặc lý do thay đổi trạng thái..."></textarea> </div>
+                        <div class="col-md-12 mt-3" id="detail-fixNote-container" style="display: none;">
+                            <div class="p-3 rounded-3 shadow-sm border border-success bg-success bg-opacity-10">
+                                <label class="form-label fw-bold text-success d-flex align-items-center mb-2" style="font-size: 13.5px;">
+                                    <i class="fa-solid fa-wrench me-2 fs-5"></i>Ghi chú xác nhận hoàn thành (Chi tiết đã fix / khắc phục):
+                                </label>
+                                <textarea name="fixNote" id="detail-fixNote" class="form-control shadow-sm bg-white border-success" rows="3" placeholder="Ghi lại chi tiết nguyên nhân sự cố & các bước IT/Admin đã thực hiện để khắc phục..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4"> <button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Đóng</button> <button type="submit" id="detail-save-btn"
+                        class="btn btn-success px-4 fw-bold" sec:authorize="hasRole('ADMIN')"><i
+                            class="fa-solid fa-check me-2"></i>Lưu Thay Đổi (Accept)</button> </div>
+            </form>
+        </div>
+    </div>
+</div> <!-- MODAL Tạo Ticket Mới (PH�N QUY?N ADMIN / USER) -->
+<div class="modal fade" id="createTicketModal" tabindex="-1" aria-labelledby="createTicketModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px;"> <!-- ADMIN FORM -->
+            <form action="/ticket/create" method="post" enctype="multipart/form-data" sec:authorize="hasRole('ADMIN')">
+                <div class="modal-header bg-light border-bottom-0">
+                    <h5 class="modal-title fw-bold text-primary" id="createTicketModalLabel"><i
+                            class="fa-solid fa-plus-circle me-2"></i>Tạo Ticket Mới (Admin)</h5> <button type="button"
+                        class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4">
+                    <div class="row g-3">
+                        <div class="col-md-12"> <label class="form-label fw-bold small text-dark">Tiêu đề yêu cầu <span
+                                    class="text-danger">*</span></label> <input type="text" name="title"
+                                class="form-control shadow-sm" placeholder="Nh?p tiu d? ngắn gọn..." required> </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Người yêu cầu
+                                (Requester)</label> <select class="form-select shadow-sm" name="reporterSelect"
+                                id="requesterSelect" onchange="toggleCustomRequester()">
+                                <option value="self" selected>Bản thân báo cáo</option>
+                                <option value="user1">Nguyễn Văn A (Kế toán)</option>
+                                <option value="user2">Trần Thị B (Nhân sự)</option>
+                                <option value="other">-- Nhập tên khác --</option>
+                            </select> <input type="text" id="customRequesterInput" name="customRequester"
+                                class="form-control shadow-sm mt-2" placeholder="Nhập tên người yêu cầu..."
+                                style="display: none;"> </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-dark">Phòng ban <span class="text-danger">*</span></label>
+                            <select name="department" class="form-select shadow-sm" style="border-radius: 8px;" required>
+                                <option value="" selected disabled>-- Chọn phòng ban --</option>
+                                <option value="Ban Giám đốc">Ban Giám đốc</option>
+                                <option value="Ban Kiểm soát Nội bộ">Ban Kiểm soát Nội bộ</option>
+                                <option value="Bộ phận Bán buôn">Bộ phận Bán buôn</option>
+                                <option value="Bộ phận Bán lẻ">Bộ phận Bán lẻ</option>
+                                <option value="Bộ phận Ecom">Bộ phận Ecom</option>
+                                <option value="Bộ phận Marketing">Bộ phận Marketing</option>
+                                <option value="Bộ phận Graphic">Bộ phận Graphic</option>
+                                <option value="Bộ phận Content">Bộ phận Content</option>
+                                <option value="Bộ phận PAR">Bộ phận PAR</option>
+                                <option value="Bộ phận Tài chính">Bộ phận Tài chính</option>
+                                <option value="Bộ phận Kế toán">Bộ phận Kế toán</option>
+                                <option value="Bộ phận Hành chính">Bộ phận Hành chính</option>
+                                <option value="Bộ phận Nhân sự hệ thống">Bộ phận Nhân sự hệ thống</option>
+                                <option value="Bộ phận Admin System">Bộ phận Admin System</option>
+                                <option value="Bộ phận IT Helpdesk">Bộ phận IT Helpdesk</option>
+                                <option value="Bộ phận Kho vận">Bộ phận Kho vận</option>
+                                <option value="Bộ phận PD & Sourcing">Bộ phận PD & Sourcing</option>
+                                <option value="Bộ phận Thiết kế">Bộ phận Thiết kế</option>
+                                <option value="Bộ phận Category Management">Bộ phận Category Management</option>
+                                <option value="Bộ phận QA/QC">Bộ phận QA/QC</option>
+                                <option value="Bộ phận Nhà máy">Bộ phận Nhà máy</option>
+                                <option value="Phòng Kế hoạch">Phòng Kế hoạch</option>
+                                <option value="Phòng Chiến lược Ngành hàng">Phòng Chiến lược Ngành hàng</option>
+                                <option value="Khối Cung ứng">Khối Cung ứng</option>
+                                <option value="Khối Phát triển Kinh doanh">Khối Phát triển Kinh doanh</option>
+                                <option value="Khối Hỗ trợ Vận hành">Khối Hỗ trợ Vận hành</option>
+                                <option value="Khối Nhân tài Văn hóa">Khối Nhân tài Văn hóa</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Danh mục</label>
+                            <select name="category" class="form-select shadow-sm" required>
+                                <option value="" selected disabled>-- Ch?n Danh mục --</option>
+                                <option value="network">Mạng</option>
+                                <option value="hardware">Phần cứng (PC, Laptop)</option>
+                                <option value="software">Phần mềm / Tài khoản</option>
+                                <option value="server">Máy chủ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Mức độ ưu tiên
+                            </label> <select name="priority" class="form-select shadow-sm">
+                                <option value="med" selected>MED (Trung bình)</option>
+                                <option value="high" class="text-danger fw-bold">HIGH (Khẩn cấp)</option>
+                                <option value="low">LOW (Thấp)</option>
+                            </select> </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Phần cứng cho
+                            </label> <select name="assignee" id="assigneeSelectAdmin" class="form-select shadow-sm">
+                                <option value="" selected>-- Chưa phân công --</option>
+                                <option value="kim">Kim</option>
+                                <option value="tin">Thành Tín</option>
+                                <option value="hung">Tuấn Hưng</option>
+                                <option value="bao">Quốc Bảo</option>
+                            </select> </div>
+                        <div class="col-md-6">
+                            <option value="tin">Thành Tân</option>
+                            <option value="hung">Tuấn Hưng</option>
+                            <option value="bao">Quốc Bảo</option> </select>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Ngày và Giờ hẹn xử lý
+                                <span class="text-danger">*</span></label> <input type="text" id="slaDeadlineAdmin"
+                                name="bookedStartTime" class="form-control shadow-sm bg-white"
+                                placeholder="-- Chọn ng�y giờ --" required> </div>
+                        <!-- Hi?n th? l?ch b?n của IT (Admin) -->
+                        <div class="col-md-12 mt-2" id="busySlotsContainerAdmin" style="display: none;">
+                            <div class="alert alert-info shadow-sm p-3 mb-0" style="border-radius: 8px;"> <strong><i
+                                        class="fa-solid fa-calendar-check me-2"></i>Lịch của <span
+                                        id="busyItNameAdmin">IT</span>:</strong>
+                                <ul id="busySlotsListAdmin" class="mt-2 mb-0"
+                                    style="font-size: 13px; padding-left: 20px;"> </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-12"> <label class="form-label fw-bold small text-dark">Mô tả chi tiết <span
+                                    class="text-danger">*</span></label> <textarea name="description"
+                                class="form-control shadow-sm" rows="4" placeholder="Nh?p nội dung chi ti?t..."
+                                required></textarea> </div>
+                        <div class="col-md-12"> <label class="form-label fw-bold small text-dark"><i
+                                    class="fa-solid fa-paperclip me-1"></i>Ảnh đính kèm (nếu có)</label> <input
+                                class="form-control shadow-sm" type="file" name="imageFile" accept="image/*"> </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4"> <button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Hủy bỏ</button> <button type="submit"
+                        class="btn btn-primary px-4 fw-bold"><i class="fa-solid fa-paper-plane me-2"></i>Tạo
+                        Ticket</button> </div>
+            </form> <!-- USER FORM -->
+            <form action="/ticket/create" method="post" enctype="multipart/form-data" sec:authorize="!hasRole('ADMIN')">
+                <div class="modal-header border-bottom-0 bg-light">
+                    <h5 class="modal-title fw-bold text-primary" id="createTicketModalLabel"><i
+                            class="fa-solid fa-circle-plus me-2 text-primary"></i>Tạo yêu cầu Hỗ Trợ Mới</h5> <button
+                        type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4">
+                    <div class="row g-3">
+                        <div class="col-md-12"> <label class="form-label fw-bold small text-dark">Tiêu đề yêu cầu <span
+                                    class="text-danger">*</span></label> <input type="text" name="title"
+                                class="form-control shadow-sm" placeholder="Nh?p tm t?t s? c?..." required> </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Người gửi</label>
+                            <input type="text" class="form-control bg-light text-muted shadow-sm"
+                                th:value="${#authentication.name}" readonly>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Phòng ban</label>
+                            <input type="text" name="department" class="form-control bg-light text-muted shadow-sm"
+                                th:value="${department}" readonly>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Người hỗ trợ</label>
+                            <select name="assignee" id="assigneeSelectUser" class="form-select shadow-sm">
+                                <option value="" selected>-- Ai cũng được --</option>
+                                <option value="kim">Kim (Hỗ trợ báo cáo)</option>
+                                <option value="tin">Thành Tín (Mạng & Server)</option>
+                                <option value="hung">Tuấn Hưng (Phần cứng)</option>
+                                <option value="bao">Quốc Bảo (Phần mềm)</option>
+                            </select> </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Ngày và Giờ hẹn xử lý
+                                <span class="text-danger">*</span></label> <input type="text" id="slaDeadlineUser"
+                                name="bookedStartTime" class="form-control shadow-sm bg-white"
+                                placeholder="-- Chọn ng�y giờ --" required> </div>
+                        <!-- Hi?n th? l?ch b?n của IT (User) -->
+                        <div class="col-md-12 mt-2" id="busySlotsContainerUser" style="display: none;">
+                            <div class="alert alert-info shadow-sm p-3 mb-0" style="border-radius: 8px;"> <strong><i
+                                        class="fa-solid fa-calendar-check me-2"></i>Lịch của <span
+                                        id="busyItNameUser">IT</span>:</strong>
+                                <ul id="busySlotsListUser" class="mt-2 mb-0"
+                                    style="font-size: 13px; padding-left: 20px;"> </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Danh mục sự cố <span
+                                    class="text-danger">*</span></label> <select name="category"
+                                class="form-select shadow-sm" required>
+                                <option value="" selected disabled>-- Chọn Danh mục --</option>
+                                <option value="network">Mạng</option>
+                                <option value="hardware">Phần cứng</option>
+                                <option value="software">Phần mềm / Tài khoản</option>
+                                <option value="server">Máy chủ</option>
+                            </select> </div>
+                        <div class="col-md-6"> <label class="form-label fw-bold small text-dark">Khu vực <span
+                                    class="text-danger">*</span></label> <select name="location"
+                                class="form-select shadow-sm" required>
+                                <option value="Hà Nội" selected>Hà Nội</option>
+                                <option value="HCM">HCM</option>
+                            </select> </div>
+                        <div class="col-md-12"> <label class="form-label fw-bold small text-dark">Mô tả chi tiết <span
+                                    class="text-danger">*</span></label> <textarea name="description"
+                                class="form-control shadow-sm" rows="4" placeholder="Nhập nội dung sự cố chi tiết..."
+                                required></textarea> </div>
+                        <div class="col-md-12"> <label class="form-label fw-bold small text-dark"><i
+                                    class="fa-solid fa-image me-1 text-primary"></i>Hình ảnh đính kèm (Chỉ cho phép file
+                                ảnh)</label> <input class="form-control shadow-sm" type="file" name="imageFile"
+                                accept="image/*"> </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4"> <button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Hủy bỏ</button> <button type="submit"
+                        class="btn btn-primary px-4 fw-bold" style="background: #1e3a8a; border: none;"><i
+                            class="fa-solid fa-paper-plane me-2"></i>Tạo Ticket</button> </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+<script
+    th:inline="javascript">                    });          // Initialize Flatpickr and fetch booked dates         document.addEventListener('DOMContentLoaded', function() {             const modalEl = document.getElementById('createTicketModal');             let fpInstanceAdmin = null;             let fpInstanceUser = null;              function initFlatpickrAdmin(disabledRanges = []) {                 if (fpInstanceAdmin) fpInstanceAdmin.destroy();                 const el = document.getElementById('slaDeadlineAdmin');                 if (el) {                     fpInstanceAdmin = flatpickr(el, {                         enableTime: true, time_24hr: true, minDate: "today", locale: "vn",                         dateFormat: "Y-m-d H:i", altInput: true, altFormat: "H:i d/m/Y", placeholder: "-- Chọn ngy giờ --", minuteIncrement: 30,                         onOpen: function(selectedDates, dateStr, instance) {                             const today = new Date();                             if (selectedDates.length > 0 && selectedDates[0].toDateString() === today.toDateString()) {                                 instance.set('minTime', today);                             } else if (selectedDates.length === 0) {                                 instance.set('minTime', today);                             } else {                                 instance.set('minTime', false);                             }                         },                         onChange: function(selectedDates, dateStr, instance) {                             if (selectedDates.length > 0) {                                 const today = new Date();                                 if (selectedDates.length > 0 && selectedDates[0].toDateString() === today.toDateString()) {                                     instance.set('minTime', today);                                 } else {                                     instance.set('minTime', false);                                 }                                  const selectedTime = selectedDates[0].getTime();                                 let isConflict = false;                                 disabledRanges.forEach(range => {                                     const start = new Date(range.from.replace(' ', 'T')).getTime();                                     const end = new Date(range.to.replace(' ', 'T')).getTime();                                     if (selectedTime >= start && selectedTime < end) {                                         isConflict = true;                                     }                                 });                                  const form = instance.element.closest('form');                                 const submitBtn = form ? form.querySelector('button[type="submit"]') : null;                                 let errEl = instance.element.parentNode.querySelector('.conflict-err');                                 if (!errEl) {                                     errEl = document.createElement('div');                                     errEl.className = 'text-danger mt-1 conflict-err fw-bold small';                                     instance.element.parentNode.appendChild(errEl);                                 }                                  if (isConflict) {                                     errEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Khung gi? ny IT d c l?ch b?n!';                                     errEl.style.display = 'block';                                     if (submitBtn) submitBtn.disabled = true;                                 } else {                                     errEl.style.display = 'none';                                     if (submitBtn) submitBtn.disabled = false;                                 }                             }                         }                     });                 }             }              function initFlatpickrUser(disabledRanges = []) {                 if (fpInstanceUser) fpInstanceUser.destroy();                 const el = document.getElementById('slaDeadlineUser');                 if (el) {                     fpInstanceUser = flatpickr(el, {                         enableTime: true, time_24hr: true, minDate: "today", locale: "vn",                         dateFormat: "Y-m-d H:i", altInput: true, altFormat: "H:i d/m/Y", placeholder: "-- Chọn ngy giờ --", minuteIncrement: 30,                         onOpen: function(selectedDates, dateStr, instance) {                             const today = new Date();                             if (selectedDates.length > 0 && selectedDates[0].toDateString() === today.toDateString()) {                                 instance.set('minTime', today);                             } else if (selectedDates.length === 0) {                                 instance.set('minTime', today);                             } else {                                 instance.set('minTime', false);                             }                         },                         onChange: function(selectedDates, dateStr, instance) {                             if (selectedDates.length > 0) {                                 const today = new Date();                                 if (selectedDates[0].toDateString() === today.toDateString()) {                                     instance.set('minTime', today);                                 } else {                                     instance.set('minTime', false);                                 }                                  const selectedTime = selectedDates[0].getTime();                                 let isConflict = false;                                 disabledRanges.forEach(range => {                                     const start = new Date(range.from.replace(' ', 'T')).getTime();                                     const end = new Date(range.to.replace(' ', 'T')).getTime();                                     if (selectedTime >= start && selectedTime < end) {                                         isConflict = true;                                     }                                 });                                  const form = instance.element.closest('form');                                 const submitBtn = form ? form.querySelector('button[type="submit"]') : null;                                 let errEl = instance.element.parentNode.querySelector('.conflict-err');                                 if (!errEl) {                                     errEl = document.createElement('div');                                     errEl.className = 'text-danger mt-1 conflict-err fw-bold small';                                     instance.element.parentNode.appendChild(errEl);                                 }                                  if (isConflict) {                                     errEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Khung gi? ny IT d c l?ch b?n!';                                     errEl.style.display = 'block';                                     if (submitBtn) submitBtn.disabled = true;                                 } else {                                     errEl.style.display = 'none';                                     if (submitBtn) submitBtn.disabled = false;                                 }                             }                         }                     });                 }             }              modalEl.addEventListener('show.bs.modal', function () {                 const assigneeSelectAdmin = document.getElementById('assigneeSelectAdmin');                 if (assigneeSelectAdmin && assigneeSelectAdmin.tomselect) assigneeSelectAdmin.tomselect.setValue("");                 else if (assigneeSelectAdmin) assigneeSelectAdmin.value = "";                 const busyContainerAdmin = document.getElementById('busySlotsContainerAdmin');                 if (busyContainerAdmin) busyContainerAdmin.style.display = 'none';                  const assigneeSelectUser = document.getElementById('assigneeSelectUser');                 if (assigneeSelectUser && assigneeSelectUser.tomselect) assigneeSelectUser.tomselect.setValue("");                 else if (assigneeSelectUser) assigneeSelectUser.value = "";                 const busyContainerUser = document.getElementById('busySlotsContainerUser');                 if (busyContainerUser) busyContainerUser.style.display = 'none';                  initFlatpickrAdmin();                 initFlatpickrUser();             });              function setupAssigneeListener(selectId, containerId, listId, nameId, initFpFn) {                 const select = document.getElementById(selectId);                 const container = document.getElementById(containerId);                 const list = document.getElementById(listId);                 const nameEl = document.getElementById(nameId);                  if (select) {                     select.addEventListener('change', function() {                         const assignee = this.value;                         if (!assignee) {                             if (container) container.style.display = 'none';                             initFpFn();                             return;                         }                          if (nameEl) nameEl.textContent = this.options[this.selectedIndex].text;                                                  fetch('/api/tickets/schedule/' + assignee)                             .then(response => response.json())                             .then(schedule => {                                 let disabledRanges = [];                                 if (list) list.innerHTML = '';                                                                  if (schedule.length === 0) {                                     if (list) list.innerHTML = '<li>Đang hon ton trống lịch.</li>';                                 } else {                                     function formatScheduleTime(isoString) {                                         if (!isoString) return '';                                         try {                                             const d = new Date(isoString);                                             const hh = String(d.getHours()).padStart(2, '0');                                             const mm = String(d.getMinutes()).padStart(2, '0');                                             const dd = String(d.getDate()).padStart(2, '0');                                             const mo = String(d.getMonth() + 1).padStart(2, '0');                                             const yyyy = d.getFullYear();                                             return `${hh}:${mm} ${dd}/${mo}/${yyyy}`;                                         } catch(e) {                                             return isoString;                                         }                                     }                                     schedule.forEach(slot => {                                         disabledRanges.push({ from: slot.start, to: slot.end });                                         const li = document.createElement('li');                                         li.style.marginBottom = '8px';                                         li.innerHTML = `<span class="fw-bold">${formatScheduleTime(slot.start)} - ${formatScheduleTime(slot.end)}</span>: <span class="badge bg-danger bg-opacity-10 text-danger ms-1">${slot.title}</span>`;                                         if (list) list.appendChild(li);                                     });                                 }                                                                  if (container) container.style.display = 'block';                                 initFpFn(disabledRanges);                             })                             .catch(error => console.error('Error fetching schedule:', error));                     });                 }             }              setupAssigneeListener('assigneeSelectAdmin', 'busySlotsContainerAdmin', 'busySlotsListAdmin', 'busyItNameAdmin', initFlatpickrAdmin);             setupAssigneeListener('assigneeSelectUser', 'busySlotsContainerUser', 'busySlotsListUser', 'busyItNameUser', initFlatpickrUser);         });          // Tab switching logic for demo         document.querySelectorAll('.tab-item').forEach(tab => {             tab.addEventListener('click', function () {                 document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));                 this.classList.add('active');             });         });          // INLINE EDIT LOGIC
+        function toggleEditMode(rowId, isEdit) {
+            const row = document.getElementById(rowId);
+            if (isEdit) {
+                const statusSelect = row.querySelector('.status-select');
+                if (statusSelect && statusSelect.value.toLowerCase() === 'resolved') {
+                    alert('Ticket này đã hoàn thành (Resolved) nên đã bị khóa, không cho phép chỉnh sửa!');
+                    return;
+                }
+                row.classList.add('inline-edit-mode');
+            } else {
+                row.classList.remove('inline-edit-mode');
+            }
+        }
+
+        function saveChanges(ticketId) {             const row = document.getElementById('row-' + ticketId);             const prioritySelect = row.querySelector('.priority-select');             const statusSelect = row.querySelector('.status-select');             const assigneeSelect = row.querySelector('.assignee-select');              const priority = prioritySelect.value;
+            const status = statusSelect.value;
+            const assignee = assigneeSelect.value;
+
+            const formData = new FormData();
+            formData.append('id', ticketId);
+            formData.append('priority', priority);
+            formData.append('status', status);
+            formData.append('assignee', assignee);
+
+            if (status.toLowerCase() === 'resolved') {
+                const fixNoteInput = prompt("🎉 Xác nhận hoàn thành công việc Ticket #" + ticketId + "\n\nVui lòng nhập ghi chú những gì bạn đã fix / khắc phục:", "Đã kiểm tra và khắc phục hoàn tất sự cố.");
+                if (fixNoteInput === null) return;
+                formData.append('fixNote', fixNoteInput);
+            }
+
+            fetch('/ticket/update-inline', {                 method: 'POST',                 body: formData             })                 .then(response => response.text())                 .then(data => {                     if (data === 'success') {                         // Update View Mode elements                         // 1. Priority badge                         const pBadge = row.querySelector('.badge-custom.view-mode-only:not(.badge-status-open):not(.badge-status-progress):not(.badge-status-closed)');                         if (pBadge) {                             pBadge.innerText = priority.toUpperCase();                             pBadge.className = 'badge-custom view-mode-only';                             pBadge.classList.add(priority.toLowerCase() === 'high' ? 'badge-priority-high' : (priority.toLowerCase() === 'med' ? 'badge-priority-med' : 'badge-priority-low'));                         }                          // 2. Status badge                         const sBadge = row.querySelector('.badge-custom.view-mode-only:not(.badge-priority-high):not(.badge-priority-med):not(.badge-priority-low)');                         if (sBadge) {                             const statusText = status.toLowerCase() === 'open' ? 'Open' : (status.toLowerCase() === 'progress' ? 'In Progress' : 'Resolved');                             sBadge.innerText = statusText;                             sBadge.className = 'badge-custom view-mode-only';                             sBadge.classList.add(status.toLowerCase() === 'open' ? 'badge-status-open' : (status.toLowerCase() === 'progress' ? 'badge-status-progress' : 'badge-status-closed'));                         }                          // 3. Assignee disabled select                         const viewAssigneeSelect = row.querySelector('.assign-select.view-mode-only');                         if (viewAssigneeSelect) {                             viewAssigneeSelect.value = assignee;                         }                          // Exit edit mode                         toggleEditMode('row-' + ticketId, false);                     } else {                         alert('Lỗi cập nhật!');                     }                 })                 .catch(err => {                     console.error(err);                     alert('C l?i x?y ra khi k?t n?i my ch?!');                 });         }          // Hi?n  nh?p tên khác n?u ch?n option "other"         function toggleCustomRequester() {             const select = document.getElementById('requesterSelect');             const input = document.getElementById('customRequesterInput');             if (select.value === 'other') {                 input.style.display = 'block';                 input.focus();             } else {                 input.style.display = 'none';                 input.value = '';             }         }          /*[[${isAdmin != null ? isAdmin : false}]]*/ const isAdmin = /*[[${isAdmin != null ? isAdmin : false}]]*/;          function openDetailModal(ticketId) {             fetch('/ticket/detail/' + ticketId)                 .then(res => res.json())                 .then(ticket => {                     document.getElementById('detail-id').value = ticket.id;                     document.getElementById('detail-title').value = ticket.title;                     document.getElementById('detail-status').value = ticket.status.toLowerCase();                     document.getElementById('detail-priority').value = ticket.priority.toLowerCase();                     document.getElementById('detail-assignee').value = ticket.assignee ? ticket.assignee : '';                     document.getElementById('detail-category').value = ticket.category;                     document.getElementById('detail-notes').value = ticket.notes ? ticket.notes : '';
+                    const fixNoteEl = document.getElementById('detail-fixNote');
+                    if (fixNoteEl) fixNoteEl.value = ticket.fixNote ? ticket.fixNote : '';
+                    const fnCont = document.getElementById('detail-fixNote-container');
+                    if (fnCont) fnCont.style.display = (ticket.status.toLowerCase() === 'resolved') ? 'block' : 'none';
+                    const isResolved = ticket.status.toUpperCase() === 'RESOLVED';
+                    const isEstimatedSet = (ticket.estimatedCompletionTimeStr != null && ticket.estimatedCompletionTimeStr !== '');
+                    const imgContainer = document.getElementById('detail-image-container');                     const imgPreview = document.getElementById('detail-image-preview');                     const imgLink = document.getElementById('detail-image-link');                                          if (ticket.imagePath) {                         imgPreview.src = ticket.imagePath;                         imgLink.href = ticket.imagePath;                         imgContainer.style.display = 'block';                     } else {                         imgPreview.src = '';                         imgLink.href = '#';                         imgContainer.style.display = 'none';                     }                      // Disable inputs for regular user or if ticket is resolved                     const statusSelect = document.getElementById('detail-status');                     const prioritySelect = document.getElementById('detail-priority');                     const assigneeSelect = document.getElementById('detail-assignee');                     const categorySelect = document.getElementById('detail-category');                     const notesTextarea = document.getElementById('detail-notes');                     const estimatedInput = document.getElementById('detail-estimatedCompletionTime');                     const saveBtn = document.getElementById('detail-save-btn');                                          if (!isAdmin || isResolved) {
+                        statusSelect.disabled = true;
+                        prioritySelect.disabled = true;
+                        assigneeSelect.disabled = true;
+                        categorySelect.disabled = true;
+                        notesTextarea.readOnly = true;
+                        if (fixNoteEl) fixNoteEl.readOnly = true;
+                        if (estimatedInput) estimatedInput.readOnly = true;
+                        if (saveBtn) saveBtn.style.display = 'none';
+                    } else {
+                        statusSelect.disabled = false;
+                        prioritySelect.disabled = false;
+                        assigneeSelect.disabled = false;
+                        categorySelect.disabled = false;
+                        notesTextarea.readOnly = false;
+                        if (fixNoteEl) fixNoteEl.readOnly = false;
+                        if (estimatedInput) estimatedInput.readOnly = isEstimatedSet;
+                        if (saveBtn) saveBtn.style.display = 'block';
+                    }
+                      // Sync Tom Select instances if they exist                     const selectIds = ['detail-status', 'detail-priority', 'detail-assignee', 'detail-category'];
+                    selectIds.forEach(id => {
+                        const selectEl = document.getElementById(id);
+                        if (selectEl && selectEl.tomselect) {
+                            selectEl.tomselect.setValue(selectEl.value);
+                            if (!isAdmin || isResolved) {
+                                selectEl.tomselect.disable();
+                            } else {
+                                selectEl.tomselect.enable();
+                            }
+                        }
+                    });
+                      // Open the modal                     const modalEl = document.getElementById('editTicketModal');                     const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);                     modal.show();                 })                 .catch(err => {                     console.error(err);                     alert('Khng th? t?i thng tin chi ti?t ticket!');                 });         }          // Ci d?t Tom Select cho cc menu Dropdown trong Modal d? giao di?n d?ng nh?t & d?p m?t (khng dng native của my)         document.querySelectorAll('.modal .form-select').forEach((el) => {             new TomSelect(el, {                 controlInput: null, // ?n  tm ki?m n?u khng c?n thi?t                 sortField: false,                 searchField: [] // Disable search             });         });     </script>

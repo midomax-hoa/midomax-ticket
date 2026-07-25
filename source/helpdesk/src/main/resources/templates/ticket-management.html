@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Ticket - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #e2e8f0;
+            color: #333;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 30px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
+
+        .topbar {
+            background: #ffffff;
+            padding: 15px 30px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e5e7eb;
+        }
+
+        .admin-badge {
+            display: none;
+        }
+
+        /* SUMMARY CARDS */
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+            height: 110px; /* Cố định chiều cao */
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            margin-right: 15px;
+        }
+
+        .stat-icon.blue {
+            background: #eff6ff;
+            color: #1e3a8a;
+        }
+
+        .stat-icon.yellow {
+            background: #fef9c3;
+            color: #ca8a04;
+        }
+
+        .stat-icon.orange {
+            background: #ffedd5;
+            color: #ea580c;
+        }
+
+        .stat-icon.red {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .stat-icon.green {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .stat-info h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            color: #1f2937;
+        }
+
+        .stat-info p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .widget-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        /* TABS */
+        .custom-tabs {
+            display: flex;
+            gap: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+
+        .tab-item {
+            padding: 10px 15px;
+            font-weight: 600;
+            color: #6b7280;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: 0.2s;
+        }
+
+        .tab-item:hover {
+            color: #1e3a8a;
+        }
+
+        .tab-item.active {
+            color: #1e3a8a;
+            border-bottom: 2px solid #1e3a8a;
+        }
+
+        /* TABLE */
+        .table-custom {
+            width: 100%;
+            margin-bottom: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table-custom thead th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table-custom thead th:first-child {
+            border-top-left-radius: 8px;
+        }
+
+        .table-custom thead th:last-child {
+            border-top-right-radius: 8px;
+        }
+
+        .table-custom tbody tr {
+            transition: background-color 0.2s;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .table-custom td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+            font-size: 14px;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        /* SCROLLBAR B?NG D? LI?U */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 10px;
+        }
+
+        .table-responsive::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f8fafc;
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* AVATAR */
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-weight: bold;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        /* BADGES */
+        .badge-custom {
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .badge-priority-high {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .badge-priority-med {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .badge-priority-low {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .badge-status-open {
+            background: #fef9c3;
+            color: #ca8a04;
+            border: 1px solid #fde047;
+        }
+
+        .badge-status-progress {
+            background: #e0f2fe;
+            color: #0284c7;
+            border: 1px solid #bae6fd;
+        }
+
+        .badge-status-resolved, .badge-status-closed {
+            background: #dcfce7;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        /* DROPDOWN & SELECT */
+        .assign-select {
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            padding: 5px 8px;
+            font-size: 13px;
+            color: #333;
+            cursor: pointer;
+            width: 100%;
+            max-width: 140px;
+            transition: 0.2s;
+        }
+
+        .assign-select:focus {
+            outline: none;
+            border-color: #1e3a8a;
+            box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
+        }
+
+        .assign-select:disabled {
+            background-color: #f1f5f9;
+            cursor: not-allowed;
+            appearance: none;
+            -webkit-appearance: none;
+            border-color: transparent;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #6b7280;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #e2e8f0;
+            color: #1e3a8a;
+        }
+
+        /* CHECKBOX */
+        .custom-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #1e3a8a;
+        }
+
+        /* PAGINATION */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 0 10px;
+        }
+
+        .page-info {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .pagination .page-link {
+            color: #4b5563;
+            border-color: #e5e7eb;
+            font-size: 14px;
+            padding: 8px 12px;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: #1e3a8a;
+            border-color: #1e3a8a;
+            color: white;
+        }
+
+        .text-truncate-custom {
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .time-text {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* INLINE EDIT CLASSES */
+        .edit-mode-only {
+            display: none !important;
+        }
+
+        .inline-edit-mode .view-mode-only {
+            display: none !important;
+        }
+
+        .inline-edit-mode .edit-mode-only {
+            display: inline-block !important;
+        }
+
+        .inline-edit-mode .edit-mode-only.d-flex {
+            display: flex !important;
+        }
+
+        .inline-edit-mode {
+            background-color: #fffbeb !important;
+        }
+
+        @media (max-width: 991px) {
+            #mobile-toggle-btn {
+                display: block !important;
+            }
+
+            .sidebar {
+                left: -100% !important;
+                width: 80% !important;
+                max-width: 320px;
+                transition: all 0.3s ease !important;
+                z-index: 9999 !important;
+            }
+
+            .sidebar.active {
+                left: 0 !important;
+                box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5) !important;
+            }
+
+
+
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 15px !important;
+            }
+
+            .topbar {
+                padding: 12px 15px !important;
+                margin-bottom: 20px !important;
+                top: 0;
+                border-radius: 0 0 12px 12px;
+            }
+
+            .topbar h4 {
+                font-size: 16px !important;
+            }
+
+            .topbar small {
+                font-size: 11px !important;
+            }
+
+            #mobile-toggle-btn {
+                font-size: 20px !important;
+                margin-right: 12px !important;
+            }
+
+            .admin-badge {
+                padding: 5px 10px !important;
+                font-size: 13px !important;
+            }
+
+            .stat-card {
+                margin-bottom: 15px;
+            }
+
+            .custom-tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 5px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .topbar {
+                padding: 10px 12px !important;
+                margin-bottom: 15px !important;
+            }
+
+            .topbar h4 {
+                font-size: 15px !important;
+            }
+
+            .topbar small {
+                font-size: 10px !important;
+            }
+
+            #mobile-toggle-btn {
+                margin-right: 8px !important;
+                font-size: 18px !important;
+            }
+
+            .admin-badge {
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+            }
+
+            .admin-badge i {
+                margin-right: 4px !important;
+            }
+
+            .widget-card {
+                padding: 15px !important;
+            }
+
+            .table-custom th,
+            .table-custom td {
+                padding: 10px 6px !important;
+                font-size: 11px !important;
+            }
+
+            .badge-custom {
+                padding: 3px 6px !important;
+                font-size: 9px !important;
+            }
+        }
+        /* Fix for large dropdown text in some mobile simulations */
+        @media (max-width: 991px) {
+            .form-control, .form-select {
+                font-size: 13px !important;
+            }
+            .form-select option {
+                font-size: 13px !important;
+            }
+        }
+        /* Choices.js custom styling to match Bootstrap */
+        .choices[data-type*="select-one"] .choices__inner {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            min-height: 38px;
+            padding: 4px 12px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .choices__list--dropdown .choices__item {
+            font-size: 14px;
+        }
+    
+        @media (max-width: 991px) {
+            #mobile-toggle-btn { display: block !important; }
+            .sidebar { left: -100% !important; width: 80% !important; max-width: 320px; transition: all 0.3s ease !important; z-index: 9999 !important; }
+            .sidebar.active { left: 0 !important; box-shadow: 0 0 0 10000px rgba(0,0,0,0.5) !important; }
+
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 15px !important; }
+            .topbar { padding: 12px 15px !important; margin-bottom: 20px !important; top: 0; border-radius: 0 0 12px 12px; }
+        }
+
+        /* ===== FILTER DRAWER ===== */
+        .filter-drawer {
+            background: #f8faff;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 18px 20px 14px;
+            margin-bottom: 16px;
+            display: none;
+            animation: slideDown 0.22s ease;
+        }
+        .filter-drawer.show {
+            display: block;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .filter-drawer label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        .filter-drawer select, .filter-drawer input[type="date"] {
+            font-size: 13px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            padding: 6px 10px;
+            width: 100%;
+            color: #374151;
+            background: #fff;
+            height: 36px;
+        }
+        .filter-drawer select:focus, .filter-drawer input[type="date"]:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #1e3a8a;
+            color: #fff;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 11px;
+            font-weight: 700;
+            justify-content: center;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .btn-filter-active {
+            background: #1e3a8a !important;
+            color: #fff !important;
+            border-color: #1e3a8a !important;
+        }
+        .active-filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e3a8a;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 5px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('ticket')}"></div>
+
+
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn"
+                    style="display: none; cursor: pointer; font-size: 22px; color: #1e3a8a; margin-right: 15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color: #1e3a8a;">Quản lý Ticket</h4>
+                    <small class="text-muted">Theo dõi và phân bổ yêu cầu hỗ trợ</small>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-primary fw-semibold shadow-sm" style="background: #1e3a8a; border: none;"
+                    data-bs-toggle="modal" data-bs-target="#createTicketModal" title="Tạo Ticket Mới">
+                    <i class="fa-solid fa-plus"></i><span class="d-none d-md-inline ms-1"> Tạo Ticket Mới</span>
+                </button>
+                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block"
+                    style="color: #6b7280; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#1e3a8a'"
+                    onmouseout="this.style.color='#6b7280'"></i>
+            </div>
+        </div>
+
+        <!-- SUMMARY CARDS -->
+        <div class="row">
+            <!-- Admin stat cards -->
+            <div class="col-md-3 col-sm-6" th:if="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-ticket"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.total}">142</h3>
+                        <p>Tổng số Ticket</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6" th:if="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="fa-solid fa-user-clock"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.unassigned}">15</h3>
+                        <p>Chưa phân công</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6" th:if="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon orange"><i class="fa-solid fa-bars-progress"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.inProgress}">48</h3>
+                        <p>Đang xử lý</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6" th:if="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.overdue}">5</h3>
+                        <p>Quá hạn (SLA)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User stat cards -->
+            <div class="col-md-3 col-sm-6" th:unless="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-paper-plane"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.total}">0</h3>
+                        <p>Ticket Đã Gửi</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6" th:unless="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="fa-solid fa-envelope-open"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.open}">0</h3>
+                        <p>Đang Chờ</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6" th:unless="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon orange"><i class="fa-solid fa-bars-progress"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.inProgress}">0</h3>
+                        <p>Đang Xử Lý</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6" th:unless="${isAdmin}">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="stat-info">
+                        <h3 th:text="${stats.resolved}">0</h3>
+                        <p>Đã Hoàn Thành</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN TABLE WIDGET -->
+        <div class="widget-card">
+
+            <!-- TABS & FILTER -->
+            <div class="custom-tabs d-flex flex-wrap align-items-center gap-3 mb-3">
+                <a href="/ticket-management?tab=all" class="tab-item"
+                    th:classappend="${currentTab == 'all'} ? 'active' : ''" style="text-decoration: none;">Tất cả</a>
+                <!-- Admin-only tabs -->
+                <a href="/ticket-management?tab=mine" class="tab-item" th:if="${isAdmin}"
+                    th:classappend="${currentTab == 'mine'} ? 'active' : ''" style="text-decoration: none;">Của tôi
+                    (<span th:text="${stats.mine}">0</span>)</a>
+                <a href="/ticket-management?tab=unassigned" class="tab-item" th:if="${isAdmin}"
+                    th:classappend="${currentTab == 'unassigned'} ? 'active' : ''"
+                    style="text-decoration: none;">Chưa phân công (<span th:text="${stats.unassigned}">0</span>)</a>
+                <!-- Both roles -->
+                <a href="/ticket-management?tab=closed" class="tab-item"
+                    th:classappend="${currentTab == 'closed'} ? 'active' : ''" style="text-decoration: none;">Đã đóng</a>
+
+                <div class="d-flex gap-2 align-items-center ms-auto pb-1 pb-md-0">
+                    <form id="searchForm" action="/ticket-management" method="get" class="d-flex gap-2">
+                        <input type="hidden" name="tab" th:value="${currentTab}" />
+                        <!-- Pass advanced filter params in search form -->
+                        <input type="hidden" name="filterStatus" th:value="${filterStatus}" />
+                        <input type="hidden" name="filterPriority" th:value="${filterPriority}" />
+                        <input type="hidden" name="filterCategory" th:value="${filterCategory}" />
+                        <input type="hidden" name="filterAssignee" th:value="${filterAssignee}" />
+                        <input type="hidden" name="dateFrom" th:value="${dateFrom}" />
+                        <input type="hidden" name="dateTo" th:value="${dateTo}" />
+                        <div class="input-group" style="width: 220px;">
+                            <span class="input-group-text bg-white border-end-0"><i
+                                    class="fa-solid fa-search text-muted"></i></span>
+                            <input type="text" name="search" id="searchInput" th:value="${searchQuery}"
+                                class="form-control border-start-0 ps-0" placeholder="Tìm mã, nội dung...">
+                        </div>
+                        <button type="submit" class="btn btn-outline-secondary"><i
+                                class="fa-solid fa-search"></i></button>
+                        <a href="/ticket-management?tab=all" class="btn btn-outline-secondary"
+                            th:if="${searchQuery != null && !searchQuery.isEmpty()}"><i
+                                class="fa-solid fa-xmark"></i></a>
+                    </form>
+
+                    <!-- Bo loc button -->
+                    <button type="button" id="toggleFilterBtn"
+                            class="btn btn-outline-secondary px-3"
+                            title="Bộ lọc"
+                            th:classappend="${hasAdvancedFilter} ? 'btn-filter-active' : ''"
+                            onclick="toggleFilterDrawer()">
+                        <i class="fa-solid fa-filter"></i>
+                        <span class="filter-badge" th:if="${hasAdvancedFilter}" id="filterBadge">!</span>
+                    </button>
+
+                    <!-- Xuat Excel button -->
+                    <button type="button" id="exportExcelBtn"
+                            class="btn btn-outline-success px-3"
+                            title="Xuất Excel"
+                            onclick="exportToExcel()">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- FILTER DRAWER -->
+            <form id="filterForm" action="/ticket-management" method="get">
+                <input type="hidden" name="tab" th:value="${currentTab}" />
+                <input type="hidden" name="search" th:value="${searchQuery}" />
+                <div id="filterDrawer" class="filter-drawer" th:classappend="${hasAdvancedFilter} ? 'show' : ''">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2 col-6">
+                            <label>Trạng thái</label>
+                            <select name="filterStatus" id="filterStatus">
+                                <option value="">Tất cả</option>
+                                <option value="OPEN" th:selected="${filterStatus == 'OPEN'}">Đang chờ (Open)</option>
+                                <option value="PROGRESS" th:selected="${filterStatus == 'PROGRESS'}">Đang xử lý</option>
+                                <option value="RESOLVED" th:selected="${filterStatus == 'RESOLVED'}">Đã hoàn thành</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label>Mức độ ưu tiên</label>
+                            <select name="filterPriority" id="filterPriority">
+                                <option value="">Tất cả</option>
+                                <option value="HIGH" th:selected="${filterPriority == 'HIGH'}">HIGH - Khẩn cấp</option>
+                                <option value="MED" th:selected="${filterPriority == 'MED'}">MED - Trung bình</option>
+                                <option value="LOW" th:selected="${filterPriority == 'LOW'}">LOW - Thấp</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label>Danh mục</label>
+                            <select name="filterCategory" id="filterCategory">
+                                <option value="">Tất cả</option>
+                                <option th:each="g : ${itGroups}" th:value="${g.name()}"
+                                        th:text="${g.categoryLabel}"
+                                        th:selected="${filterCategory == g.name()}">Phần mềm</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label>Người phụ trách</label>
+                            <select name="filterAssignee" id="filterAssignee">
+                                <option value="">Tất cả</option>
+                                <option th:each="it : ${itStaff}" th:value="${it.email}"
+                                        th:text="${it.name}"
+                                        th:selected="${filterAssignee == it.email}">Nhân viên IT</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label>Từ ngày</label>
+                            <input type="date" name="dateFrom" id="dateFrom" th:value="${dateFrom}" />
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label>Đến ngày</label>
+                            <input type="date" name="dateTo" id="dateTo" th:value="${dateTo}" />
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm px-4" style="background: #1e3a8a; border-color: #1e3a8a;">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i>Áp dụng lọc
+                        </button>
+                        <a href="/ticket-management" class="btn btn-outline-secondary btn-sm px-4">
+                            <i class="fa-solid fa-rotate-left me-1"></i>Xóa bộ lọc
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Active filter chips (shown when filter is active) -->
+            <div th:if="${hasAdvancedFilter}" class="mb-3 d-flex flex-wrap gap-1 align-items-center">
+                <small class="text-muted me-1"><i class="fa-solid fa-filter me-1"></i>Đang lọc:</small>
+                <span th:if="${filterStatus != null && !filterStatus.isEmpty()}" class="active-filter-chip">
+                    <i class="fa-solid fa-circle-dot" style="font-size:10px;"></i>
+                    Trạng thái:
+                    <span th:text="${filterStatus == 'OPEN'} ? 'Đang chờ' : (${filterStatus == 'PROGRESS'} ? 'Đang xử lý' : 'Đã hoàn thành')"></span>
+                </span>
+                <span th:if="${filterPriority != null && !filterPriority.isEmpty()}" class="active-filter-chip">
+                    <i class="fa-solid fa-flag" style="font-size:10px;"></i> Ưu tiên: <span th:text="${filterPriority}"></span>
+                </span>
+                <span th:if="${filterCategory != null && !filterCategory.isEmpty()}" class="active-filter-chip">
+                    <i class="fa-solid fa-tag" style="font-size:10px;"></i> Danh mục:
+                    <span th:text="${filterCategory == 'network'} ? 'Mạng' : (${filterCategory == 'hardware'} ? 'Phần cứng' : (${filterCategory == 'software'} ? 'Phần mềm' : 'Máy chủ'))"></span>
+                </span>
+                <span th:if="${filterAssignee != null && !filterAssignee.isEmpty()}" class="active-filter-chip">
+                    <i class="fa-solid fa-user" style="font-size:10px;"></i> Phụ trách: <span th:text="${filterAssignee}"></span>
+                </span>
+                <span th:if="${dateFrom != null && !dateFrom.isEmpty()}" class="active-filter-chip">
+                    <i class="fa-solid fa-calendar" style="font-size:10px;"></i> Từ: <span th:text="${dateFrom}"></span>
+                </span>
+                <span th:if="${dateTo != null && !dateTo.isEmpty()}" class="active-filter-chip">
+                    <i class="fa-solid fa-calendar-check" style="font-size:10px;"></i> Đến: <span th:text="${dateTo}"></span>
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-custom" id="ticketTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" class="custom-checkbox"></th>
+                            <th>Mã</th>
+                            <th>Nội dung yêu cầu</th>
+                            <th>Danh mục</th>
+                            <th>Người gửi</th>
+                            <th>Mức độ</th>
+                            <th>Trạng thái</th>
+                            <th>Phân công</th>
+                            <th>Dự kiến hoàn thành</th>
+                            <th>SLA / Tạo lúc</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="ticket : ${tickets}" th:id="'row-' + ${ticket.id}">
+                            <td><input type="checkbox" class="custom-checkbox"></td>
+                            <td class="fw-bold" style="color: #1e3a8a;" th:text="${ticket.getTicketCode()}">#T047</td>
+                            <td>
+                                <a href="javascript:void(0)" class="text-truncate-custom fw-bold text-decoration-none" style="color: #1e3a8a;"
+                                    th:title="${ticket.title}" th:text="${ticket.title}"
+                                    th:onclick="'openDetailModal(' + ${ticket.id} + ')'">Mất mạng toàn bộ tầng 2, nghi lỗi
+                                    switch</a>
+                            </td>
+                            <td>
+                                <span class="text-muted" style="font-size: 13px;">
+                                    <i th:class="${(categoryIcons[ticket.category] ?: 'fa-solid fa-tag')} + ' me-1'"></i>
+                                    <span th:text="${categoryLabels[ticket.category] ?: ticket.category}">Phần mềm</span>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="avatar"
+                                        th:style="'background: ' + (${ticket.reporterName.startsWith('N')} ? '#3b82f6' : (${ticket.reporterName.startsWith('V')} ? '#10b981' : '#f59e0b'))"
+                                        th:text="${#strings.substring(ticket.reporterName, 0, 1).toUpperCase()}">A</div>
+                                    <div>
+                                        <div class="fw-medium" th:text="${ticket.reporterName}">Nguyễn Văn A</div>
+                                        <div class="time-text" th:text="${ticket.reporterDepartment}">Kế toán</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge-custom view-mode-only"
+                                    th:classappend="${ticket.priority == 'HIGH'} ? 'badge-priority-high' : (${ticket.priority == 'MED'} ? 'badge-priority-med' : 'badge-priority-low')"
+                                    th:text="${ticket.priority}">HIGH</span>
+                                <select class="assign-select edit-mode-only fw-bold priority-select"
+                                    th:classappend="${ticket.priority == 'HIGH'} ? 'text-danger border-danger' : (${ticket.priority == 'MED'} ? 'text-warning border-warning' : 'text-success border-success')">
+                                    <option value="high" th:selected="${ticket.priority == 'HIGH'}">HIGH</option>
+                                    <option value="med" th:selected="${ticket.priority == 'MED'}">MED</option>
+                                    <option value="low" th:selected="${ticket.priority == 'LOW'}">LOW</option>
+                                </select>
+                            </td>
+                            <td>
+                                <span class="badge-custom"
+                                    th:classappend="${ticket.status == 'OPEN'} ? 'badge-status-open' : (${ticket.status == 'PROGRESS'} ? 'badge-status-progress' : 'badge-status-resolved')"
+                                    th:text="${ticket.status == 'OPEN' ? 'Open' : (ticket.status == 'PROGRESS' ? 'In Progress' : 'Resolved')}"
+                                    th:onclick="'openDetailModal(' + ${ticket.id} + ')'" style="cursor: pointer;" title="Nhấn để mở chi tiết & chỉnh sửa">Open</span>
+                            </td>
+                            <td>
+                                <select class="assign-select bg-light view-mode-only" disabled>
+                                    <option th:text="${ticket.assignee == null ? '-- Chưa có --'
+                                                     : (itNameByEmail[ticket.assignee] ?: ticket.assignee)}">-- Chưa có --</option>
+                                </select>
+                                <!-- Chỉ liệt kê IT thuộc đúng nhóm của danh mục ticket (danh mục = tên nhóm). -->
+                                <select class="assign-select edit-mode-only assignee-select">
+                                    <option value="" th:selected="${ticket.assignee == null}">-- Chọn --</option>
+                                    <option th:each="it : ${itStaff}"
+                                            th:if="${#lists.contains(it.groups, ticket.category)}"
+                                            th:value="${it.email}" th:text="${it.name}"
+                                            th:selected="${ticket.assignee == it.email}">Nhân viên IT</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div th:if="${ticket.estimatedCompletionTime != null}" class="text-primary fw-medium" style="font-size: 11.5px; background: #eff6ff; padding: 2px 6px; border-radius: 4px; display: inline-block; border: 1px solid #bfdbfe;" th:title="'Dự kiến hoàn thành: ' + ${#temporals.format(ticket.estimatedCompletionTime, 'HH:mm dd/MM/yyyy')}">
+                                    <i class="fa-solid fa-calendar-check me-1"></i><span th:text="${#temporals.format(ticket.estimatedCompletionTime, 'HH:mm dd/MM')}">15:30 01/07</span>
+                                </div>
+                                <div th:if="${ticket.estimatedCompletionTime == null}" class="text-muted" style="font-size: 12px;">
+                                    <i class="fa-regular fa-calendar-xmark me-1"></i>Chưa đặt lịch
+                                </div>
+                            </td>
+                            <td>
+                                <div th:if="${ticket.status != 'RESOLVED'}">
+                                    <div th:if="${#temporals.createNow().isAfter(ticket.slaDeadline)}"
+                                        class="text-danger fw-bold" style="font-size: 13px;">
+                                        <i class="fa-regular fa-clock me-1"></i>Quá hạn
+                                    </div>
+                                    <div th:if="${#temporals.createNow().isBefore(ticket.slaDeadline)}"
+                                        class="text-success fw-bold" style="font-size: 13px;">
+                                        <i class="fa-regular fa-clock me-1"></i>Còn hạn
+                                    </div>
+                                </div>
+                                <div th:if="${ticket.status == 'RESOLVED'}" class="text-muted fw-bold"
+                                    style="font-size: 13px;">
+                                    <i class="fa-regular fa-circle-check me-1"></i>Hoàn thành
+                                </div>
+                                <div class="time-text" th:text="${#temporals.format(ticket.createdAt, 'dd/MM HH:mm')}">
+                                    Hôm nay, 08:30</div>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(tickets)}">
+                            <td colspan="10" class="text-center py-4 text-muted">
+                                <i class="fa-regular fa-folder-open fs-2 mb-2 d-block"></i>
+                                Không tìm thấy ticket nào phù hợp.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PAGINATION -->
+            <div class="pagination-container border-top pt-3" th:if="${totalPages > 0}">
+                <div class="page-info">
+                    Trang <strong th:text="${currentPage + 1}">1</strong> / <strong th:text="${totalPages}">10</strong>
+                </div>
+                <nav th:if="${totalPages > 1}">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                            <a class="page-link" th:href="@{/ticket-management(tab=${currentTab}, search=${searchQuery}, page=${currentPage - 1})}">Trang trước</a>
+                        </li>
+                        
+                        <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}" 
+                            th:classappend="${currentPage == i} ? 'active'"
+                            th:if="${i >= currentPage - 2 and i <= currentPage + 2}">
+                            <a class="page-link" th:text="${i + 1}" th:href="@{/ticket-management(tab=${currentTab}, search=${searchQuery}, page=${i})}">1</a>
+                        </li>
+                        
+                        <li class="page-item" th:classappend="${currentPage + 1 == totalPages} ? 'disabled'">
+                            <a class="page-link" th:href="@{/ticket-management(tab=${currentTab}, search=${searchQuery}, page=${currentPage + 1})}">Tiếp theo</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+
+        </div> <!-- End widget-card -->
+    </div> <!-- End main-content -->
+
+    <!-- MODAL CHI TIẾT TICKET (PHƯƠNG ÁN 2) -->
+    <!-- Unified Modals Fragment -->
+    <div th:replace="~{fragments/ticket-modals :: ticketModals}"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <script th:inline="javascript">
+        const toggleBtn = document.getElementById('toggle-btn');
+        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+
+        mobileToggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            sidebar.classList.add('active');
+        });
+
+        toggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (window.innerWidth > 991) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            } else {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (window.innerWidth <= 991 && sidebar.classList.contains('active')) {
+                if (!sidebar.contains(e.target) && e.target !== mobileToggleBtn) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+
+        // Auto close sidebar when a menu item (e.g. Tạo Ticket) is clicked on mobile
+        document.querySelectorAll('.sidebar-menu a').forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth <= 991) {
+                    sidebar.classList.remove('active');
+                }
+            });
+        });
+
+        // Tab switching logic for demo
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', function () {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // INLINE EDIT LOGIC
+        function toggleEditMode(rowId, isEdit) {
+            const row = document.getElementById(rowId);
+            if (isEdit) {
+                const statusSelect = row.querySelector('.status-select');
+                if (statusSelect && statusSelect.value.toLowerCase() === 'resolved') {
+                    alert('Ticket này đã hoàn thành (Resolved) nên đã bị khóa, không cho phép chỉnh sửa!');
+                    return;
+                }
+                row.classList.add('inline-edit-mode');
+            } else {
+                row.classList.remove('inline-edit-mode');
+            }
+        }
+
+        function saveChanges(ticketId) {
+            const row = document.getElementById('row-' + ticketId);
+            const prioritySelect = row.querySelector('.priority-select');
+            const statusSelect = row.querySelector('.status-select');
+            const assigneeSelect = row.querySelector('.assignee-select');
+
+            const priority = prioritySelect.value;
+            const status = statusSelect.value;
+            const assignee = assigneeSelect.value;
+
+            const formData = new FormData();
+            formData.append('id', ticketId);
+            formData.append('priority', priority);
+            formData.append('status', status);
+            formData.append('assignee', assignee);
+
+            if (status.toLowerCase() === 'resolved') {
+                const fixNoteInput = prompt("🎉 Xác nhận hoàn thành công việc Ticket #" + ticketId + "\n\nVui lòng nhập ghi chú những gì bạn đã fix / khắc phục:", "Đã kiểm tra và khắc phục hoàn tất sự cố.");
+                if (fixNoteInput === null) {
+                    return; // User cancelled
+                }
+                formData.append('fixNote', fixNoteInput);
+            }
+
+            fetch('/ticket/update-inline', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.text())
+                .then(data => {
+                    if (data === 'success') {
+                        // Update View Mode elements
+                        // 1. Priority badge
+                        const pBadge = row.querySelector('.badge-custom.view-mode-only:not(.badge-status-open):not(.badge-status-progress):not(.badge-status-closed)');
+                        if (pBadge) {
+                            pBadge.innerText = priority.toUpperCase();
+                            pBadge.className = 'badge-custom view-mode-only';
+                            pBadge.classList.add(priority.toLowerCase() === 'high' ? 'badge-priority-high' : (priority.toLowerCase() === 'med' ? 'badge-priority-med' : 'badge-priority-low'));
+                        }
+
+                        // 2. Status badge
+                        const sBadge = row.querySelector('.badge-custom.view-mode-only:not(.badge-priority-high):not(.badge-priority-med):not(.badge-priority-low)');
+                        if (sBadge) {
+                            const statusText = status.toLowerCase() === 'open' ? 'Open' : (status.toLowerCase() === 'progress' ? 'In Progress' : 'Resolved');
+                            sBadge.innerText = statusText;
+                            sBadge.className = 'badge-custom view-mode-only';
+                            sBadge.classList.add(status.toLowerCase() === 'open' ? 'badge-status-open' : (status.toLowerCase() === 'progress' ? 'badge-status-progress' : 'badge-status-closed'));
+                        }
+
+                        // 3. Assignee disabled select
+                        const viewAssigneeSelect = row.querySelector('.assign-select.view-mode-only');
+                        if (viewAssigneeSelect) {
+                            viewAssigneeSelect.value = assignee;
+                        }
+
+        function onStatusChange(ticketId, selectEl) {
+            const newStatus = selectEl.value;
+            const row = document.getElementById('row-' + ticketId);
+            const prioritySelect = row ? row.querySelector('.priority-select') : null;
+            const assigneeSelect = row ? row.querySelector('.assignee-select') : null;
+            const priority = prioritySelect ? prioritySelect.value : 'low';
+            const assignee = assigneeSelect ? assigneeSelect.value : '';
+
+            const formData = new FormData();
+            formData.append('id', ticketId);
+            formData.append('status', newStatus);
+            if (priority) formData.append('priority', priority);
+            if (assignee) formData.append('assignee', assignee);
+
+            if (newStatus.toLowerCase() === 'resolved') {
+                formData.append('fixNote', 'Đã kiểm tra và khắc phục hoàn tất sự cố.');
+            }
+
+            fetch('/ticket/update-inline', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.text())
+            .then(data => {
+                if (data === 'success') {
+                    selectEl.className = 'assign-select fw-bold status-select shadow-sm ' + 
+                        (newStatus.toLowerCase() === 'open' ? 'text-warning border-warning' : 
+                         (newStatus.toLowerCase() === 'progress' ? 'text-primary border-primary' : 'text-success border-success'));
+                } else {
+                    alert('Lỗi cập nhật trạng thái!');
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Lỗi kết nối máy chủ!');
+                location.reload();
+            });
+        }
+
+        // Hiện ô nhập tên khác nếu chọn option "other"
+        function toggleCustomRequester() {
+            const select = document.getElementById('requesterSelect');
+            const input = document.getElementById('customRequesterInput');
+            if (select.value === 'other') {
+                input.style.display = 'block';
+                input.focus();
+            } else {
+                input.style.display = 'none';
+                input.value = '';
+            }
+        }
+
+        // ===== FILTER DRAWER TOGGLE =====
+        function toggleFilterDrawer() {
+            const drawer = document.getElementById('filterDrawer');
+            const btn = document.getElementById('toggleFilterBtn');
+            if (drawer) {
+                drawer.classList.toggle('show');
+                if (drawer.classList.contains('show')) {
+                    btn.classList.add('btn-filter-active');
+                    btn.classList.remove('btn-outline-secondary');
+                } else {
+                    btn.classList.remove('btn-filter-active');
+                    btn.classList.add('btn-outline-secondary');
+                }
+            }
+        }
+
+        // ===== EXPORT EXCEL =====
+        function exportToExcel() {
+            const params = new URLSearchParams();
+
+            const filterStatus = document.getElementById('filterStatus');
+            const filterPriority = document.getElementById('filterPriority');
+            const filterCategory = document.getElementById('filterCategory');
+            const filterAssignee = document.getElementById('filterAssignee');
+            const dateFrom = document.getElementById('dateFrom');
+            const dateTo = document.getElementById('dateTo');
+            const searchInput = document.getElementById('searchInput');
+
+            if (filterStatus && filterStatus.value) params.append('filterStatus', filterStatus.value);
+            if (filterPriority && filterPriority.value) params.append('filterPriority', filterPriority.value);
+            if (filterCategory && filterCategory.value) params.append('filterCategory', filterCategory.value);
+            if (filterAssignee && filterAssignee.value) params.append('filterAssignee', filterAssignee.value);
+            if (dateFrom && dateFrom.value) params.append('dateFrom', dateFrom.value);
+            if (dateTo && dateTo.value) params.append('dateTo', dateTo.value);
+            if (searchInput && searchInput.value) params.append('search', searchInput.value);
+
+            const url = '/ticket/export-excel?' + params.toString();
+
+            // Hiệu ứng loading trên button
+            const btn = document.getElementById('exportExcelBtn');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span class="d-none d-md-inline ms-1">Đang xuất...</span>';
+            btn.disabled = true;
+
+            // Trigger download
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Restore button after short delay
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }, 2000);
+        }
+
+    </script>
+
+
+    <!-- Success Modal Fragment -->
+    <div th:replace="~{success-modal :: successModal}"></div>
+</body>
+
+</html>

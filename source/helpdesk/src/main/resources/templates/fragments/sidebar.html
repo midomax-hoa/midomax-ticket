@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div th:fragment="sidebar(activePage)" class="sidebar" id="sidebar">
+    <style>
+        .quantum-toggle {
+            --uib-size: 28px;
+            --uib-color: #1e3a8a;
+            --uib-speed: 1.75s;
+            position: relative;
+            height: var(--uib-size);
+            width: var(--uib-size);
+            animation: rotate calc(var(--uib-speed) * 4) linear infinite;
+            cursor: pointer;
+            margin-right: 12px;
+            flex-shrink: 0;
+            display: inline-block;
+        }
+
+        @keyframes rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .quantum-toggle .particle { position: absolute; top: 0%; left: 0; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
+        .quantum-toggle .particle:nth-child(1) { --uib-delay: 0; transform: rotate(8deg); }
+        .quantum-toggle .particle:nth-child(2) { --uib-delay: -0.4; transform: rotate(36deg); }
+        .quantum-toggle .particle:nth-child(3) { --uib-delay: -0.9; transform: rotate(72deg); }
+        .quantum-toggle .particle:nth-child(4) { --uib-delay: -0.5; transform: rotate(90deg); }
+        .quantum-toggle .particle:nth-child(5) { --uib-delay: -0.3; transform: rotate(144deg); }
+        .quantum-toggle .particle:nth-child(6) { --uib-delay: -0.2; transform: rotate(180deg); }
+        .quantum-toggle .particle:nth-child(7) { --uib-delay: -0.6; transform: rotate(216deg); }
+        .quantum-toggle .particle:nth-child(8) { --uib-delay: -0.7; transform: rotate(252deg); }
+        .quantum-toggle .particle:nth-child(9) { --uib-delay: -0.1; transform: rotate(300deg); }
+        .quantum-toggle .particle:nth-child(10) { --uib-delay: -0.8; transform: rotate(324deg); }
+        .quantum-toggle .particle:nth-child(11) { --uib-delay: -1.2; transform: rotate(335deg); }
+        .quantum-toggle .particle:nth-child(12) { --uib-delay: -0.5; transform: rotate(290deg); }
+        .quantum-toggle .particle:nth-child(13) { --uib-delay: -0.2; transform: rotate(240deg); }
+
+        .quantum-toggle .particle::before {
+            content: ''; position: absolute; height: 17.5%; width: 17.5%; border-radius: 50%;
+            background-color: var(--uib-color); flex-shrink: 0; transition: background-color 0.3s ease;
+            --uib-d: calc(var(--uib-delay) * var(--uib-speed));
+            animation: orbit var(--uib-speed) linear var(--uib-d) infinite;
+        }
+
+        @keyframes orbit {
+            0% { transform: translate(calc(var(--uib-size) * 0.5)) scale(0.73684); opacity: 0.65; }
+            5% { transform: translate(calc(var(--uib-size) * 0.4)) scale(0.684208); opacity: 0.58; }
+            10% { transform: translate(calc(var(--uib-size) * 0.3)) scale(0.631576); opacity: 0.51; }
+            15% { transform: translate(calc(var(--uib-size) * 0.2)) scale(0.578944); opacity: 0.44; }
+            20% { transform: translate(calc(var(--uib-size) * 0.1)) scale(0.526312); opacity: 0.37; }
+            25% { transform: translate(0%) scale(0.47368); opacity: 0.3; }
+            30% { transform: translate(calc(var(--uib-size) * -0.1)) scale(0.526312); opacity: 0.37; }
+            35% { transform: translate(calc(var(--uib-size) * -0.2)) scale(0.578944); opacity: 0.44; }
+            40% { transform: translate(calc(var(--uib-size) * -0.3)) scale(0.631576); opacity: 0.51; }
+            45% { transform: translate(calc(var(--uib-size) * -0.4)) scale(0.684208); opacity: 0.58; }
+            50% { transform: translate(calc(var(--uib-size) * -0.5)) scale(0.73684); opacity: 0.65; }
+            55% { transform: translate(calc(var(--uib-size) * -0.4)) scale(0.789472); opacity: 0.72; }
+            60% { transform: translate(calc(var(--uib-size) * -0.3)) scale(0.842104); opacity: 0.79; }
+            65% { transform: translate(calc(var(--uib-size) * -0.2)) scale(0.894736); opacity: 0.86; }
+            70% { transform: translate(calc(var(--uib-size) * -0.1)) scale(0.947368); opacity: 0.93; }
+            75% { transform: translate(0%) scale(1); opacity: 1; }
+            80% { transform: translate(calc(var(--uib-size) * 0.1)) scale(0.947368); opacity: 0.93; }
+            85% { transform: translate(calc(var(--uib-size) * 0.2)) scale(0.894736); opacity: 0.86; }
+            90% { transform: translate(calc(var(--uib-size) * 0.3)) scale(0.842104); opacity: 0.79; }
+            95% { transform: translate(calc(var(--uib-size) * 0.4)) scale(0.789472); opacity: 0.72; }
+            100% { transform: translate(calc(var(--uib-size) * 0.5)) scale(0.73684); opacity: 0.65; }
+        }
+
+/* SIDEBAR CSS - ORIGINAL COLORS WITH GOOEY NOTCH */
+        .sidebar {
+            width: 260px;
+            background: #ffffff;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            z-index: 1000;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            overflow-x: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none; /* Chrome/Safari/Opera */
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding-left: 25px;
+            position: relative; /* mốc toạ độ cho chim Kami bay quanh logo */
+        }
+
+        #toggle-btn {
+            cursor: pointer;
+            color: #4b5563;
+            font-size: 20px;
+            transition: 0.2s;
+            padding: 5px;
+        }
+
+        #toggle-btn:hover {
+            color: #1e3a8a;
+            transform: scale(1.1);
+        }
+
+        .brand-text {
+            color: #1e3a8a;
+            font-weight: 800;
+            font-size: 22px;
+            letter-spacing: 1px;
+            margin: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            gap: 5px;
+            position: relative;
+        }
+
+        .sidebar-menu a {
+            position: relative;
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            color: #4b5563;
+            font-size: 15px;
+            text-decoration: none;
+            transition: 0.3s;
+            padding-left: 25px;
+            font-weight: 600;
+        }
+
+        .sidebar-menu a:hover {
+            color: #1e3a8a;
+            background: #f8fafc;
+        }
+
+        .sidebar-menu a span {
+            display: inline-block;
+            margin-left: 15px;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar-menu a .icon-wrapper {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            transition: 0.3s;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        /* The Gooey Notch Effect for Active Item */
+        .sidebar-menu a.active {
+            color: #1e3a8a;
+            background: #e2e8f0; /* Blends with body background */
+            border-radius: 30px 0 0 30px;
+            margin-left: 20px; /* Leaves a 20px white strip on the left */
+            padding-left: 5px; /* Adjust padding to keep icon aligned (20+5 = 25px) */
+            width: calc(100% - 20px + 2px); /* Overlap right side */
+            margin-right: -2px;
+            z-index: 10;
+        }
+
+        .sidebar-menu a.active:hover {
+            background: #e2e8f0;
+        }
+
+        /* Top outer curve */
+        .sidebar-menu a.active::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border-radius: 0 0 20px 0;
+            box-shadow: 10px 10px 0 10px #e2e8f0;
+        }
+
+        /* Bottom outer curve */
+        .sidebar-menu a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border-radius: 0 20px 0 0;
+            box-shadow: 10px -10px 0 10px #e2e8f0;
+        }
+
+        /* The circle inside the active notch */
+        .sidebar-menu a.active .icon-wrapper {
+            background: #eff6ff; /* Original light blue active color */
+            color: #1e3a8a;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.1);
+        }
+
+        /* Collapsed Sidebar styles */
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            padding-left: 0;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .sidebar-menu a span {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-menu a {
+            padding-left: 20px;
+        }
+
+        .sidebar.collapsed .sidebar-menu a.active {
+            margin-left: 10px;
+            padding-left: 10px;
+            width: calc(100% - 10px + 2px);
+        }
+
+        /* ACCOUNT SECTION AT BOTTOM */
+        .sidebar-bottom {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 25px;
+            background: transparent;
+            text-decoration: none;
+            transition: 0.3s;
+            cursor: pointer;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .sidebar-bottom:hover {
+            background: #f8fafc;
+        }
+
+        .sidebar-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+        }
+
+        .sidebar-user-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar-user-name {
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .sidebar-logout {
+            margin-left: auto;
+            color: #94a3b8;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        
+        .sidebar-bottom:hover .sidebar-logout {
+            color: #ef4444;
+            transform: translateX(3px);
+        }
+
+        .sidebar.collapsed .sidebar-bottom {
+            padding: 15px 0;
+            justify-content: center;
+        }
+        
+        .sidebar.collapsed .sidebar-user-info,
+        .sidebar.collapsed .sidebar-logout {
+            display: none;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 30px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
+
+        .topbar {
+            background: #ffffff;
+            padding: 15px 30px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e5e7eb;
+        }
+
+        .admin-badge {
+            border: 1px solid #e5e7eb;
+            color: #1e3a8a;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+        }
+
+        /* WELCOME BANNER */
+        .welcome-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            border-radius: 20px;
+            padding: 40px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .welcome-banner::after {
+            content: '\f5fc';
+            /* fa-laptop-code */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: -20px;
+            bottom: -40px;
+            font-size: 180px;
+            color: rgba(255, 255, 255, 0.1);
+            transform: rotate(-15deg);
+        }
+
+        .welcome-banner h1 {
+            font-weight: 800;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .welcome-banner p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 0;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        /* QUICK ACTION CARDS */
+        .section-title {
+            font-weight: 800;
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: #3b82f6;
+        }
+
+        .quick-action-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            display: block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            height: 100%;
+        }
+
+        .quick-action-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1);
+            border-color: #bfdbfe;
+        }
+
+        .qa-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .quick-action-card:hover .qa-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .qa-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #1e3a8a;
+        }
+
+        .qa-desc {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Icon Colors */
+        .ic-dashboard {
+            background: #eff6ff;
+            color: #3b82f6;
+        }
+
+        .ic-ticket {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .ic-network {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .ic-asset {
+            background: #fef9c3;
+            color: #eab308;
+        }
+
+        .ic-hr {
+            background: #f3e8ff;
+            color: #a855f7;
+        }
+
+        .ic-user {
+            background: #ffedd5;
+            color: #f97316;
+        }
+
+        @media (max-width: 991px) {
+            #mobile-toggle-btn {
+                display: block !important;
+            }
+
+            .sidebar {
+                left: -100% !important;
+                width: 80% !important;
+                max-width: 320px;
+                transition: all 0.3s ease !important;
+                z-index: 9999 !important;
+            }
+
+            .sidebar.active {
+                left: 0 !important;
+                box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5) !important;
+            }
+        }
+
+        /* ============================================================
+           CHIM KAMI HÚT MẬT — hiệu ứng khi rê chuột vào logo MIDOMAX
+           Chim đỏ Kamito bay vào từ phải, quạt cánh đứng yên hút mật ở
+           cuối chữ MIDOMAX, vòng lên sang trái hút tiếp ở cụm hạt, rồi
+           lượn xuống bay ra. Thuần SVG + CSS, không thư viện ngoài.
+           Toạ độ tính từ mép trái .sidebar-header (nội dung bắt đầu ở 25px,
+           cụm hạt 28px, chữ MIDOMAX kết thúc khoảng 198px).
+           ============================================================ */
+
+        .kami-bird {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 28px;
+            height: 28px;
+            margin-top: -14px;
+            pointer-events: none; /* không chặn click nút thu gọn */
+            opacity: 0;
+            z-index: 5;
+            animation: kami-orbit 6s linear infinite;
+        }
+
+        .kami-flip {
+            display: block;
+            width: 100%;
+            height: 100%;
+            animation: kami-facing 6s step-end infinite;
+        }
+
+        .kami-bird svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            animation: kami-bob .42s ease-in-out infinite alternate;
+        }
+
+        /* lớp chúi đầu: gập mỏ xuống lúc hút mật, ngẩng lên khi đang bay */
+        .kami-tilt {
+            display: block;
+            width: 100%;
+            height: 100%;
+            animation: kami-tilt 6s ease-in-out infinite;
+        }
+
+        /* bộ lông xanh ánh kim của chim hút mật */
+        .kami-body      { fill: url(#kamiBodyGrad); }
+        .kami-wing-near { fill: url(#kamiWingGrad); }
+        .kami-wing-far  { fill: #115e59; opacity: .75; }
+        .kami-tail      { fill: #115e59; }
+        .kami-throat    { fill: #ef4444; }        /* ức đỏ cam như chim thật */
+        .kami-beak      { fill: #1f2937; }        /* mỏ đen, dài và cong chúc xuống */
+        .kami-eye       { fill: #ffffff; }
+        .kami-blur      { fill: #10b981; opacity: .14; }
+
+        .kami-wing-near,
+        .kami-wing-far {
+            transform-origin: 32px 26px; /* khớp vai */
+            animation: kami-beat .085s ease-in-out infinite alternate;
+        }
+
+        .kami-wing-far { animation-delay: .022s; }
+
+        .kami-nectar {
+            position: absolute;
+            top: 50%;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #fbbf24; /* giọt mật vàng */
+            pointer-events: none;
+            opacity: 0;
+            z-index: 5;
+        }
+
+        .kami-n1        { left: 198px; animation: kami-sip1 6s linear infinite; }
+        .kami-n1.kami-b { left: 204px; animation-delay: .12s; width: 3.5px; height: 3.5px; }
+        .kami-n1.kami-c { left: 193px; animation-delay: .24s; width: 3px;   height: 3px; }
+
+        /* chim đứng bên trái cụm hạt và chúi mỏ sang phải nên giọt mật nằm ngay trên cụm hạt */
+        .kami-n2        { left: 40px; animation: kami-sip2 6s linear infinite; }
+        .kami-n2.kami-b { left: 46px; animation-delay: .12s; width: 3.5px; height: 3.5px; }
+        .kami-n2.kami-c { left: 35px; animation-delay: .24s; width: 3px;   height: 3px; }
+
+        @keyframes kami-orbit {
+            0%   { transform: translate(248px, 2px);  opacity: 0; }
+            5%   { transform: translate(226px, -2px); opacity: 1; }
+            14%  { transform: translate(212px, -6px); }
+            20%  { transform: translate(198px, 5px); }
+            22%  { transform: translate(197px, 7px); }
+            30%  { transform: translate(195px, 8px); }
+            34%  { transform: translate(189px, 0px); }
+            43%  { transform: translate(134px, -16px); }
+            52%  { transform: translate(66px, -8px); }
+            58%  { transform: translate(30px, 2px); }
+            60%  { transform: translate(24px, 5px); }
+            68%  { transform: translate(22px, 7px); }
+            73%  { transform: translate(38px, 17px); }
+            83%  { transform: translate(120px, 22px); }
+            93%  { transform: translate(210px, 12px); opacity: 1; }
+            100% { transform: translate(252px, 5px); opacity: 0; }
+        }
+
+        /* Bay từ phải sang nên quay mặt trái. Tới sát cụm hạt (58%) thì quay đầu
+           sang phải để chúi mỏ vào đúng cụm hạt, rồi giữ hướng đó bay về. */
+        @keyframes kami-facing {
+            0%   { transform: scaleX(-1); }
+            58%  { transform: scaleX(1); }
+            100% { transform: scaleX(1); }
+        }
+
+        /* Chúi mỏ xuống đúng hai lúc hút mật, còn lại ngẩng đầu bay bình thường.
+           Góc dương luôn cho ra "mỏ chúc xuống" ở cả hai hướng mặt, vì lớp lật
+           scaleX nằm ngoài nên phép quay bị soi gương theo. */
+        @keyframes kami-tilt {
+            0%, 15%   { transform: rotate(6deg); }
+            21%, 31%  { transform: rotate(40deg); }  /* hút mật lần 1 */
+            38%, 54%  { transform: rotate(-8deg); }  /* vút lên, ngẩng đầu */
+            60%, 69%  { transform: rotate(40deg); }  /* hút mật lần 2 */
+            76%, 100% { transform: rotate(4deg); }
+        }
+
+        @keyframes kami-bob {
+            from { transform: translateY(-1.5px); }
+            to   { transform: translateY(1.5px); }
+        }
+
+        /* xòe lên cao rồi quạt xuống, biên độ rộng như chim bay đứng */
+        @keyframes kami-beat {
+            from { transform: rotate(26deg) scaleY(1); }
+            to   { transform: rotate(-36deg) scaleY(.8); }
+        }
+
+        @keyframes kami-sip1 {
+            0%, 21% { opacity: 0;   transform: translate(0, 0) scale(.4); }
+            25%     { opacity: .95; transform: translate(1px, -7px) scale(1); }
+            33%     { opacity: 0;   transform: translate(3px, -14px) scale(.4); }
+            100%    { opacity: 0; }
+        }
+
+        @keyframes kami-sip2 {
+            0%, 59% { opacity: 0;   transform: translate(0, 0) scale(.4); }
+            63%     { opacity: .95; transform: translate(-1px, -7px) scale(1); }
+            71%     { opacity: 0;   transform: translate(-3px, -14px) scale(.4); }
+            100%    { opacity: 0; }
+        }
+
+        /* chỉ chạy khi rê chuột vào logo (hoặc Tab tới bằng bàn phím) */
+        .sidebar-header .kami-bird,
+        .sidebar-header .kami-flip,
+        .sidebar-header .kami-tilt,
+        .sidebar-header .kami-bird svg,
+        .sidebar-header .kami-wing-near,
+        .sidebar-header .kami-wing-far,
+        .sidebar-header .kami-nectar {
+            animation-play-state: paused;
+        }
+
+        .sidebar-header:hover .kami-bird,
+        .sidebar-header:hover .kami-flip,
+        .sidebar-header:hover .kami-tilt,
+        .sidebar-header:hover .kami-bird svg,
+        .sidebar-header:hover .kami-wing-near,
+        .sidebar-header:hover .kami-wing-far,
+        .sidebar-header:hover .kami-nectar,
+        .sidebar-header:focus-within .kami-bird,
+        .sidebar-header:focus-within .kami-flip,
+        .sidebar-header:focus-within .kami-tilt,
+        .sidebar-header:focus-within .kami-bird svg,
+        .sidebar-header:focus-within .kami-wing-near,
+        .sidebar-header:focus-within .kami-wing-far,
+        .sidebar-header:focus-within .kami-nectar {
+            animation-play-state: running;
+        }
+
+        /* Thu gọn sidebar: chữ MIDOMAX bị ẩn nên tắt hiệu ứng, tránh chim bay vào chỗ trống */
+        .sidebar.collapsed .kami-bird,
+        .sidebar.collapsed .kami-nectar {
+            display: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .kami-bird {
+                animation: none;
+                transform: translate(198px, 6px);
+            }
+            .kami-flip { animation: none; transform: scaleX(-1); }
+            .kami-tilt { animation: none; transform: rotate(40deg); }
+            .kami-bird svg,
+            .kami-wing-near,
+            .kami-wing-far,
+            .kami-nectar { animation: none; }
+            .sidebar-header:hover .kami-bird,
+            .sidebar-header:focus-within .kami-bird { opacity: 1; }
+        }
+    </style>
+        <div class="sidebar-header">
+            <div class="quantum-toggle" id="toggle-btn">
+                <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+            </div>
+            <span class="brand-text">MIDOMAX</span>
+
+            <!-- Chim Kami hút mật: hiện & bay khi rê chuột vào logo. Xem CSS ".kami-*" phía trên. -->
+            <span class="kami-bird" aria-hidden="true">
+                <span class="kami-flip">
+                    <span class="kami-tilt">
+                        <svg viewBox="0 0 64 64" focusable="false">
+                            <defs>
+                                <linearGradient id="kamiBodyGrad" x1="0" y1="1" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#0e7490" />
+                                    <stop offset="52%" stop-color="#059669" />
+                                    <stop offset="100%" stop-color="#34d399" />
+                                </linearGradient>
+                                <linearGradient id="kamiWingGrad" x1="0" y1="1" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="#134e4a" />
+                                    <stop offset="100%" stop-color="#0e7490" />
+                                </linearGradient>
+                            </defs>
+                            <ellipse class="kami-blur" cx="27" cy="15" rx="12.5" ry="17" transform="rotate(-14 27 15)" />
+                            <path class="kami-wing-far" d="M31 27 C26 19 24 9 15 2 C29 5 36 13 35 26 Z" />
+                            <path class="kami-tail" d="M25 35.5 C20.5 40.5 15.5 47 10.5 54 C12 46 16 39.5 21.5 34.5 Z" />
+                            <path class="kami-body" d="M45 24 C43 20.5 38.5 19.5 34 21 C29 23 25 27.5 23 32 C22 34.5 23.5 36 25.5 35 C31 33 40 29 45 24 Z" />
+                            <path class="kami-throat" d="M41 25.5 C38.5 28.5 35.5 30.5 32.5 31.2 C35 28.2 37.8 26.4 40.5 24.8 Z" />
+                            <path class="kami-wing-near" d="M32 26 C28 17 29 7 21 0 C35 3 41 13 39 25 Z" />
+                            <path class="kami-beak" d="M44.5 23.5 C50 26 55.5 30.5 60.5 37 C55 33 49.5 29.5 43.5 27 Z" />
+                            <circle class="kami-eye" cx="40" cy="23.5" r="1.3" />
+                        </svg>
+                    </span>
+                </span>
+            </span>
+            <span class="kami-nectar kami-n1" aria-hidden="true"></span>
+            <span class="kami-nectar kami-n1 kami-b" aria-hidden="true"></span>
+            <span class="kami-nectar kami-n1 kami-c" aria-hidden="true"></span>
+            <span class="kami-nectar kami-n2" aria-hidden="true"></span>
+            <span class="kami-nectar kami-n2 kami-b" aria-hidden="true"></span>
+            <span class="kami-nectar kami-n2 kami-c" aria-hidden="true"></span>
+        </div>
+        
+        <!-- Menu Items -->
+        <div class="sidebar-menu">
+            <a href="/" th:classappend="${activePage == 'home'} ? 'active' : ''" title="Trang chủ">
+                <div class="icon-wrapper"><i class="fa-solid fa-house"></i></div>
+                <span>Trang chủ</span>
+            </a>
+            <a href="/dashboard" th:classappend="${activePage == 'dashboard'} ? 'active' : ''" title="Dashboard">
+                <div class="icon-wrapper"><i class="fa-solid fa-chart-pie"></i></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/ticket-management" th:classappend="${activePage == 'ticket'} ? 'active' : ''" title="Quản lý Ticket">
+                <div class="icon-wrapper"><i class="fa-solid fa-ticket"></i></div>
+                <span>Quản lý Ticket</span>
+            </a>
+            <a href="/ticket-management" data-bs-toggle="modal" data-bs-target="#createTicketModal" title="Tạo Ticket" sec:authorize="!hasRole('ADMIN')">
+                <div class="icon-wrapper"><i class="fa-solid fa-circle-plus"></i></div>
+                <span>Tạo Ticket</span>
+            </a>
+            <a href="#" th:classappend="${activePage == 'network'} ? 'active' : ''" title="Mạng" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                <div class="icon-wrapper"><i class="fa-solid fa-network-wired"></i></div>
+                <span>Mạng</span>
+            </a>
+            <!-- Trong IT chỉ nhóm helpdesk thấy Công Cụ Dụng Cụ; luật này khớp với SecurityConfig. -->
+            <a href="/assets" th:classappend="${activePage == 'tools'} ? 'active' : ''" title="Công Cụ Dụng Cụ" sec:authorize="hasAnyRole('ADMIN', 'MANAGER') or hasAuthority('GROUP_HELPDESK')">
+                <div class="icon-wrapper"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <span>Công Cụ Dụng Cụ</span>
+            </a>
+            <!-- Quản Lý Tài Chính là menu cha; Sổ Hóa Đơn nằm trong nó, không đặt ngang hàng.
+                 Mở sẵn submenu khi đang ở bất kỳ trang con nào của tài chính. -->
+            <a href="#financeSubmenu" data-bs-toggle="collapse"
+               th:aria-expanded="${activePage == 'expenses' or activePage == 'invoices'} ? 'true' : 'false'"
+               th:classappend="${activePage == 'expenses' or activePage == 'invoices'} ? '' : 'collapsed'"
+               title="Quản Lý Tài Chính" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
+               style="justify-content: space-between; padding-right: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-wrapper"><i class="fa-solid fa-wallet"></i></div>
+                    <span>Quản Lý Tài Chính</span>
+                </div>
+                <i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+            </a>
+            <div class="collapse" id="financeSubmenu"
+                 th:classappend="${activePage == 'expenses' or activePage == 'invoices'} ? 'show' : ''"
+                 sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                <a href="/expenses" th:classappend="${activePage == 'expenses'} ? 'active' : ''" title="Quỹ Chi Tiêu"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-sack-dollar"></i></div>
+                    <span>Quỹ Chi Tiêu</span>
+                </a>
+                <a href="/expenses/invoices" th:classappend="${activePage == 'invoices'} ? 'active' : ''" title="Sổ Hóa Đơn"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-receipt"></i></div>
+                    <span>Sổ Hóa Đơn</span>
+                </a>
+            </div>
+            <a href="/schedule" th:classappend="${activePage == 'schedule'} ? 'active' : ''" title="Lịch Trình">
+                <div class="icon-wrapper"><i class="fa-solid fa-calendar-check"></i></div>
+                <span>Lịch Trình</span>
+            </a>
+            <a href="/work-reports" th:classappend="${activePage == 'work-reports'} ? 'active' : ''" title="Báo Cáo Công Việc" sec:authorize="hasAnyRole('ADMIN', 'IT', 'MANAGER')">
+                <div class="icon-wrapper"><i class="fa-solid fa-layer-group"></i></div>
+                <span>Báo Cáo Công Việc</span>
+            </a>
+            <a href="/employees" th:classappend="${activePage == 'employees'} ? 'active' : ''" title="Quản Lý Nhân Sự" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                <div class="icon-wrapper"><i class="fa-solid fa-user-tie"></i></div>
+                <span>Quản Lý Nhân Sự</span>
+            </a>
+
+            <div style="margin: 10px 25px; border-top: 1px solid #e5e7eb;" sec:authorize="hasRole('ADMIN')"></div>
+
+            <a href="#userSubmenu" data-bs-toggle="collapse" th:aria-expanded="${activePage == 'users'} ? 'true' : 'false'" th:classappend="${activePage == 'users'} ? '' : 'collapsed'" title="Quản Lý User" sec:authorize="hasRole('ADMIN')" style="justify-content: space-between; padding-right: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-wrapper"><i class="fa-solid fa-users-gear"></i></div>
+                    <span>Quản Lý User</span>
+                </div>
+                <i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+            </a>
+            <div class="collapse" id="userSubmenu" th:classappend="${activePage == 'users'} ? 'show' : ''" sec:authorize="hasRole('ADMIN')">
+                <a href="/admin/users" th:classappend="${activePage == 'users'} ? 'active' : ''" title="Phân Quyền User" style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-user-shield"></i></div>
+                    <span>Phân Quyền User</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Bottom Account -->
+        <a th:href="@{/logout}" class="sidebar-bottom" title="Đăng xuất">
+            <div class="sidebar-avatar">
+                <span th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</span>
+            </div>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name" th:text="${#authentication.name}">Username</span>
+                <span class="sidebar-user-role" th:text="${#authentication.authorities[0].authority}">Role</span>
+            </div>
+            <i class="fa-solid fa-right-from-bracket ms-auto" style="color: #ef4444; font-size: 16px;"></i>
+        </a>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggle-btn');
+    const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('main-content');
+
+    if (mobileToggleBtn) {
+        mobileToggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            sidebar.classList.add('active');
+        });
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (window.innerWidth > 991) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            } else {
+                sidebar.classList.remove('active');
+            }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (window.innerWidth <= 991 && sidebar.classList.contains('active')) {
+            if (!sidebar.contains(e.target) && e.target !== mobileToggleBtn) {
+                sidebar.classList.remove('active');
+            }
+        }
+    });
+
+    // Auto close sidebar when a menu item is clicked on mobile
+    document.querySelectorAll('.sidebar-menu a').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 991) {
+                sidebar.classList.remove('active');
+            }
+        });
+    });
+
+    // ==========================================
+    // GLOBAL NOTIFICATION BELL SYSTEM
+    // ==========================================
+    const notifDropdown = document.getElementById('global-notif-dropdown');
+    const notifContainer = document.getElementById('notif-list-container');
+    const badgeTitle = document.getElementById('notif-unread-badge-title');
+    const markAllReadBtn = document.getElementById('mark-all-read-btn');
+    let badgesList = [];
+
+    function formatTimeAgo(dateStr) {
+        if (!dateStr) return 'Vừa xong';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Vừa xong';
+        if (diffMins < 60) return diffMins + ' phút trước';
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return diffHours + ' giờ trước';
+        const diffDays = Math.floor(diffHours / 24);
+        return diffDays + ' ngày trước';
+    }
+
+    function getNotifIcon(type) {
+        if (type === 'TICKET_CREATED') return 'fa-ticket text-primary';
+        if (type === 'TICKET_ASSIGNED') return 'fa-user-check text-warning';
+        if (type === 'TICKET_RESOLVED') return 'fa-check-circle text-success';
+        return 'fa-bell text-info';
+    }
+
+    function loadUnreadCount() {
+        fetch('/api/notifications/unread-count')
+            .then(r => r.json())
+            .then(data => {
+                const count = data.count || 0;
+                if (badgeTitle) badgeTitle.textContent = count + ' mới';
+                badgesList.forEach(b => {
+                    if (count > 0) {
+                        b.style.display = 'inline-block';
+                        b.textContent = count > 99 ? '99+' : count;
+                    } else {
+                        b.style.display = 'none';
+                    }
+                });
+            })
+            .catch(err => console.log('Notif error:', err));
+    }
+
+    function loadNotificationsList() {
+        if (!notifContainer) return;
+        notifContainer.innerHTML = '<div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải thông báo...</div>';
+        fetch('/api/notifications/list')
+            .then(r => r.json())
+            .then(list => {
+                if (!list || list.length === 0) {
+                    notifContainer.innerHTML = '<div class="text-center py-5 text-muted"><i class="fa-regular fa-bell-slash fs-3 mb-2 d-block"></i>Không có thông báo nào</div>';
+                    return;
+                }
+                let html = '';
+                list.forEach(item => {
+                    const bgStyle = item.readStatus ? 'background: #ffffff;' : 'background: #eff6ff; border-left: 4px solid #3b82f6;';
+                    const iconBg = item.readStatus ? '#f1f5f9' : '#dbeafe';
+                    html += `
+                    <div class="notif-item p-3 border-bottom d-flex align-items-start gap-3" style="transition: 0.2s; cursor: pointer; ${bgStyle}" onclick="handleNotifClick(${item.id}, '${item.linkUrl || '/ticket-management'}')">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px; background: ${iconBg};">
+                            <i class="fa-solid ${getNotifIcon(item.type)} fs-6"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <h6 class="m-0 fw-bold text-truncate" style="font-size: 13px; color: #1e293b;">${item.title}</h6>
+                                <small class="text-muted flex-shrink-0 ms-2" style="font-size: 11px;">${formatTimeAgo(item.createdAt)}</small>
+                            </div>
+                            <p class="m-0 text-muted" style="font-size: 12px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${item.message}</p>
+                        </div>
+                    </div>`;
+                });
+                notifContainer.innerHTML = html;
+            })
+            .catch(err => {
+                notifContainer.innerHTML = '<div class="text-center py-4 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Lỗi tải thông báo</div>';
+            });
+    }
+
+    window.handleNotifClick = function(id, url) {
+        fetch('/api/notifications/mark-read/' + id, { method: 'POST' })
+            .then(() => {
+                loadUnreadCount();
+                window.location.href = url;
+            })
+            .catch(() => { window.location.href = url; });
+    };
+
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fetch('/api/notifications/mark-read', { method: 'POST' })
+                .then(() => {
+                    loadUnreadCount();
+                    loadNotificationsList();
+                });
+        });
+    }
+
+    // Move notif dropdown to body so it is not clipped by sidebar overflow or positioning
+    if (notifDropdown && notifDropdown.parentElement !== document.body) {
+        document.body.appendChild(notifDropdown);
+    }
+
+    // Initialize all bell icons on the page
+    document.querySelectorAll('.fa-bell').forEach(bell => {
+        if (!bell.parentElement.classList.contains('position-relative')) {
+            bell.parentElement.style.position = 'relative';
+        }
+        let badge = document.createElement('span');
+        badge.className = 'position-absolute badge rounded-pill bg-danger notif-pulse-dot';
+        badge.style.cssText = 'top: -6px; right: -8px; font-size: 10px; padding: 2px 5px; display: none; z-index: 10; border: 2px solid white;';
+        bell.parentElement.appendChild(badge);
+        badgesList.push(badge);
+
+        bell.style.cursor = 'pointer';
+        bell.setAttribute('title', 'Thông báo hệ thống');
+        bell.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!notifDropdown) return;
+            if (notifDropdown.parentElement !== document.body) {
+                document.body.appendChild(notifDropdown);
+            }
+            const rect = bell.getBoundingClientRect();
+            notifDropdown.style.top = (rect.bottom + 12) + 'px';
+            const leftPos = Math.min(rect.right - 370, window.innerWidth - 390);
+            notifDropdown.style.left = Math.max(10, leftPos) + 'px';
+            
+            if (notifDropdown.style.display === 'none' || notifDropdown.style.display === '') {
+                notifDropdown.style.display = 'block';
+                loadNotificationsList();
+            } else {
+                notifDropdown.style.display = 'none';
+            }
+        });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (notifDropdown && notifDropdown.style.display === 'block') {
+            if (!notifDropdown.contains(e.target) && !e.target.classList.contains('fa-bell') && !e.target.closest('.fa-bell')) {
+                notifDropdown.style.display = 'none';
+            }
+        }
+    });
+
+    loadUnreadCount();
+    setInterval(loadUnreadCount, 30000);
+});
+</script>
+<style>
+@keyframes notifPulseAnimation {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.notif-pulse-dot {
+    animation: notifPulseAnimation 2s infinite;
+}
+.notif-item:hover {
+    background-color: #f1f5f9 !important;
+}
+</style>
+<!-- GLOBAL NOTIFICATION DROPDOWN MENU -->
+<div id="global-notif-dropdown" class="shadow-lg rounded-4 border-0" style="display: none; position: fixed; top: 70px; right: 25px; width: 380px; max-height: 520px; background: white; z-index: 999999; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2) !important; border: 1px solid #cbd5e1 !important;">
+    <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; color: white;">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-bell fs-5"></i>
+            <h6 class="m-0 fw-bold">Thông Báo Hệ Thống</h6>
+        </div>
+        <span class="badge bg-white text-primary rounded-pill fw-bold" id="notif-unread-badge-title">0 mới</span>
+    </div>
+    <div id="notif-list-container" style="max-height: 380px; overflow-y: auto; padding: 0;">
+        <div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải thông báo...</div>
+    </div>
+    <div style="padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn btn-link btn-sm text-decoration-none fw-bold text-primary p-0" id="mark-all-read-btn" type="button"><i class="fa-solid fa-check-double me-1"></i>Đánh dấu đã đọc hết</button>
+        <a href="/ticket-management" class="btn btn-link btn-sm text-decoration-none fw-semibold text-secondary p-0">Xem tất cả Ticket &rarr;</a>
+    </div>
+</div>
+    </div>
+</body>
+</html>

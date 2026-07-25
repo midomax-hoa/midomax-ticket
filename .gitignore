@@ -1,0 +1,51 @@
+# ===== Bi mat: TUYET DOI khong day len git =====
+.env
+*.env
+!.env.example
+**/application-local.properties
+jar_deploy/application.properties
+
+# ===== Du lieu that (co thong tin nhan vien) =====
+*.sql
+database/
+
+# ===== File build =====
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+*.war
+
+# ===== File upload cua nguoi dung =====
+source/helpdesk/src/main/resources/static/uploads/
+
+# ===== Rac tu qua trinh recover / backup =====
+*.zip
+*.exe
+source/_tmp_extract/
+source/helpdesk/backup_codebase_extracted/
+source/helpdesk/backup_temp/
+source/helpdesk/recovered_june28/
+source/helpdesk/recovery_tools/
+source/helpdesk/restored_20h/
+
+# ===== Cau hinh cong cu AI tren may ca nhan (giu lai .claude/rules cho ca team) =====
+.agent/
+.cursor/
+.opencode/
+.claude/*
+!.claude/rules/
+
+# ===== IDE =====
+.settings/
+.classpath
+.project
+.apt_generated/
+.apt_generated_tests/
+.idea/
+*.iml
+.vscode/
+
+# ===== He dieu hanh =====
+Thumbs.db
+.DS_Store
