@@ -1,5 +1,6 @@
 package vn.midomax.helpdesk.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,14 @@ import vn.midomax.helpdesk.AssetCategoryRepository;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
+
+    /** Mật khẩu tài khoản admin lúc tạo mới. Production phải đặt qua biến môi trường. */
+    @Value("${app.seed.admin-password:admin123}")
+    private String adminPassword;
+
+    /** Tài khoản "user" chỉ dùng để thử nghiệm, production nên tắt đi. */
+    @Value("${app.seed.demo-user:true}")
+    private boolean seedDemoUser;
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
@@ -33,7 +42,7 @@ public class DataSeeder implements CommandLineRunner {
             AppUser admin = new AppUser();
             admin.setEmail("admin");
             admin.setFullName("Admin");
-            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setPassword(passwordEncoder.encode(adminPassword));
             admin.setRole("ROLE_ADMIN");
             admin.setAuthSource(AppUser.SOURCE_LOCAL);
             appUserRepository.save(admin);
@@ -41,7 +50,7 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         // Tạo tài khoản User nếu chưa tồn tại
-        if (!appUserRepository.existsByEmail("user")) {
+        if (seedDemoUser && !appUserRepository.existsByEmail("user")) {
             AppUser user = new AppUser();
             user.setEmail("user");
             user.setFullName("User");

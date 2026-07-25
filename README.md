@@ -40,6 +40,22 @@ sẵn có bên ngoài, khai địa chỉ qua biến môi trường.
 
 Healthcheck: `GET /actuator/health`.
 
+### Lần deploy đầu tiên
+
+Nếu database còn trống chưa có bảng, đặt `JPA_DDL_AUTO=update` cho lần chạy đầu để
+Hibernate tạo bảng, sau đó đổi lại `validate` rồi deploy lại.
+
+### Tài khoản đăng nhập
+
+`DataSeeder` chạy tự động mỗi lần ứng dụng khởi động, không cần chạy script riêng.
+Nó tạo tài khoản `admin` (nếu chưa có) với mật khẩu lấy từ `SEED_ADMIN_PASSWORD`,
+cùng 4 danh mục công cụ dụng cụ mặc định.
+
+Tài khoản thử nghiệm `user` / `user123` chỉ sinh ra khi `SEED_DEMO_USER=true`
+(mặc định khi dev). Trên production `docker-compose.yml` đã đặt `false`.
+
+Nhân viên đăng nhập bằng Microsoft 365, tài khoản `admin` chỉ dùng để quản trị.
+
 ## Nơi lưu file đính kèm
 
 | `STORAGE_TYPE` | Lưu ở đâu | Dùng khi |
