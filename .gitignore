@@ -8,6 +8,8 @@ jar_deploy/application.properties
 # ===== Du lieu that (co thong tin nhan vien) =====
 *.sql
 database/
+# Tru file migration cua Flyway - day la cau truc bang, khong co du lieu
+!source/helpdesk/src/main/resources/db/migration/*.sql
 
 # ===== File build =====
 target/

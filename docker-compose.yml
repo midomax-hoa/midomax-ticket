@@ -19,7 +19,8 @@ services:
       DB_NAME: ${DB_NAME:-helpdesk}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      # validate = Hibernate chi kiem tra, khong tu sua bang tren DB that
+      # Flyway lo tao/sua bang, Hibernate chi kiem tra lai
+      FLYWAY_ENABLED: "true"
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
       JPA_SHOW_SQL: "false"
       LOG_LEVEL_TRANSACTION: INFO
