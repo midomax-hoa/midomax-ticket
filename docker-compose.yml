@@ -35,12 +35,13 @@ services:
 
       # ===== MinIO (luu file dinh kem) =====
       STORAGE_TYPE: s3
-      S3_ENDPOINT: ${S3_ENDPOINT}
-      S3_REGION: ${S3_REGION:-us-east-1}
-      S3_BUCKET: ${S3_BUCKET}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_PATH_STYLE_ACCESS: "true"
+      # URL day du co https:// - khong phai host trong
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      MINIO_PATH_STYLE: "true"
 
       # ===== Microsoft Entra ID / Graph =====
       AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
