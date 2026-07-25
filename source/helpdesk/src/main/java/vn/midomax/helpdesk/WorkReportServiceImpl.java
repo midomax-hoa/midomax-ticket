@@ -84,6 +84,9 @@ public class WorkReportServiceImpl implements WorkReportService {
     @Override
     public void deleteReport(Long id) {
         System.out.println(">>> [DELETE SERVICE] Bắt đầu xóa ID: " + id);
+        // Nhớ cha trước khi xóa để tính lại tỷ lệ cho cha sau khi con biến mất
+        WorkReport toDelete = getReportById(id);
+        Long grandParentId = (toDelete != null) ? toDelete.getParentId() : null;
         List<WorkReport> children = workReportRepository.findByParentIdOrderByCreatedAtAsc(id);
         System.out.println(">>> [DELETE SERVICE] Tìm thấy số lượng con: " + children.size());
         for (WorkReport child : children) {
@@ -97,6 +100,9 @@ public class WorkReportServiceImpl implements WorkReportService {
         workSubTaskRepository.deleteByWorkReportId(id);
         workReportRepository.deleteById(id);
         System.out.println(">>> [DELETE SERVICE] Hoàn tất xóa ID: " + id);
+        if (grandParentId != null) {
+            syncHierarchy(getReportById(grandParentId));
+        }
     }
 
     @Override
@@ -119,7 +125,9 @@ public class WorkReportServiceImpl implements WorkReportService {
                 existing.setWatchers(watchers);
             }
             existing.setUpdatedAt(LocalDateTime.now());
-            return workReportRepository.save(existing);
+            WorkReport saved = workReportRepository.save(existing);
+            syncHierarchy(saved);   // sửa con → cha tự tính lại; sửa cha có con → khoá theo con
+            return saved;
         }
         return null;
     }
@@ -184,6 +192,55 @@ public class WorkReportServiceImpl implements WorkReportService {
         }
     }
 
+    /**
+     * Tính lại tiến độ + trạng thái của một việc CHA từ các việc CON thật
+     * (WorkReport có parentId = id này). Không có con thì giữ nguyên (việc lá
+     * nhập tay bình thường).
+     *   - Tiến độ cha = TRUNG BÌNH % của tất cả con (làm tròn). Tất cả con 100%
+     *     thì cha = 100%; có con 90% thì cha = tổng/tỷ lệ tương ứng.
+     *   - Trạng thái tự suy ra: con xong hết → COMPLETED; có con đang chạy →
+     *     PROGRESS; con chưa động gì → PLANNING.
+     */
+    private void recalcFromChildren(Long id) {
+        List<WorkReport> children = workReportRepository.findByParentIdOrderByCreatedAtAsc(id);
+        if (children.isEmpty()) return;   // việc lá: không đụng tới
+
+        int sum = 0, allDone = 0, anyStarted = 0;
+        for (WorkReport c : children) {
+            int p = (c.getProgressPercentage() == null) ? 0 : c.getProgressPercentage();
+            if (p < 0) p = 0; else if (p > 100) p = 100;
+            sum += p;
+            if (p >= 100) allDone++;
+            if (p > 0 || (c.getStatus() != null && !"PLANNING".equalsIgnoreCase(c.getStatus()))) anyStarted++;
+        }
+        int avg = (int) Math.round((double) sum / children.size());
+
+        WorkReport parent = workReportRepository.findById(id).orElse(null);
+        if (parent == null) return;
+        if (allDone == children.size()) {
+            parent.setProgressPercentage(100);
+            parent.setStatus("COMPLETED");
+        } else {
+            parent.setProgressPercentage(avg);
+            parent.setStatus(anyStarted > 0 ? "PROGRESS" : "PLANNING");
+        }
+        parent.setUpdatedAt(LocalDateTime.now());
+        workReportRepository.save(parent);
+    }
+
+    /**
+     * Đồng bộ cả cây: tính lại chính việc này từ con (nếu có con → khoá giá trị
+     * theo con), rồi lan LÊN cha, ông... để mọi tầng đều đúng tỷ lệ.
+     */
+    private void syncHierarchy(WorkReport report) {
+        if (report == null) return;
+        recalcFromChildren(report.getId());   // nếu nó là cha → cập nhật theo con
+        Long parentId = report.getParentId();
+        if (parentId != null) {
+            syncHierarchy(workReportRepository.findById(parentId).orElse(null));
+        }
+    }
+
     @Override
     public List<WorkComment> getComments(Long workReportId) {
         return workCommentRepository.findByWorkReportIdOrderByCreatedAtAsc(workReportId);
@@ -228,7 +285,9 @@ public class WorkReportServiceImpl implements WorkReportService {
             }
         }
         existing.setUpdatedAt(LocalDateTime.now());
-        return workReportRepository.save(existing);
+        WorkReport saved = workReportRepository.save(existing);
+        syncHierarchy(saved);
+        return saved;
     }
 
     @Override
@@ -261,7 +320,10 @@ public class WorkReportServiceImpl implements WorkReportService {
 
         child.setCreatedAt(LocalDateTime.now());
         child.setUpdatedAt(LocalDateTime.now());
-        return workReportRepository.save(child);
+        WorkReport saved = workReportRepository.save(child);
+        // Có thêm con mới (0%) → cha tính lại ngay để tỷ lệ đúng
+        syncHierarchy(getReportById(parentId));
+        return saved;
     }
 
     @Override
@@ -305,7 +367,9 @@ public class WorkReportServiceImpl implements WorkReportService {
                 }
             }
             existing.setUpdatedAt(LocalDateTime.now());
-            return workReportRepository.save(existing);
+            WorkReport saved = workReportRepository.save(existing);
+            syncHierarchy(saved);
+            return saved;
         }
         return null;
     }

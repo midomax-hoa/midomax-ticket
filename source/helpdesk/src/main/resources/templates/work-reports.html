@@ -356,14 +356,18 @@
                             <th:block th:each="r : ${entry.value}">
                                 <div class="task-wrapper" style="display: flex; flex-direction: column; width: 100%;">
                                     <!-- PARENT ROW -->
-                                    <div th:id="'task-row-' + ${r.id}" class="grid-row task-row px-3" style="background-color: #ffffff;">
+                                    <!-- hasKids: việc này có việc con thật → tiến độ & trạng thái TỰ TÍNH, khoá sửa tay -->
+                                    <div th:id="'task-row-' + ${r.id}" class="grid-row task-row px-3" style="background-color: #ffffff;"
+                                         th:with="hasKids=${childReportsMap != null && childReportsMap.get(r.id) != null && !childReportsMap.get(r.id).empty}">
                                         <!-- Cell 1: Task Name -->
                                         <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="font-weight: 500; overflow: visible;">
                                             <div class="d-flex align-items-center gap-2 w-100">
-                                                <div class="task-checkbox flex-shrink-0" th:classappend="${r.status == 'COMPLETED' ? 'checked' : ''}"
+                                                <div class="task-checkbox flex-shrink-0" th:classappend="${(r.status == 'COMPLETED' ? 'checked ' : '') + (hasKids ? 'opacity-50' : '')}"
                                                      th:data-id="${r.id}"
                                                      th:data-status="${r.status != null ? r.status : 'PLANNING'}"
-                                                     onclick="toggleTaskCompleteEl(this); event.stopPropagation();" title="Đánh dấu hoàn thành / chưa hoàn thành">
+                                                     th:onclick="${hasKids ? 'event.stopPropagation();' : 'toggleTaskCompleteEl(this); event.stopPropagation();'}"
+                                                     th:title="${hasKids ? 'Tự động theo việc con — không sửa tay' : 'Đánh dấu hoàn thành / chưa hoàn thành'}"
+                                                     th:style="${hasKids ? 'cursor: not-allowed;' : ''}">
                                                     <i class="fa-solid fa-check"></i>
                                                 </div>
                                                 <button type="button" class="subtask-arrow-btn d-inline-flex align-items-center gap-1 flex-shrink-0"
@@ -406,14 +410,17 @@
                                             </div>
                                         </div>
 
-                                        <!-- Cell 4: Status (ClickUp Dropdown Pill) -->
+                                        <!-- Cell 4: Status (ClickUp Dropdown Pill) — khoá khi có việc con -->
                                         <div class="grid-cell dropdown">
-                                            <div class="status-pill dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" style="cursor: pointer;"
+                                            <div class="status-pill dropdown-toggle" th:attr="data-bs-toggle=${hasKids ? null : 'dropdown'}" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false"
+                                                 th:style="${hasKids ? 'cursor: not-allowed;' : 'cursor: pointer;'}"
+                                                 th:title="${hasKids ? 'Trạng thái tự suy ra từ việc con' : ''}"
                                                  th:classappend="${r.status == 'PROGRESS' ? 'progress' : (r.status == 'COMPLETED' ? 'done' : (r.status == 'TESTING' ? 'testing' : 'todo'))}">
                                                 <i class="fa-solid fa-circle" style="font-size: 7px;"></i>
                                                 <span th:text="${r.status == 'PROGRESS' ? 'IN PROGRESS' : (r.status == 'COMPLETED' ? 'COMPLETED' : (r.status == 'TESTING' ? 'TESTING' : 'TO DO'))}">TODO</span>
+                                                <i class="fa-solid fa-lock ms-1" style="font-size: 9px; opacity: .55;" th:if="${hasKids}"></i>
                                             </div>
-                                            <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;">
+                                            <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;" th:if="${!hasKids}">
                                                 <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PLANNING" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>
                                                 <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PROGRESS" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>
                                                 <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="TESTING" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>
@@ -429,6 +436,7 @@
                                                          th:style="'width: ' + ${r.progressPercentage} + '%'"></div>
                                                 </div>
                                                 <span class="fw-bold text-secondary small" style="min-width: 38px;" th:text="${r.progressPercentage + '%'}">0%</span>
+                                                <i class="fa-solid fa-wand-magic-sparkles text-primary" style="font-size: 10px; opacity: .6;" th:if="${hasKids}" title="Tự tính trung bình từ việc con"></i>
                                             </div>
                                         </div>
 
@@ -441,7 +449,7 @@
                                         <div class="grid-cell justify-content-end">
                                             <div class="d-flex align-items-center gap-2">
                                                 <i class="fa-solid fa-pen-to-square text-secondary text-hover-scale" style="cursor: pointer; font-size: 15px;" title="Cập nhật chi tiết"
-                                                   th:data-id="${r.id}" th:data-progress="${r.progressPercentage}" th:data-status="${r.status != null ? r.status : 'PLANNING'}"
+                                                   th:data-id="${r.id}" th:data-progress="${r.progressPercentage}" th:data-status="${r.status != null ? r.status : 'PLANNING'}" th:data-haskids="${hasKids}"
                                                    th:data-note="${r.dailyReport != null ? r.dailyReport : ''}" th:data-title="${r.taskTitle != null ? r.taskTitle : ''}" th:data-watchers="${r.watchers != null ? r.watchers : ''}"
                                                    th:data-project="${r.projectName != null ? r.projectName : ''}" th:data-assignee="${r.assignee != null ? r.assignee : ''}" th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                    onclick="openUpdateModalFromBtn(this); event.stopPropagation();"></i>
@@ -755,6 +763,9 @@
                             <div class="d-flex align-items-center gap-3">
                                 <input type="range" name="progressPercentage" id="updateProgressRange" class="form-range flex-grow-1" min="0" max="100" step="5" oninput="document.getElementById('updateProgressVal').innerText = this.value + '%'">
                                 <span class="fw-bold text-primary fs-5" id="updateProgressVal" style="min-width: 50px;">0%</span>
+                            </div>
+                            <div id="updateAutoNote" class="small text-primary mt-1" style="display:none;">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Tiến độ &amp; trạng thái tự tính trung bình từ các việc con — không sửa tay ở đây.
                             </div>
                         </div>
                         <div class="mb-3">
@@ -1342,7 +1353,14 @@
                 
                 const sel = document.getElementById('updateStatusSelect');
                 if (sel) sel.value = status;
-                
+
+                // Việc cha có việc con → khoá % và trạng thái (tự tính); việc lá thì mở
+                const hasKids = btn.getAttribute('data-haskids') === 'true';
+                if (pRange) pRange.disabled = hasKids;
+                if (sel) sel.disabled = hasKids;
+                const autoNote = document.getElementById('updateAutoNote');
+                if (autoNote) autoNote.style.display = hasKids ? 'block' : 'none';
+
                 const tArea = document.getElementById('updateReportNote');
                 if (tArea) tArea.value = note;
 
