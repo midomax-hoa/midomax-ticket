@@ -47,6 +47,34 @@ public class AssetController {
     @Autowired
     private AssetHandoverService handoverService;
 
+    @Autowired
+    private AssetUsageHistoryRepository usageHistoryRepository;
+
+    @GetMapping("/history/{assetId}")
+    @ResponseBody
+    public ResponseEntity<List<AssetUsageHistory>> getAssetHistory(@PathVariable("assetId") Long assetId) {
+        List<AssetUsageHistory> historyList = usageHistoryRepository.findByAssetIdOrderByAssignedDateDesc(assetId);
+        if (historyList == null || historyList.isEmpty()) {
+            Asset asset = assetRepository.findById(assetId).orElse(null);
+            if (asset != null && asset.getAssignedToName() != null && !asset.getAssignedToName().isBlank()) {
+                AssetUsageHistory initialHistory = new AssetUsageHistory(
+                        asset.getId(),
+                        asset.getInventoryCode(),
+                        asset.getAssignedToName(),
+                        asset.getAssignedToPosition(),
+                        asset.getAssignedToDepartment(),
+                        asset.getAssignedToLocation(),
+                        asset.getCreatedAt() != null ? asset.getCreatedAt() : LocalDateTime.now(),
+                        "Bàn giao / Cấp phát tài sản (Ghi nhận ban đầu)",
+                        asset.getCreatedBy() != null ? asset.getCreatedBy() : "system"
+                );
+                usageHistoryRepository.save(initialHistory);
+                historyList = List.of(initialHistory);
+            }
+        }
+        return ResponseEntity.ok(historyList != null ? historyList : List.of());
+    }
+
     /** Trang danh sách: lọc theo danh mục / trạng thái / từ khóa. */
     @GetMapping
     public String list(@RequestParam(value = "categoryId", required = false) Long categoryId,
@@ -118,12 +146,14 @@ public class AssetController {
         String code = inventoryCode.trim();
 
         Asset asset;
+        String oldAssignedName = null;
         if (id != null) {
             asset = assetRepository.findById(id).orElse(null);
             if (asset == null) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy tài sản cần sửa.");
                 return "redirect:/assets";
             }
+            oldAssignedName = asset.getAssignedToName();
         } else {
             asset = new Asset();
             asset.setCreatedBy(authentication != null ? authentication.getName() : "unknown");
@@ -140,10 +170,16 @@ public class AssetController {
         asset.setCategoryId(categoryId);
         asset.setOfficeLocation(trim(officeLocation));
         asset.setQuantity(quantity == null || quantity < 1 ? 1 : quantity);
-        asset.setAssignedToName(trim(assignedToName));
-        asset.setAssignedToPosition(trim(assignedToPosition));
-        asset.setAssignedToDepartment(trim(assignedToDepartment));
-        asset.setAssignedToLocation(trim(assignedToLocation));
+        
+        String newAssignedName = trim(assignedToName);
+        String newPosition = trim(assignedToPosition);
+        String newDepartment = trim(assignedToDepartment);
+        String newLocation = trim(assignedToLocation);
+
+        asset.setAssignedToName(newAssignedName);
+        asset.setAssignedToPosition(newPosition);
+        asset.setAssignedToDepartment(newDepartment);
+        asset.setAssignedToLocation(newLocation);
         asset.setAssetType(trim(assetType));
         asset.setManufacturer(trim(manufacturer));
         asset.setModel(trim(modelName));
@@ -155,6 +191,56 @@ public class AssetController {
         asset.setUpdatedAt(LocalDateTime.now());
 
         assetRepository.save(asset);
+
+        // Logic tự động lưu vết Lịch Sử Người Sử Dụng / Bàn Giao
+        boolean isNew = (id == null);
+        boolean assignmentChanged = false;
+
+        if (isNew) {
+            if (newAssignedName != null && !newAssignedName.isBlank()) {
+                assignmentChanged = true;
+            }
+        } else {
+            String oldClean = oldAssignedName != null ? oldAssignedName.trim() : "";
+            String newClean = newAssignedName != null ? newAssignedName.trim() : "";
+            if (!oldClean.equalsIgnoreCase(newClean)) {
+                assignmentChanged = true;
+            }
+        }
+
+        if (assignmentChanged) {
+            String currentUser = authentication != null ? authentication.getName() : "system";
+
+            // Đóng thời gian sử dụng của người cũ nếu là cập nhật
+            if (!isNew && oldAssignedName != null && !oldAssignedName.isBlank()) {
+                usageHistoryRepository.findFirstByAssetIdAndReturnedDateIsNullOrderByAssignedDateDesc(asset.getId())
+                        .ifPresent(h -> {
+                            h.setReturnedDate(LocalDateTime.now());
+                            usageHistoryRepository.save(h);
+                        });
+            }
+
+            // Ghi nhận lịch sử bàn giao mới cho người mới
+            if (newAssignedName != null && !newAssignedName.isBlank()) {
+                String reason = isNew ? "Bàn giao / Cấp phát mới tài sản" : "Điều chuyển người sử dụng (Bàn giao mới)";
+                if (note != null && !note.isBlank()) {
+                    reason += " - Ghi chú: " + note.trim();
+                }
+                AssetUsageHistory history = new AssetUsageHistory(
+                        asset.getId(),
+                        asset.getInventoryCode(),
+                        newAssignedName,
+                        newPosition,
+                        newDepartment,
+                        newLocation,
+                        LocalDateTime.now(),
+                        reason,
+                        currentUser
+                );
+                usageHistoryRepository.save(history);
+            }
+        }
+
         redirectAttributes.addFlashAttribute("successMessage",
                 (id != null ? "Đã cập nhật tài sản " : "Đã thêm tài sản ") + code + ".");
         return "redirect:/assets";

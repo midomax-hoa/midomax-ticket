@@ -111,6 +111,8 @@ public class AssetHandoverService {
             int accCount = accessories == null ? 0 : accessories.size();
             XWPFTable table = doc.createTable(1 + assets.size() + accCount, 6);
             table.setWidth("100%");
+            // Đệm trong ô cho thoáng, giống mẫu gốc (đơn vị twips: 60 ≈ 3pt)
+            table.setCellMargins(60, 80, 60, 80);
 
             String[] headers = {"STT", "Tên tài sản và phụ kiện kèm theo", "Thông số kỹ thuật",
                     "Serial/ Mã tài sản", "Số lượng", "Hiện trạng"};
@@ -194,18 +196,35 @@ public class AssetHandoverService {
     private void writeCompanyHeader(XWPFDocument doc) {
         XWPFHeader header = doc.createHeader(HeaderFooterType.DEFAULT);
 
-        XWPFParagraph logoPara = header.createParagraph();
+        // Bố cục như mẫu gốc: logo bên trái, tên + địa chỉ công ty bên phải (cùng hàng).
+        // Dùng bảng 2 cột không viền để giữ vị trí cố định.
+        XWPFTable t = header.createTable(1, 2);
+        t.setWidth("100%");
+        t.removeBorders();
+        XWPFTableRow row = t.getRow(0);
+        row.getCell(0).setWidth("25%");
+        row.getCell(1).setWidth("75%");
+
+        // Cột trái: logo, căn giữa theo chiều dọc
+        XWPFTableCell logoCell = row.getCell(0);
+        logoCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+        XWPFParagraph logoPara = logoCell.getParagraphs().isEmpty()
+                ? logoCell.addParagraph() : logoCell.getParagraphs().get(0);
         logoPara.setAlignment(ParagraphAlignment.LEFT);
         logoPara.setSpacingAfter(0);
         addLogo(logoPara);
 
-        headerLine(header, COMPANY_NAME, 12, true);
-        headerLine(header, COMPANY_ADDRESS, 10, false);
+        // Cột phải: tên công ty + địa chỉ, căn giữa
+        XWPFTableCell textCell = row.getCell(1);
+        textCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+        headerLine(textCell, COMPANY_NAME, 12, true, true);
+        headerLine(textCell, COMPANY_ADDRESS, 10, false, false);
     }
 
-    /** Một dòng chữ căn giữa trong đầu trang. */
-    private void headerLine(XWPFHeader header, String text, int size, boolean bold) {
-        XWPFParagraph p = header.createParagraph();
+    /** Một dòng chữ căn giữa trong ô header. */
+    private void headerLine(XWPFTableCell cell, String text, int size, boolean bold, boolean firstLine) {
+        XWPFParagraph p = (firstLine && !cell.getParagraphs().isEmpty())
+                ? cell.getParagraphs().get(0) : cell.addParagraph();
         p.setAlignment(ParagraphAlignment.CENTER);
         p.setSpacingAfter(0);
         XWPFRun r = p.createRun();
@@ -273,7 +292,12 @@ public class AssetHandoverService {
                       int size, boolean bold, boolean italic) {
         XWPFParagraph p = doc.createParagraph();
         p.setAlignment(align);
-        p.setSpacingAfter(0);
+        // Giãn cách giống mẫu Word gốc: dòng 1.3, cách sau 6pt; tiêu đề mục cách trên 8pt
+        p.setSpacingBetween(1.3, LineSpacingRule.AUTO);
+        p.setSpacingAfter(120);
+        if (bold) {
+            p.setSpacingBefore(160);
+        }
         XWPFRun r = p.createRun();
         r.setFontFamily(FONT);
         r.setFontSize(size);

@@ -54,6 +54,13 @@
         .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
         .empty-state i { font-size: 52px; margin-bottom: 14px; }
 
+        /* ===== MODAL SCROLL & STICKY FOOTER FIXES ===== */
+        #assetModal .modal-content { max-height: 85vh; overflow: hidden; }
+        #assetModal form { display: flex; flex-direction: column; max-height: 85vh; margin: 0; }
+        #assetModal .modal-body { overflow-y: auto; max-height: calc(85vh - 130px); padding: 25px; }
+        #assetModal .modal-footer { flex-shrink: 0; background: #ffffff; border-top: 1px solid #e5e7eb; position: sticky; bottom: 0; z-index: 1050; }
+        #assetHistoryModal { z-index: 1065; }
+
         @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
     </style>
 </head>
@@ -264,6 +271,10 @@
                                             onclick="openAssetModal(this.closest('tr'))">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
+                                    <button class="btn btn-outline-info" title="Lịch sử người sử dụng"
+                                            th:attr="onclick=|showAssetHistory('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode)}')|">
+                                        <i class="fa-solid fa-clock-rotate-left"></i>
+                                    </button>
                                     <button class="btn btn-outline-primary" title="Ghi nhận kiểm kê"
                                             th:attr="onclick=|openInventoryModal('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode)}')|">
                                         <i class="fa-solid fa-clipboard-check"></i>
@@ -365,7 +376,12 @@
                             </div>
                         </div>
 
-                        <p class="section-divider mt-4">Giao cho</p>
+                        <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                            <p class="section-divider mb-0">Giao cho</p>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewModalAssetHistory()">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i> Xem lịch sử bàn giao máy
+                            </button>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-3">
                                 <label class="form-label">Họ và tên</label>
@@ -587,6 +603,29 @@
         </div>
     </div>
 
+    <!-- ===== MODAL: LỊCH SỬ NGƯỜI SỬ DỤNG TÀI SẢN ===== -->
+    <div class="modal fade" id="assetHistoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header text-white py-3" style="background:#1e3a8a; border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title fs-6 fw-bold">
+                        <i class="fa-solid fa-clock-rotate-left me-2"></i> Lịch Sử Bàn Giao & Người Sử Dụng - <span id="histCodeStr"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="assetHistoryModalBody">
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="mb-0">Đang tải lịch sử bàn giao tài sản...</p>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- FORM XÓA (ẩn) -->
     <form method="post" id="deleteForm" style="display:none;"></form>
 
@@ -764,6 +803,86 @@
             const d = document.createElement('div');
             d.textContent = s === null || s === undefined ? '' : s;
             return d.innerHTML;
+        }
+
+        function showAssetHistory(assetId, code) {
+            document.getElementById('histCodeStr').innerText = code || 'Tài sản';
+            const body = document.getElementById('assetHistoryModalBody');
+            body.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                    <p class="mb-0">Đang tải lịch sử bàn giao tài sản...</p>
+                </div>
+            `;
+
+            const elem = document.getElementById('assetHistoryModal');
+            const bsModal = new bootstrap.Modal(elem);
+            bsModal.show();
+
+            fetch('/assets/history/' + assetId)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        body.innerHTML = `
+                            <div class="text-center py-4 text-muted">
+                                <i class="fa-solid fa-user-clock fs-1 text-secondary mb-2 d-block"></i>
+                                <p class="mb-0 fw-semibold text-dark">Chưa ghi nhận lịch sử thay đổi người sử dụng cho tài sản này.</p>
+                                <small class="text-muted">Hệ thống sẽ tự động cập nhật nhật ký khi có thay đổi thông tin "Giao cho".</small>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = `<div class="timeline-history">`;
+                    data.forEach((item, idx) => {
+                        const isCurrent = (item.returnedDate === null || item.returnedDateStr === 'Đang sử dụng');
+                        const badge = isCurrent ? 
+                            `<span class="badge bg-success"><i class="fa-solid fa-check-circle me-1"></i>Đang sử dụng</span>` : 
+                            `<span class="badge bg-secondary">Đã thu hồi / Chuyển giao</span>`;
+                        
+                        const timeRange = isCurrent ?
+                            `<b>Cấp máy từ ngày:</b> ${item.assignedDateStr || '—'} ➔ <span class="text-success fw-bold">Hiện tại</span>` :
+                            `<b>Thời gian dùng:</b> ${item.assignedDateStr || '—'} ➔ <b>Đến ngày:</b> ${item.returnedDateStr || '—'}`;
+
+                        const posDept = [item.assignedToPosition, item.assignedToDepartment, item.assignedToLocation].filter(Boolean).join(' · ');
+
+                        html += `
+                            <div class="card border rounded-3 p-3 mb-3 shadow-sm ${isCurrent ? 'border-primary bg-primary bg-opacity-10' : 'bg-light'}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-0">
+                                            <i class="fa-solid fa-user-tie me-2 text-primary"></i> ${item.assignedToName || 'Chưa đặt tên'}
+                                        </h6>
+                                        ${posDept ? `<small class="text-muted d-block mt-1"><i class="fa-solid fa-building me-1"></i> ${esc(posDept)}</small>` : ''}
+                                    </div>
+                                    <div>${badge}</div>
+                                </div>
+                                <div class="small text-muted mb-1">
+                                    <i class="fa-solid fa-calendar-days me-1"></i> ${timeRange}
+                                </div>
+                                ${item.note ? `<div class="small text-dark mt-2 p-2 bg-white rounded border"><i class="fa-solid fa-comment-dots text-primary me-1"></i> ${esc(item.note)}</div>` : ''}
+                                <div class="text-end text-muted mt-2" style="font-size: 11px;">
+                                    Ghi nhận bởi: ${item.createdBy || 'system'}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                    body.innerHTML = html;
+                })
+                .catch(err => {
+                    body.innerHTML = `<div class="alert alert-danger mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi khi tải lịch sử bàn giao!</div>`;
+                });
+        }
+
+        function viewModalAssetHistory() {
+            const assetId = document.getElementById('f-id').value;
+            const code = document.getElementById('f-inventoryCode').value;
+            if (assetId) {
+                showAssetHistory(assetId, code);
+            } else {
+                alert("Tài sản mới chưa được tạo. Vui lòng lưu thông tin tài sản trước để xem và ghi nhận lịch sử.");
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
