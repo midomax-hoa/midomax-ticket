@@ -29,6 +29,10 @@ public interface TicketService {
     
     // Get category statistics for the dashboard donut chart
     Map<String, Long> getCategoryStats();
+    Map<String, Long> getCategoryStatsForUser(String username);
+    Map<String, Long> getCategoryStatsForIt(String identity, List<String> groups);
+    List<Map<String, Object>> getItScheduleForDate(String dateStr);
+    List<String> getBusyDates(int year, int month, String emailFilter);
     
     // Get top 5 recent tickets for the dashboard
     List<Ticket> getRecentTickets();

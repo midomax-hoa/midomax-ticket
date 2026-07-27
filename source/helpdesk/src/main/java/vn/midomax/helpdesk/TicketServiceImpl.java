@@ -279,15 +279,32 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public Map<String, Long> getStatistics(String currentUser) {
+        List<Ticket> all = ticketRepository.findAll();
+        long total = all.size();
+        long unassigned = all.stream()
+                .filter(t -> t.getAssignee() == null || t.getAssignee().isBlank()).count();
+        long mine = all.stream()
+                .filter(t -> currentUser != null && isAssigneeMatch(currentUser, t.getAssignee())).count();
+        long inProgress = all.stream()
+                .filter(t -> "PROGRESS".equalsIgnoreCase(t.getStatus())).count();
+        long open = all.stream()
+                .filter(t -> "OPEN".equalsIgnoreCase(t.getStatus())).count();
+        long resolved = all.stream()
+                .filter(t -> "RESOLVED".equalsIgnoreCase(t.getStatus()) || "CLOSED".equalsIgnoreCase(t.getStatus())).count();
+        long overdue = all.stream()
+                .filter(t -> !"RESOLVED".equalsIgnoreCase(t.getStatus()) && !"CLOSED".equalsIgnoreCase(t.getStatus()))
+                .filter(t -> (t.getEffectiveSlaDeadline() != null && LocalDateTime.now().isAfter(t.getEffectiveSlaDeadline()))
+                          || (t.getEstimatedCompletionTime() != null && LocalDateTime.now().isAfter(t.getEstimatedCompletionTime())))
+                .count();
+
         Map<String, Long> stats = new HashMap<>();
-        stats.put("total", ticketRepository.count());
-        stats.put("unassigned", ticketRepository.countByAssigneeIsNull());
-        stats.put("mine", currentUser == null ? 0L : ticketRepository.countByAssignee(currentUser));
-        stats.put("inProgress", ticketRepository.countByStatus("PROGRESS"));
-        
-        // SLA overdue: HIGH priority that is not RESOLVED
-        stats.put("overdue", ticketRepository.countByPriorityAndStatusNot("HIGH", "RESOLVED"));
-        
+        stats.put("total", total);
+        stats.put("unassigned", unassigned);
+        stats.put("mine", mine);
+        stats.put("inProgress", inProgress);
+        stats.put("open", open);
+        stats.put("resolved", resolved);
+        stats.put("overdue", overdue);
         return stats;
     }
 
@@ -296,10 +313,157 @@ public class TicketServiceImpl implements TicketService {
         Map<String, Long> categoryStats = new HashMap<>();
         List<Ticket> allTickets = ticketRepository.findAll();
         for (Ticket t : allTickets) {
-            String cat = t.getCategory() != null ? t.getCategory() : "other";
+            String cat = t.getCategory() != null ? t.getCategory().toLowerCase() : "other";
             categoryStats.merge(cat, 1L, Long::sum);
         }
         return categoryStats;
+    }
+
+    @Override
+    public Map<String, Long> getCategoryStatsForUser(String username) {
+        Map<String, Long> categoryStats = new HashMap<>();
+        if (username != null) {
+            List<Ticket> userTickets = ticketRepository.findByReporterName(username);
+            for (Ticket t : userTickets) {
+                String cat = t.getCategory() != null ? t.getCategory().toLowerCase() : "other";
+                categoryStats.merge(cat, 1L, Long::sum);
+            }
+        }
+        return categoryStats;
+    }
+
+    @Override
+    public Map<String, Long> getCategoryStatsForIt(String identity, List<String> groups) {
+        Map<String, Long> categoryStats = new HashMap<>();
+        int hasGroups = (groups != null && !groups.isEmpty()) ? 1 : 0;
+        List<String> effGroups = hasGroups == 1 ? groups : java.util.List.of("__NONE__");
+        List<Ticket> itScopeTickets = ticketRepository.findAllInItScope(identity, hasGroups, effGroups);
+        for (Ticket t : itScopeTickets) {
+            String cat = t.getCategory() != null ? t.getCategory().toLowerCase() : "other";
+            categoryStats.merge(cat, 1L, Long::sum);
+        }
+        return categoryStats;
+    }
+
+    private boolean isAssigneeMatch(String email, String assignee) {
+        if (email == null || email.isBlank()) return false;
+        if (assignee == null || assignee.isBlank()) return false;
+        return email.trim().equalsIgnoreCase(assignee.trim());
+    }
+
+    @Override
+    public List<Map<String, Object>> getItScheduleForDate(String dateStr) {
+        List<Map<String, Object>> itList = getItWorkloadStatus();
+        List<Map<String, Object>> scheduleList = new java.util.ArrayList<>();
+        
+        java.time.LocalDate targetDate = null;
+        try {
+            if (dateStr != null && !dateStr.isBlank()) {
+                targetDate = java.time.LocalDate.parse(dateStr.trim());
+            }
+        } catch (Exception e) {
+            targetDate = java.time.LocalDate.now();
+        }
+        if (targetDate == null) {
+            targetDate = java.time.LocalDate.now();
+        }
+
+        List<Ticket> allTickets = ticketRepository.findAll();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        for (Map<String, Object> it : itList) {
+            String email = (String) it.get("email");
+            String name = (String) it.get("name");
+            String status = (String) it.get("status");
+            String groupLabels = (String) it.get("groupLabels");
+
+            List<Map<String, Object>> dailyTickets = new java.util.ArrayList<>();
+            if (email != null) {
+                for (Ticket t : allTickets) {
+                    // Rule 1: Exclude RESOLVED or CLOSED tickets from schedule
+                    if ("RESOLVED".equalsIgnoreCase(t.getStatus()) || "CLOSED".equalsIgnoreCase(t.getStatus())) {
+                        continue;
+                    }
+
+                    if (isAssigneeMatch(email, t.getAssignee())) {
+                        boolean matchDate = false;
+
+                        // Rule 3: Ticket only appears on its exact created or target date
+                        if (t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().equals(targetDate)) {
+                            matchDate = true;
+                        }
+                        if (!matchDate && t.getEstimatedCompletionTime() != null && t.getEstimatedCompletionTime().toLocalDate().equals(targetDate)) {
+                            matchDate = true;
+                        }
+                        if (!matchDate && t.getSlaDeadline() != null && t.getSlaDeadline().toLocalDate().equals(targetDate)) {
+                            matchDate = true;
+                        }
+
+                        // Rule 2: Overdue tickets in-progress/open display on Today's date
+                        if (!matchDate && targetDate.equals(today)) {
+                            java.time.LocalDateTime deadline = t.getEstimatedCompletionTime() != null ? t.getEstimatedCompletionTime() : t.getSlaDeadline();
+                            if (deadline != null && now.isAfter(deadline)) {
+                                matchDate = true;
+                            }
+                        }
+
+                        if (matchDate) {
+                            Map<String, Object> ticketSummary = new HashMap<>();
+                            ticketSummary.put("id", t.getId());
+                            ticketSummary.put("title", t.getTitle());
+                            ticketSummary.put("status", t.getStatus());
+                            ticketSummary.put("priority", t.getPriority());
+                            ticketSummary.put("category", t.getCategory());
+                            dailyTickets.add(ticketSummary);
+                        }
+                    }
+                }
+            }
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("name", name);
+            item.put("email", email);
+            item.put("status", status);
+            item.put("groupLabels", groupLabels);
+            item.put("ticketCount", dailyTickets.size());
+            item.put("tickets", dailyTickets);
+            scheduleList.add(item);
+        }
+
+        return scheduleList;
+    }
+
+    @Override
+    public List<String> getBusyDates(int year, int month, String emailFilter) {
+        List<String> busyDates = new java.util.ArrayList<>();
+        int daysInMonth = java.time.YearMonth.of(year, month).lengthOfMonth();
+
+        for (int day = 1; day <= daysInMonth; day++) {
+            String dateStr = String.format("%04d-%02d-%02d", year, month, day);
+            List<Map<String, Object>> schedule = getItScheduleForDate(dateStr);
+
+            boolean hasWork = false;
+            for (Map<String, Object> it : schedule) {
+                if (emailFilter != null && !emailFilter.isBlank()) {
+                    String itEmail = (String) it.get("email");
+                    if (!isAssigneeMatch(emailFilter, itEmail)) {
+                        continue;
+                    }
+                }
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> tickets = (List<Map<String, Object>>) it.get("tickets");
+                if (tickets != null && !tickets.isEmpty()) {
+                    hasWork = true;
+                    break;
+                }
+            }
+
+            if (hasWork) {
+                busyDates.add(dateStr);
+            }
+        }
+        return busyDates;
     }
 
     @Override
@@ -483,7 +647,9 @@ public class TicketServiceImpl implements TicketService {
         long inProgress = scope.stream()
                 .filter(t -> "PROGRESS".equalsIgnoreCase(t.getStatus())).count();
         long overdue = scope.stream()
-                .filter(t -> "HIGH".equalsIgnoreCase(t.getPriority()) && !"RESOLVED".equalsIgnoreCase(t.getStatus())).count();
+                .filter(t -> !"RESOLVED".equalsIgnoreCase(t.getStatus()) && !"CLOSED".equalsIgnoreCase(t.getStatus()))
+                .filter(t -> t.getEffectiveSlaDeadline() != null && LocalDateTime.now().isAfter(t.getEffectiveSlaDeadline()))
+                .count();
 
         Map<String, Long> stats = new HashMap<>();
         stats.put("total", total);

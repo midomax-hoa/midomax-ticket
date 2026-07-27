@@ -6,6 +6,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import java.util.List;
+import java.util.Map;
+
 @Controller
 @org.springframework.web.bind.annotation.RequestMapping(produces = "text/html;charset=UTF-8")
 public class HomeController {
@@ -94,7 +97,9 @@ public class HomeController {
         boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_IT") || a.getAuthority().equals("ROLE_MANAGER"));
         model.addAttribute("isAdmin", isAdmin);
-        model.addAttribute("itStatusList", ticketService.getItWorkloadStatus());
+        List<Map<String, Object>> workload = ticketService.getItWorkloadStatus();
+        model.addAttribute("itWorkload", workload);
+        model.addAttribute("itStatusList", workload);
         return "schedule";
     }
 

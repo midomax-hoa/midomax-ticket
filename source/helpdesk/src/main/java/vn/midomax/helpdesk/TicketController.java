@@ -34,6 +34,9 @@ public class TicketController {
     private ExcelService excelService;
 
     @Autowired
+    private EmailService emailService;
+
+    @Autowired
     private StorageService storageService;
 
     // Trách nhiệm: Chỉ điều hướng và xử lý giao diện Quản lý Ticket
@@ -227,16 +230,6 @@ public class TicketController {
             ticket.setLocation(location != null ? location : "Hà Nội");
         }
 
-        // Parse bookedStartTime if provided
-        if (bookedStartTime != null && !bookedStartTime.trim().isEmpty()) {
-            try {
-                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-                ticket.setSlaDeadline(LocalDateTime.parse(bookedStartTime.trim(), formatter));
-            } catch (Exception e) {
-                // Keep default SLA calculation if parsing fails
-            }
-        }
-
         // Parse estimatedCompletionTime if provided
         if (estimatedCompletionTime != null && !estimatedCompletionTime.trim().isEmpty()) {
             try {
@@ -309,6 +302,7 @@ public class TicketController {
             }
         }
         if ("RESOLVED".equalsIgnoreCase(existing.getStatus())) {
+            if (existing.getItCompletedAt() == null) existing.setItCompletedAt(LocalDateTime.now());
             if (completedAtStr != null && !completedAtStr.trim().isEmpty()) {
                 try {
                     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -319,6 +313,13 @@ public class TicketController {
             } else if (existing.getCompletedAt() == null) {
                 existing.setCompletedAt(LocalDateTime.now());
             }
+            emailService.sendTicketNotification(existing, "RESOLVED");
+        } else if ("CLOSED".equalsIgnoreCase(existing.getStatus())) {
+            if (existing.getClosedAt() == null) existing.setClosedAt(LocalDateTime.now());
+            if (existing.getCloseReason() == null || existing.getCloseReason().isEmpty()) {
+                existing.setCloseReason("Đã đóng công việc bởi chuyên viên IT/Admin");
+            }
+            emailService.sendTicketNotification(existing, "CLOSED");
         }
 
         // Xử lý upload file hình ảnh xác nhận hoàn thành
@@ -391,6 +392,7 @@ public class TicketController {
             }
         }
         if ("RESOLVED".equalsIgnoreCase(existing.getStatus())) {
+            if (existing.getItCompletedAt() == null) existing.setItCompletedAt(LocalDateTime.now());
             if (completedAtStr != null && !completedAtStr.trim().isEmpty()) {
                 try {
                     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -401,6 +403,13 @@ public class TicketController {
             } else if (existing.getCompletedAt() == null) {
                 existing.setCompletedAt(LocalDateTime.now());
             }
+            emailService.sendTicketNotification(existing, "RESOLVED");
+        } else if ("CLOSED".equalsIgnoreCase(existing.getStatus())) {
+            if (existing.getClosedAt() == null) existing.setClosedAt(LocalDateTime.now());
+            if (existing.getCloseReason() == null || existing.getCloseReason().isEmpty()) {
+                existing.setCloseReason("Đóng công việc bởi chuyên viên IT/Admin");
+            }
+            emailService.sendTicketNotification(existing, "CLOSED");
         }
         
         if ("PROGRESS".equals(existing.getStatus()) && existing.getTitle() != null && !existing.getTitle().startsWith("❗ Hỗ trợ ")) {
@@ -409,6 +418,53 @@ public class TicketController {
 
         ticketService.updateTicket(id, existing);
         return "success";
+    }
+
+    // API người dùng xác nhận đã xử lý xong (hết lỗi) -> Đóng Ticket
+    @PostMapping("/ticket/user-confirm-resolve")
+    public String userConfirmResolve(
+            @RequestParam("id") Long id,
+            @RequestParam(value = "userFeedback", required = false) String userFeedback,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes) {
+
+        Ticket ticket = ticketService.getTicketById(id);
+        if (ticket != null) {
+            String username = resolveReporterIdentity(authentication);
+            ticket.setStatus("CLOSED");
+            ticket.setClosedAt(LocalDateTime.now());
+            ticket.setCloseReason("Người dùng (" + username + ") xác nhận đã xử lý xong (hết lỗi)");
+            if (userFeedback != null && !userFeedback.trim().isEmpty()) {
+                ticket.setUserFeedback(userFeedback.trim());
+            }
+            ticketService.updateTicket(id, ticket);
+            emailService.sendTicketNotification(ticket, "CLOSED");
+            redirectAttributes.addFlashAttribute("successMsg", "Đã xác nhận hoàn thành Ticket #" + id + " thành công!");
+        }
+        return "redirect:/ticket-management";
+    }
+
+    // API người dùng phản hồi còn lỗi -> Tiếp tục xử lý (REOPEN / PROGRESS)
+    @PostMapping("/ticket/user-report-issue")
+    public String userReportIssue(
+            @RequestParam("id") Long id,
+            @RequestParam("userFeedback") String userFeedback,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes) {
+
+        Ticket ticket = ticketService.getTicketById(id);
+        if (ticket != null) {
+            String username = resolveReporterIdentity(authentication);
+            ticket.setStatus("PROGRESS");
+            ticket.setUserFeedback(userFeedback.trim());
+            String timeStr = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            String noteLine = "[" + timeStr + "] " + username + " phản hồi còn lỗi: " + userFeedback.trim();
+            ticket.setNotes((ticket.getNotes() != null && !ticket.getNotes().isEmpty() ? ticket.getNotes() + "\n" : "") + noteLine);
+            ticketService.updateTicket(id, ticket);
+            emailService.sendTicketNotification(ticket, "REOPENED");
+            redirectAttributes.addFlashAttribute("warningMsg", "Đã gửi phản hồi lỗi Ticket #" + id + " tới bộ phận IT!");
+        }
+        return "redirect:/ticket-management";
     }
 
     private boolean isManagerOrIT(Authentication authentication) {

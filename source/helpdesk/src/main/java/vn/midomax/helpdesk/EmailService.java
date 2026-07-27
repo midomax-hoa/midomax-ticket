@@ -143,24 +143,41 @@ public class EmailService {
             } else if ("RESOLVED".equalsIgnoreCase(eventType) || "COMPLETED".equalsIgnoreCase(eventType)) {
                 String fixNote = ticket.getFixNote() != null && !ticket.getFixNote().trim().isEmpty() ? ticket.getFixNote() : "Đã hoàn thành xử lý yêu cầu và kiểm tra kỹ thuật.";
                 
-                // 1. Notify Reporter that ticket is completed
-                String repTitle = "✅ [MIDOMAX IT] Ticket " + ticketIdStr + " đã HOÀN THÀNH!";
-                String repMsg = "Chào <b>" + reporterName + "</b>,<br><br>Yêu cầu hỗ trợ <b>'" + title + "'</b> của bạn đã được giải quyết xong bởi bộ phận IT <b>" + (assigneeName != null ? assigneeName : "") + "</b>.<br><br><b>💡 Giải pháp / Ghi chú kỹ thuật:</b><br>" + fixNote;
-                saveNotification(reporterName, repTitle, "Yêu cầu '" + title + "' đã được giải quyết xong bởi IT", "TICKET_RESOLVED", linkUrl);
-                sendHtmlEmail(reporterEmail, repTitle, buildEmailTemplate("YÊU CẦU ĐÃ ĐƯỢC GIẢI QUYẾT", repTitle, repMsg, ticket));
+                // 1. Notify Reporter that ticket is completed by IT & pending confirmation
+                String repTitle = "✅ [MIDOMAX IT] Ticket " + ticketIdStr + " đã được IT xử lý xong - Vui lòng kiểm tra & xác nhận";
+                String repMsg = "Chào <b>" + reporterName + "</b>,<br><br>Yêu cầu hỗ trợ <b>'" + title + "'</b> của bạn đã được chuyên viên IT <b>" + (assigneeName != null ? assigneeName : "") + "</b> xử lý xong.<br><br><b>💡 Giải pháp / Ghi chú kỹ thuật từ IT:</b><br>" + fixNote + "<br><br>👉 <b>Vui lòng truy cập Cổng Helpdesk để kiểm tra và bấm 'Xác nhận hoàn thành (hết lỗi)' hoặc ghi chú phản hồi nếu còn lỗi.</b><br><i style='color: #64748b; font-size: 13px;'>* Lưu ý: Hệ thống sẽ tự động đóng Ticket này sau 3 ngày nếu không nhận được phản hồi từ bạn.</i>";
+                saveNotification(reporterName, repTitle, "Yêu cầu '" + title + "' đã được IT xử lý xong. Vui lòng xác nhận hoặc phản hồi.", "TICKET_RESOLVED", linkUrl);
+                sendHtmlEmail(reporterEmail, repTitle, buildEmailTemplate("XÁC NHẬN KẾT QUẢ XỬ LÝ IT", repTitle, repMsg, ticket));
 
                 // 2. Notify Assignee
                 if (assigneeName != null && !assigneeName.isEmpty()) {
-                    String assTitle = "🎉 [MIDOMAX IT] Đã đóng Ticket " + ticketIdStr;
-                    String assMsg = "Chào <b>" + assigneeName + "</b>,<br><br>Xác nhận bạn đã hoàn thành xử lý và đóng Ticket #" + ticket.getId() + " - <b>'" + title + "'</b>.<br>Cảm ơn sự đóng góp và nỗ lực của bạn!";
-                    saveNotification(assigneeName, assTitle, "Xác nhận bạn đã hoàn thành xử lý Ticket #" + ticket.getId(), "TICKET_RESOLVED", linkUrl);
-                    sendHtmlEmail(assigneeEmail, assTitle, buildEmailTemplate("ĐÓNG TICKET THÀNH CÔNG", assTitle, assMsg, ticket));
+                    String assTitle = "🎯 [MIDOMAX IT] Bạn đã hoàn thành Ticket " + ticketIdStr + " (Chờ User xác nhận)";
+                    String assMsg = "Chào <b>" + assigneeName + "</b>,<br><br>Hệ thống ghi nhận bạn đã hoàn thành xử lý Ticket #" + ticket.getId() + " - <b>'" + title + "'</b>.<br>Email xác nhận đã được gửi tới người dùng " + reporterName + ".";
+                    saveNotification(assigneeName, assTitle, "Bạn đã hoàn thành Ticket #" + ticket.getId() + " (Đã gửi thông báo cho User)", "TICKET_RESOLVED", linkUrl);
                 }
+            } else if ("CLOSED".equalsIgnoreCase(eventType)) {
+                String closeReason = ticket.getCloseReason() != null ? ticket.getCloseReason() : "Ticket đã được đóng thành công.";
+                
+                String repTitle = "🔒 [MIDOMAX IT] Ticket " + ticketIdStr + " ĐÃ ĐÓNG TÁC VỤ";
+                String repMsg = "Chào <b>" + reporterName + "</b>,<br><br>Ticket #" + ticket.getId() + " - <b>'" + title + "'</b> đã chính thức được đóng.<br><b>Ghi chú đóng:</b> " + closeReason;
+                saveNotification(reporterName, repTitle, "Ticket #" + ticket.getId() + " đã chính thức đóng", "TICKET_CLOSED", linkUrl);
+                sendHtmlEmail(reporterEmail, repTitle, buildEmailTemplate("TICKET ĐÃ ĐÓNG CHÍNH THỨC", repTitle, repMsg, ticket));
 
-                // 3. Notify Admin in UI Notification Bell only
-                String adminTitle = "🎉 [MIDOMAX IT] Ticket " + ticketIdStr + " đã hoàn thành bởi " + (assigneeName != null ? assigneeName : "IT");
-                saveNotification("admin", adminTitle, "Ticket #" + ticket.getId() + " đã được xử lý xong", "TICKET_RESOLVED", linkUrl);
-                saveNotification("it01@midomax.vn", adminTitle, "Ticket #" + ticket.getId() + " đã được xử lý xong", "TICKET_RESOLVED", linkUrl);
+                if (assigneeName != null && !assigneeName.isEmpty()) {
+                    String assTitle = "🔒 [MIDOMAX IT] Ticket " + ticketIdStr + " ĐÃ ĐÓNG";
+                    String assMsg = "Chào <b>" + assigneeName + "</b>,<br><br>Ticket #" + ticket.getId() + " - <b>'" + title + "'</b> đã được đóng.<br><b>Lý do/Trạng thái:</b> " + closeReason;
+                    saveNotification(assigneeName, assTitle, "Ticket #" + ticket.getId() + " đã đóng: " + closeReason, "TICKET_CLOSED", linkUrl);
+                    sendHtmlEmail(assigneeEmail, assTitle, buildEmailTemplate("TICKET ĐÃ ĐÓNG", assTitle, assMsg, ticket));
+                }
+            } else if ("REOPENED".equalsIgnoreCase(eventType)) {
+                String userFeedback = ticket.getUserFeedback() != null ? ticket.getUserFeedback() : "Người dùng phản hồi chưa hết lỗi.";
+                
+                if (assigneeName != null && !assigneeName.isEmpty()) {
+                    String assTitle = "⚠️ [MIDOMAX IT] Phản hồi lỗi còn tồn tại trên Ticket " + ticketIdStr;
+                    String assMsg = "Chào <b>" + assigneeName + "</b>,<br><br>Người dùng <b>" + reporterName + "</b> phản hồi công việc <b>'" + title + "'</b> chưa hết lỗi và cần xử lý tiếp.<br><br><b>📌 Ghi chú phản hồi lỗi từ User:</b><br><span style='color: #dc2626; font-weight: bold;'>" + userFeedback + "</span><br><br>Vui lòng kiểm tra và tiếp tục khắc phục cho người dùng.";
+                    saveNotification(assigneeName, assTitle, "Người dùng " + reporterName + " phản hồi Ticket #" + ticket.getId() + " còn lỗi: " + userFeedback, "TICKET_REOPENED", linkUrl);
+                    sendHtmlEmail(assigneeEmail, assTitle, buildEmailTemplate("PHẢN HỒI LỖI TỪ NGƯỜI DÙNG", assTitle, assMsg, ticket));
+                }
             }
         } catch (Exception e) {
             System.err.println("[EMAIL NOTIFICATION ERROR] Error processing notification: " + e.getMessage());

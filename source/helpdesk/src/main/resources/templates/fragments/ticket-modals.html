@@ -810,7 +810,8 @@
                                         <select name="status" id="detail-status" class="form-select border-warning shadow-sm" style="border-radius: 8px;">
                                             <option value="open">Open (Đang Mở)</option>
                                             <option value="progress">In Progress (Đang xử lý)</option>
-                                            <option value="resolved">Resolved (Đã xong)</option>
+                                            <option value="resolved">Resolved (Đã xong - Chờ User xác nhận)</option>
+                                            <option value="closed">Closed (Đã đóng công việc)</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6">
@@ -890,6 +891,68 @@
                                             </div>
 
                                             <small class="text-muted d-block mt-2" style="font-size: 11.5px; color: #15803d !important;"><i class="fa-solid fa-circle-info me-1 text-success"></i>Ghi chú này giúp người yêu cầu (reporter) và quản lý nắm rõ chính xác giải pháp kỹ thuật đã áp dụng.</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Khối User Xác nhận / Phản hồi khi Ticket ở trạng thái RESOLVED -->
+                                    <div class="col-md-12 mt-3 d-none" id="user-confirm-box">
+                                        <div class="p-3 rounded-3 shadow-sm border border-warning" style="background-color: #fffbeb;">
+                                            <div class="d-flex align-items-center gap-2 mb-2 text-warning-emphasis">
+                                                <i class="fa-solid fa-circle-question fs-4 text-warning"></i>
+                                                <h6 class="fw-bold m-0">XÁC NHẬN KẾT QUẢ XỬ LÝ TỪ BỘ PHẬN IT</h6>
+                                            </div>
+                                            <p class="small text-muted mb-3">
+                                                Chuyên viên IT đã báo hoàn thành xử lý. Vui lòng kiểm tra lại thiết bị/hệ thống của bạn.<br>
+                                                - Nếu đã hoạt động tốt: Vui lòng bấm <strong>Xác nhận hoàn thành (Hết lỗi)</strong>.<br>
+                                                - Nếu vẫn còn lỗi: Vui lòng bấm <strong>Phản hồi còn lỗi</strong> để IT tiếp tục khắc phục.
+                                                <br><i class="text-danger">* Lưu ý: Hệ thống sẽ tự động đóng Ticket sau 3 ngày nếu không nhận được phản hồi.</i>
+                                            </p>
+
+                                            <!-- Form phản hồi lỗi -->
+                                            <div class="mb-3 d-none" id="user-issue-note-group">
+                                                <label class="form-label fw-bold small text-danger">Mô tả cụ thể lỗi còn tồn tại (bắt buộc):</label>
+                                                <textarea id="user-issue-feedback-input" class="form-control border-danger shadow-sm" rows="2" placeholder="Ghi chú rõ lỗi chưa khắc phục xong để chuyên viên IT xử lý tiếp..."></textarea>
+                                            </div>
+
+                                            <div class="d-flex gap-2 flex-wrap align-items-center">
+                                                <button type="button" class="btn btn-success fw-bold px-3 shadow-sm" onclick="submitUserConfirmResolve()">
+                                                    <i class="fa-solid fa-circle-check me-1"></i> Xác Nhận Hoàn Thành (Hết Lỗi)
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger fw-bold px-3 shadow-sm" onclick="toggleUserIssueInput()">
+                                                    <i class="fa-solid fa-rotate-left me-1"></i> Phản Hồi Còn Lỗi / Chưa Xong
+                                                </button>
+                                                <button type="button" class="btn btn-danger fw-bold px-3 shadow-sm d-none" id="user-report-issue-btn" onclick="submitUserReportIssue()">
+                                                    <i class="fa-solid fa-paper-plane me-1"></i> Gửi Phản Hồi Lỗi Cho IT
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Khối hiển thị thông tin đóng Ticket (Cho Leader / Quản lý) -->
+                                    <div class="col-md-12 mt-3 d-none" id="ticket-close-info-box">
+                                        <div class="p-3 rounded-3 shadow-sm border border-secondary" style="background-color: #f8fafc;">
+                                            <div class="d-flex align-items-center gap-2 mb-2 text-secondary">
+                                                <i class="fa-solid fa-lock fs-5"></i>
+                                                <h6 class="fw-bold m-0 text-dark">THÔNG TIN XÁC NHẬN & ĐÓNG TICKET</h6>
+                                            </div>
+                                            <div class="row g-2 small">
+                                                <div class="col-md-6">
+                                                    <span class="text-muted">IT hoàn thành lúc:</span>
+                                                    <strong class="text-dark d-block" id="close-info-it-completed">--</strong>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <span class="text-muted">Ngày đóng chính thức:</span>
+                                                    <strong class="text-dark d-block" id="close-info-closed-at">--</strong>
+                                                </div>
+                                                <div class="col-md-12 mt-2">
+                                                    <span class="text-muted">Lý do / Trạng thái đóng:</span>
+                                                    <div class="p-2 rounded bg-white border fw-bold text-primary mt-1 shadow-sm" id="close-info-reason">--</div>
+                                                </div>
+                                                <div class="col-md-12 d-none" id="close-info-user-feedback-wrapper">
+                                                    <span class="text-muted">Ghi chú của người dùng:</span>
+                                                    <div class="p-2 rounded bg-white border text-danger mt-1 shadow-sm" id="close-info-user-feedback">--</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1808,6 +1871,48 @@
                         compFileInput.value = '';
                     }
 
+                    // Populate User Confirmation Box and Close Info Box
+                    document.querySelectorAll('.user-confirm-ticket-id').forEach(el => el.value = ticket.id);
+
+                    const userConfirmBox = document.getElementById('user-confirm-box');
+                    const closeInfoBox = document.getElementById('ticket-close-info-box');
+
+                    if (userConfirmBox) {
+                        if (ticket.status.toUpperCase() === 'RESOLVED') {
+                            userConfirmBox.classList.remove('d-none');
+                        } else {
+                            userConfirmBox.classList.add('d-none');
+                        }
+                    }
+
+                    if (closeInfoBox) {
+                        const isClosed = ticket.status.toUpperCase() === 'CLOSED';
+                        const hasCloseInfo = isClosed || ticket.itCompletedAtStr || ticket.closedAtStr;
+                        if (hasCloseInfo) {
+                            closeInfoBox.classList.remove('d-none');
+                            const itCompletedEl = document.getElementById('close-info-it-completed');
+                            const closedAtEl = document.getElementById('close-info-closed-at');
+                            const reasonEl = document.getElementById('close-info-reason');
+                            const feedbackWrapper = document.getElementById('close-info-user-feedback-wrapper');
+                            const feedbackEl = document.getElementById('close-info-user-feedback');
+
+                            if (itCompletedEl) itCompletedEl.textContent = ticket.itCompletedAtStr || ticket.completedAtStr || 'Đã hoàn thành';
+                            if (closedAtEl) closedAtEl.textContent = ticket.closedAtStr || (isClosed ? 'Đã đóng' : 'Chưa đóng');
+                            if (reasonEl) reasonEl.textContent = ticket.closeReason || (isClosed ? 'Đóng tác vụ' : 'Đang chờ xác nhận');
+
+                            if (feedbackWrapper && feedbackEl) {
+                                if (ticket.userFeedback && ticket.userFeedback.trim() !== '') {
+                                    feedbackEl.textContent = ticket.userFeedback;
+                                    feedbackWrapper.classList.remove('d-none');
+                                } else {
+                                    feedbackWrapper.classList.add('d-none');
+                                }
+                            }
+                        } else {
+                            closeInfoBox.classList.add('d-none');
+                        }
+                    }
+
                     // Disable inputs for regular user or if ticket is resolved
                     const statusSelect = document.getElementById('detail-status');
                     const prioritySelect = document.getElementById('detail-priority');
@@ -1815,17 +1920,18 @@
                     const categorySelect = document.getElementById('detail-category');
                     const saveBtn = document.getElementById('detail-save-btn');
                     
+                    const isClosed = ticket.status.toUpperCase() === 'CLOSED';
                     const isResolved = ticket.status.toUpperCase() === 'RESOLVED';
                     const isEstimatedSet = (ticket.estimatedCompletionTimeStr != null && ticket.estimatedCompletionTimeStr !== '');
 
                     const lockAlertEl = document.getElementById('detail-lock-alert');
                     if (lockAlertEl) {
-                        lockAlertEl.style.display = isResolved ? 'block' : 'none';
+                        lockAlertEl.style.display = isClosed ? 'block' : 'none';
                     }
                     const estLockMsg = document.getElementById('detail-estimated-lock-msg');
                     const compUploadWrapper = document.getElementById('detail-completion-image-upload-wrapper');
 
-                    const canEdit = isAdmin && !isResolved;
+                    const canEdit = isAdmin && !isClosed;
 
                     if (!canEdit) {
                         if (compUploadWrapper) compUploadWrapper.style.display = 'none';
@@ -1918,7 +2024,7 @@
                         }
 
                         // Step 3: IT tiếp nhận
-                        const isItAssigned = ticket.status === 'PROGRESS' || ticket.status === 'RESOLVED';
+                        const isItAssigned = ticket.status === 'PROGRESS' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED';
                         const isItActive = isManagerApproved && !isItAssigned;
                         if (isItAssigned) {
                             step3.className = 'vt-step-item completed';
@@ -1932,14 +2038,15 @@
                         }
 
                         // Step 4: Kết thúc
-                        const isResolved = ticket.status === 'RESOLVED';
-                        const isResolvedActive = ticket.status === 'PROGRESS';
-                        if (isResolved) {
+                        const isTicketClosed = ticket.status === 'CLOSED';
+                        const isTicketResolved = ticket.status === 'RESOLVED';
+                        const isItProgress = ticket.status === 'PROGRESS';
+                        if (isTicketClosed) {
                             step4.className = 'vt-step-item completed';
                             if (step4.querySelector('.vt-dot i')) step4.querySelector('.vt-dot i').className = 'fa-solid fa-check';
-                        } else if (isResolvedActive) {
+                        } else if (isTicketResolved) {
                             step4.className = 'vt-step-item active';
-                            if (step4.querySelector('.vt-dot i')) step4.querySelector('.vt-dot i').className = 'fa-solid fa-circle';
+                            if (step4.querySelector('.vt-dot i')) step4.querySelector('.vt-dot i').className = 'fa-solid fa-hourglass-half';
                         } else {
                             step4.className = 'vt-step-item';
                             if (step4.querySelector('.vt-dot i')) step4.querySelector('.vt-dot i').className = 'fa-solid fa-circle';
@@ -1948,8 +2055,10 @@
 
                     // Animate the liquid blue progress fill (inspired by rising water pipe)
                     let fillHeight = '0%';
-                    if (ticket.status.toUpperCase() === 'RESOLVED') {
+                    if (ticket.status.toUpperCase() === 'CLOSED') {
                         fillHeight = '100%';
+                    } else if (ticket.status.toUpperCase() === 'RESOLVED') {
+                        fillHeight = '85%';
                     } else if (ticket.status.toUpperCase() === 'PROGRESS') {
                         fillHeight = '66%';
                     } else if (ticket.managerApproval === 'APPROVED' || (ticket.assignee != null && ticket.assignee !== '')) {
@@ -2316,5 +2425,58 @@
                 window.showTechLoading(form.action && form.action.includes('update') ? 'ĐANG CẬP NHẬT TICKET' : 'ĐANG TẠO YÊU CẦU IT');
             }, true);
         })();
+
+        function toggleUserIssueInput() {
+            const noteGroup = document.getElementById('user-issue-note-group');
+            const reportBtn = document.getElementById('user-report-issue-btn');
+            if (noteGroup) noteGroup.classList.toggle('d-none');
+            if (reportBtn) reportBtn.classList.toggle('d-none');
+        }
+
+        function submitUserConfirmResolve() {
+            const id = document.getElementById('detail-id') ? document.getElementById('detail-id').value : '';
+            if (!id) return;
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/ticket/user-confirm-resolve';
+            
+            const inputId = document.createElement('input');
+            inputId.type = 'hidden';
+            inputId.name = 'id';
+            inputId.value = id;
+            form.appendChild(inputId);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function submitUserReportIssue() {
+            const id = document.getElementById('detail-id') ? document.getElementById('detail-id').value : '';
+            const noteVal = document.getElementById('user-issue-feedback-input') ? document.getElementById('user-issue-feedback-input').value.trim() : '';
+            if (!id) return;
+            if (!noteVal) {
+                alert('Vui lòng nhập mô tả lỗi chưa được khắc phục xong!');
+                return;
+            }
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/ticket/user-report-issue';
+
+            const inputId = document.createElement('input');
+            inputId.type = 'hidden';
+            inputId.name = 'id';
+            inputId.value = id;
+            form.appendChild(inputId);
+
+            const inputFb = document.createElement('input');
+            inputFb.type = 'hidden';
+            inputFb.name = 'userFeedback';
+            inputFb.value = noteVal;
+            form.appendChild(inputFb);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
     </script>
 </div>

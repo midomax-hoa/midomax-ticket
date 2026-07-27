@@ -15,6 +15,9 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     // Count tickets by status
     long countByStatus(String status);
 
+    // Find tickets by status
+    List<Ticket> findByStatus(String status);
+
     // Count tickets where assignee is null (unassigned)
     long countByAssigneeIsNull();
 
@@ -40,7 +43,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query("SELECT t FROM Ticket t WHERE " +
            "(:status IS NULL OR t.status = :status) AND " +
            "(:assignee IS NULL OR t.assignee = :assignee) AND " +
-           "(:isUnassigned IS NULL OR (:isUnassigned = true AND t.assignee IS NULL)) AND " +
+           "(:isUnassigned IS NULL OR (:isUnassigned = true AND (t.assignee IS NULL OR TRIM(t.assignee) = ''))) AND " +
            "(:search IS NULL OR " +
            "  LOWER(t.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "  LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -86,7 +89,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
            "(:category IS NULL OR t.category = :category) AND " +
            "(:filterAssignee IS NULL OR t.assignee = :filterAssignee) AND " +
            "(:mineAssignee IS NULL OR t.assignee = :mineAssignee) AND " +
-           "(:isUnassigned IS NULL OR t.assignee IS NULL) AND " +
+           "(:isUnassigned IS NULL OR (t.assignee IS NULL OR TRIM(t.assignee) = '')) AND " +
            "(:dateFrom IS NULL OR t.createdAt >= :dateFrom) AND " +
            "(:dateTo IS NULL OR t.createdAt <= :dateTo) AND " +
            "(:search IS NULL OR " +

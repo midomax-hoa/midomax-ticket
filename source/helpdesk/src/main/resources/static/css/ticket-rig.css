@@ -120,14 +120,16 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen&family=VT323&display=swap');
 
-/* === MÀN HÌNH ROBOT: chu kỳ 36s — mặt cười (đa số) → 2 câu chào chạy qua === */
-.face-smile   { animation: scr-face 36s infinite; }
-.pixel-text-1 { animation: scr-t1 36s infinite; }
-.pixel-text-2 { animation: scr-t2 36s infinite; }
+/* === MÀN HÌNH ROBOT: chu kỳ 24s xen kẽ Mặt Cười ➔ Chữ 1 ➔ Mặt Cười ➔ Chữ 2 ➔ Mặt Cười ➔ Chữ 3 === */
+.face-smile   { animation: scr-face 24s infinite; }
+.pixel-text-1 { animation: scr-t1 24s infinite; }
+.pixel-text-2 { animation: scr-t2 24s infinite; }
+.pixel-text-3 { animation: scr-t3 24s infinite; }
 
 /* Rê chuột: ẩn chữ, hiện mặt để mắt nhìn theo con trỏ */
 .rig-scene.is-hovering .pixel-text-1,
-.rig-scene.is-hovering .pixel-text-2 {
+.rig-scene.is-hovering .pixel-text-2,
+.rig-scene.is-hovering .pixel-text-3 {
     opacity: 0 !important;
     pointer-events: none !important;
     transition: opacity 0.2s ease-out;
@@ -139,31 +141,51 @@
 }
 
 @keyframes scr-face {
-    0%, 53%   { opacity: 1; }
-    55%, 98%  { opacity: 0; }
-    100%      { opacity: 1; }
-}
-@keyframes scr-t1 {
-    0%, 54%   { opacity: 0; }
-    56%, 76%  { opacity: 1; }
-    78%, 100% { opacity: 0; }
-}
-@keyframes scr-t2 {
-    0%, 77%   { opacity: 0; }
-    79%, 99%  { opacity: 1; }
-    100%      { opacity: 0; }
+    0%, 13%    { opacity: 1; }
+    14%, 34%   { opacity: 0; }
+    35%, 49%   { opacity: 1; }
+    50%, 65%   { opacity: 0; }
+    66%, 80%   { opacity: 1; }
+    81%, 98%   { opacity: 0; }
+    99%, 100%  { opacity: 1; }
 }
 
-/* Chữ chạy phải → trái, khớp đúng khung hiện của scr-t1/scr-t2 */
-.pixel-scroll-1 { animation: scr-m1 36s linear infinite; }
-.pixel-scroll-2 { animation: scr-m2 36s linear infinite; }
-@keyframes scr-m1 {
-    0%, 55%   { transform: translateX(300px); }
-    77%, 100% { transform: translateX(-950px); }
+@keyframes scr-t1 {
+    0%, 13.5%    { opacity: 0; }
+    14.5%, 33.5% { opacity: 1; }
+    34.5%, 100%  { opacity: 0; }
 }
+
+@keyframes scr-t2 {
+    0%, 49.5%    { opacity: 0; }
+    50.5%, 64.5% { opacity: 1; }
+    65.5%, 100%  { opacity: 0; }
+}
+
+@keyframes scr-t3 {
+    0%, 80.5%    { opacity: 0; }
+    81.5%, 97.5% { opacity: 1; }
+    98.5%, 100%  { opacity: 0; }
+}
+
+/* Chữ chạy vừa vặn, không quá nhanh, vừa tầm đọc */
+.pixel-scroll-1 { animation: scr-m1 24s linear infinite; }
+.pixel-scroll-2 { animation: scr-m2 24s linear infinite; }
+.pixel-scroll-3 { animation: scr-m3 24s linear infinite; }
+
+@keyframes scr-m1 {
+    0%, 14%     { transform: translateX(300px); }
+    33.5%, 100% { transform: translateX(-850px); }
+}
+
 @keyframes scr-m2 {
-    0%, 78%   { transform: translateX(300px); }
-    100%      { transform: translateX(-700px); }
+    0%, 49.5%   { transform: translateX(300px); }
+    64.5%, 100% { transform: translateX(-450px); }
+}
+
+@keyframes scr-m3 {
+    0%, 80.5%   { transform: translateX(300px); }
+    97.5%, 100% { transform: translateX(-1250px); }
 }
 
 /* Con trỏ nhấp nháy cho màn hình Pixel (Blinking Cursor) */

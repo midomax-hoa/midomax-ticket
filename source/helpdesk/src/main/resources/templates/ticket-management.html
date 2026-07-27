@@ -951,17 +951,17 @@
                                 </div>
                             </td>
                             <td>
-                                <div th:if="${ticket.status != 'RESOLVED'}">
-                                    <div th:if="${#temporals.createNow().isAfter(ticket.slaDeadline)}"
-                                        class="text-danger fw-bold" style="font-size: 13px;">
+                                <div th:if="${ticket.status != 'RESOLVED' && ticket.status != 'CLOSED'}">
+                                    <div th:if="${#temporals.createNow().isAfter(ticket.getEffectiveSlaDeadline())}"
+                                        class="text-danger fw-bold" style="font-size: 13px;" title="Quá hạn so với thời gian dự kiến hoàn thành">
                                         <i class="fa-regular fa-clock me-1"></i>Quá hạn
                                     </div>
-                                    <div th:if="${#temporals.createNow().isBefore(ticket.slaDeadline)}"
-                                        class="text-success fw-bold" style="font-size: 13px;">
+                                    <div th:if="${#temporals.createNow().isBefore(ticket.getEffectiveSlaDeadline())}"
+                                        class="text-success fw-bold" style="font-size: 13px;" title="Còn hạn theo thời gian dự kiến hoàn thành">
                                         <i class="fa-regular fa-clock me-1"></i>Còn hạn
                                     </div>
                                 </div>
-                                <div th:if="${ticket.status == 'RESOLVED'}" class="text-muted fw-bold"
+                                <div th:if="${ticket.status == 'RESOLVED' || ticket.status == 'CLOSED'}" class="text-muted fw-bold"
                                     style="font-size: 13px;">
                                     <i class="fa-regular fa-circle-check me-1"></i>Hoàn thành
                                 </div>

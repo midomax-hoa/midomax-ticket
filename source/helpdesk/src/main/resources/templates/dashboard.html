@@ -165,9 +165,23 @@
         .calendar-wrapper { padding-top: 10px; }
         .calendar-days { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px; font-weight: 600; color: #9ca3af; }
         .calendar-dates { display: flex; flex-wrap: wrap; gap: 8px 0; }
-        .calendar-dates span { width: 14.28%; text-align: center; font-size: 13px; font-weight: 600; color: #4b5563; padding: 6px 0; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .calendar-dates span { width: 14.28%; text-align: center; font-size: 13px; font-weight: 600; color: #4b5563; padding: 6px 0; border-radius: 50%; cursor: pointer; transition: 0.2s; position: relative; }
         .calendar-dates span:hover:not(.text-muted) { background: #f3f4f6; }
         .calendar-dates span.active-date { background: #3b82f6; color: white; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
+        .calendar-dates span.has-event::after {
+            content: '';
+            width: 5px;
+            height: 5px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .calendar-dates span.active-date.has-event::after {
+            background-color: #ffffff;
+        }
         
         /* Donut Chart */
         .donut-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
@@ -590,24 +604,46 @@
 
         <!-- DASHBOARD GRID LAYOUT -->
         <div class="row g-4 mb-4">
-            <!-- Left: Calendar -->
+            <!-- Left: Calendar with IT Dropdown -->
             <div class="col-xl-4 col-lg-6">
                 <div class="widget-card h-100">
-                    <div class="widget-card-title">
-                        <button class="btn btn-sm btn-light rounded-circle" style="width:28px;height:28px;padding:0;"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i></button>
-                        <span>Tháng 5 2026</span>
-                        <button class="btn btn-sm btn-light rounded-circle" style="width:28px;height:28px;padding:0;"><i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></button>
+                    <div class="widget-card-title mb-2">
+                        <button class="btn btn-sm btn-light rounded-circle" id="prevMonthBtn" style="width:28px;height:28px;padding:0;"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i></button>
+                        <span id="calendarMonthYear" class="fw-bold text-primary">Tháng 7 2026</span>
+                        <button class="btn btn-sm btn-light rounded-circle" id="nextMonthBtn" style="width:28px;height:28px;padding:0;"><i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></button>
                     </div>
+                    
+                    <!-- IT Staff Selection Dropdown -->
+                    <div class="mb-2">
+                        <div class="d-flex align-items-center gap-1">
+                            <i class="fa-solid fa-user-gear text-primary me-1" style="font-size: 12px;"></i>
+                            <select id="itStaffDropdown" class="form-select form-select-sm border-0 bg-light fw-semibold text-dark shadow-none" onchange="onItDropdownChange()" style="font-size: 11px; border-radius: 8px;">
+                                <option value="">-- Tất cả nhân viên IT --</option>
+                                <option th:each="it : ${itWorkload}" 
+                                        th:value="${it.email}" 
+                                        th:data-name="${it.name}"
+                                        th:data-status="${it.status}"
+                                        th:data-groups="${it.groupLabels}"
+                                        th:text="${it.name + ' (' + (it.groupLabels != null and !it.groupLabels.isEmpty() ? it.groupLabels : 'IT') + ')'}">
+                                    Nguyễn Thành Tín
+                                </option>
+                            </select>
+                        </div>
+                        <div id="selectedItInfoBox" class="mt-2 p-2 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 d-none">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-primary small" id="selectedItName">IT Staff</span>
+                                <span class="badge bg-success" id="selectedItStatusBadge">Available</span>
+                            </div>
+                            <div class="small text-muted mt-1" style="font-size: 10px;" id="selectedItGroups">Danh mục: Helpdesk</div>
+                        </div>
+                    </div>
+
                     <div class="calendar-wrapper">
                         <div class="calendar-days">
                             <span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span>
                         </div>
-                        <div class="calendar-dates">
-                            <span class="text-muted">26</span><span class="text-muted">27</span><span class="text-muted">28</span><span class="text-muted">29</span><span class="text-muted">30</span><span>1</span><span>2</span>
-                            <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
-                            <span>10</span><span>11</span><span class="active-date">12</span><span>13</span><span>14</span><span>15</span><span>16</span>
-                            <span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span>
-                            <span>24</span><span>25</span><span>26</span><span>27</span><span>28</span><span>29</span><span>30</span>
+                        <div class="calendar-dates" id="calendarDatesGrid">
+                            <!-- Injected dynamically via JS -->
                         </div>
                     </div>
                 </div>
@@ -616,54 +652,54 @@
             <!-- Middle: 4 Stat Cards -->
             <div class="col-xl-4 col-lg-6">
                 <div class="row g-3 h-100">
+                    <!-- Card 1 -->
                     <div class="col-6">
                         <div class="stat-box bg-purple-light">
                             <div class="d-flex align-items-center mb-1">
                                 <i class="fa-solid fa-ticket text-purple me-2"></i> 
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="hasRole('ADMIN')">Tổng Ticket</span>
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="!hasRole('ADMIN')">Ticket Của Bạn</span>
+                                <span class="fw-bold text-muted" style="font-size: 11px;" th:text="${isAdmin ? 'Tổng Ticket' : (isIt ? 'Ticket Được Giao' : 'Ticket Của Bạn')}">Tổng Ticket</span>
                             </div>
-                            <h3 th:text="${stats != null ? stats['total'] : 0}">0</h3>
+                            <h3 th:text="${stats != null ? (stats['total'] != null ? stats['total'] : 0) : 0}">0</h3>
                             <p>Tất cả <span class="text-purple"><i class="fa-solid fa-arrow-trend-up ms-1"></i></span></p>
                         </div>
                     </div>
+                    <!-- Card 2 -->
                     <div class="col-6">
                         <div class="stat-box bg-orange-light">
                             <div class="d-flex align-items-center mb-1">
                                 <i class="fa-solid fa-check-double text-orange me-2"></i> 
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="hasRole('ADMIN')">Đang Xử Lý</span>
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="!hasRole('ADMIN')">Đã Giải Quyết</span>
+                                <span class="fw-bold text-muted" style="font-size: 11px;">Đang Xử Lý</span>
                             </div>
-                            <h3 th:text="${stats != null ? (stats['inProgress'] != null and #authorization.expression('hasRole(''ADMIN'')') ? stats['inProgress'] : stats['resolved']) : 0}">0</h3>
+                            <h3 th:text="${stats != null ? (stats['inProgress'] != null ? stats['inProgress'] : 0) : 0}">0</h3>
                             <p>Hiện tại <span class="text-orange"><i class="fa-solid fa-arrow-trend-up ms-1"></i></span></p>
                         </div>
                     </div>
+                    <!-- Card 3 -->
                     <div class="col-6">
                         <div class="stat-box bg-green-light">
                             <div class="d-flex align-items-center mb-1">
                                 <i class="fa-solid fa-bolt text-green me-2"></i> 
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="hasRole('ADMIN')">Cần Xử Lý Gấp</span>
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="!hasRole('ADMIN')">Đang Mở</span>
+                                <span class="fw-bold text-muted" style="font-size: 11px;" th:text="${isAdmin ? 'Cần Xử Lý Gấp' : (isIt ? 'Vé Của Tôi' : 'Đang Mở')}">Trạng Thái</span>
                             </div>
-                            <h3 th:text="${stats != null ? (stats['overdue'] != null ? stats['overdue'] : stats['open']) : 0}">0</h3>
+                            <h3 th:text="${stats != null ? (isAdmin ? (stats['overdue'] != null ? stats['overdue'] : 0) : (isIt ? (stats['mine'] != null ? stats['mine'] : 0) : (stats['open'] != null ? stats['open'] : 0))) : 0}">0</h3>
                             <p>Quan trọng <span class="text-green"><i class="fa-solid fa-arrow-trend-down ms-1"></i></span></p>
                         </div>
                     </div>
+                    <!-- Card 4 -->
                     <div class="col-6">
                         <div class="stat-box bg-blue-light">
                             <div class="d-flex align-items-center mb-1">
                                 <i class="fa-solid fa-clock-rotate-left text-blue me-2"></i> 
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="hasRole('ADMIN')">Chưa Phân Công</span>
-                                <span class="fw-bold text-muted" style="font-size: 11px;" sec:authorize="!hasRole('ADMIN')">Đang Xử Lý</span>
+                                <span class="fw-bold text-muted" style="font-size: 11px;" th:text="${isAdmin ? 'Chưa Phân Công' : (isIt ? 'Chưa Phân Công' : 'Đã Giải Quyết')}">Chờ Xử Lý</span>
                             </div>
-                            <h3 th:text="${stats != null ? (stats['unassigned'] != null ? stats['unassigned'] : stats['inProgress']) : 0}">0</h3>
+                            <h3 th:text="${stats != null ? (isAdmin ? (stats['unassigned'] != null ? stats['unassigned'] : 0) : (isIt ? (stats['unassigned'] != null ? stats['unassigned'] : 0) : (stats['resolved'] != null ? stats['resolved'] : 0))) : 0}">0</h3>
                             <p>Đang chờ <span class="text-blue"><i class="fa-solid fa-arrow-trend-up ms-1"></i></span></p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Right: Donut Chart -->
+            <!-- Right: Dynamic Donut Chart -->
             <div class="col-xl-4 col-lg-12">
                 <div class="widget-card h-100">
                     <div class="widget-card-title">
@@ -671,25 +707,14 @@
                     </div>
                     <div class="row align-items-center h-100">
                         <div class="col-6 text-center" style="position: relative;">
-                            <canvas id="donutChart"></canvas>
+                            <canvas id="donutChart" style="max-height: 140px;"></canvas>
                             <div class="donut-inner">
                                 <span style="font-size: 10px; color: #6b7280; font-weight: 600;">Tổng</span><br>
-                                <span style="font-size: 18px; font-weight: 800; color: #1e3a8a;">70%</span>
+                                <span style="font-size: 18px; font-weight: 800; color: #1e3a8a;" id="donutTotal">0</span>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="mb-3">
-                                <div class="legend-item"><span class="legend-dot bg-warning"></span> Phần cứng</div>
-                                <div style="font-size:11px; color:#9ca3af; margin-left: 16px; font-weight: 600;">40%</div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="legend-item"><span class="legend-dot bg-primary"></span> Phần mềm</div>
-                                <div style="font-size:11px; color:#9ca3af; margin-left: 16px; font-weight: 600;">20%</div>
-                            </div>
-                            <div>
-                                <div class="legend-item"><span class="legend-dot bg-info"></span> Mạng</div>
-                                <div style="font-size:11px; color:#9ca3af; margin-left: 16px; font-weight: 600;">30%</div>
-                            </div>
+                        <div class="col-6" id="donutLegendList">
+                            <!-- Injected dynamically via JS -->
                         </div>
                     </div>
                 </div>
@@ -703,7 +728,7 @@
                 <div class="widget-card h-100">
                     <div class="card-title-main">
                         <h5 sec:authorize="hasRole('ADMIN')"><i class="fa-solid fa-list-check me-2 text-primary"></i> Tiến trình xử lý ticket hệ thống</h5>
-                        <h5 sec:authorize="hasRole('ROLE_IT')"><i class="fa-solid fa-list-check me-2 text-primary"></i> Tiến trình xử lý ticket của bạn hỗ trợ</h5>
+                        <h5 sec:authorize="hasRole('ROLE_IT') and !hasRole('ADMIN')"><i class="fa-solid fa-list-check me-2 text-primary"></i> Tiến trình xử lý ticket của bạn hỗ trợ</h5>
                         <h5 sec:authorize="!hasRole('ADMIN') and !hasRole('ROLE_IT')"><i class="fa-solid fa-list-check me-2 text-primary"></i> Tiến trình yêu cầu của bạn</h5>
                         <a href="/ticket-management" class="link-view-all">Quản lý tất cả</a>
                     </div>
@@ -804,40 +829,356 @@
         </div>
 
         <div th:replace="~{fragments/ticket-modals :: ticketModals}"></div>
-        <!-- Vé thông tin ticket vừa tạo. Cần có ở MỌI trang có nút "Tạo Ticket", vì sau
-             khi tạo hệ thống quay lại đúng trang đã bấm — thiếu ở đây là mất vé. -->
+        <!-- Vé thông tin ticket vừa tạo -->
         <div th:replace="~{success-modal :: successModal}"></div>
+
+        <!-- IT Staff Schedule Modal -->
+        <div class="modal fade" id="itScheduleModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header bg-primary text-white border-0 py-3" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+                        <h5 class="modal-title fw-bold fs-6" id="itScheduleModalTitle">
+                            <i class="fa-solid fa-calendar-check me-2"></i> Lịch Làm Việc IT Staff - <span id="modalSelectedDateStr"></span>
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4" id="itScheduleModalBody">
+                        <div class="text-center py-4 text-muted">
+                            <div class="spinner-border text-primary mb-2" role="status"></div>
+                            <p class="mb-0">Đang tải lịch làm việc nhân viên IT...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div> <!-- End main-content -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-
-        
-        // Update current time
-        const timeSpan = document.getElementById('current-time');
-        const now = new Date();
-        const formattedTime = now.toLocaleDateString('vi-VN') + ' - ' + now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
-        timeSpan.textContent = formattedTime;
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
+    <script th:inline="javascript">
         document.addEventListener("DOMContentLoaded", () => {
+            // Update current time
+            const timeSpan = document.getElementById('current-time');
+            if (timeSpan) {
+                const now = new Date();
+                timeSpan.textContent = now.toLocaleDateString('vi-VN') + ' - ' + now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+            }
+
             Chart.defaults.font.family = "'Segoe UI', sans-serif";
             Chart.defaults.color = '#9ca3af';
 
-            // Donut Chart
-            new Chart(document.getElementById('donutChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Phần cứng', 'Phần mềm', 'Mạng'],
-                    datasets: [{
-                        data: [40, 20, 30, 10], // 10 is others/padding
-                        backgroundColor: ['#f59e0b', '#3b82f6', '#06b6d4', '#e5e7eb'],
-                        borderWidth: 0,
-                        cutout: '75%'
-                    }]
-                },
-                options: { plugins: { legend: { display: false }, tooltip: { enabled: false } }, responsive: true, maintainAspectRatio: false }
+            // Dynamic Donut Chart Logic with Rich Palette
+            const catStatsData = /*[[${categoryStats}]]*/ {} || {};
+            
+            const catLabelsMap = {
+                'report': 'Phần báo cáo',
+                'helpdesk': 'Hỗ trợ Helpdesk',
+                'hardware': 'Phần cứng',
+                'software': 'Phần mềm',
+                'network': 'Mạng',
+                'equipment': 'Thiết bị',
+                'server': 'Máy chủ',
+                'other': 'Khác'
+            };
+
+            // Predefined distinct colors for known category keys
+            const catColorsMap = {
+                'report': '#ec4899',    // Vibrant Pink/Rose
+                'helpdesk': '#6366f1',  // Indigo
+                'hardware': '#f59e0b',  // Amber/Yellow
+                'software': '#3b82f6',  // Primary Blue
+                'network': '#06b6d4',   // Cyan
+                'equipment': '#10b981', // Emerald Green
+                'server': '#8b5cf6',    // Purple
+                'user': '#f97316',      // Orange
+                'other': '#9ca3af'     // Grey
+            };
+
+            // Distinct fallback palette array for dynamic category names
+            const fallbackPalette = [
+                '#ec4899', '#6366f1', '#f59e0b', '#3b82f6', '#06b6d4',
+                '#10b981', '#8b5cf6', '#f97316', '#14b8a6', '#e11d48'
+            ];
+
+            let labels = [];
+            let data = [];
+            let backgroundColors = [];
+            let totalCount = 0;
+
+            if (catStatsData && Object.keys(catStatsData).length > 0) {
+                let colorIdx = 0;
+                for (const [key, count] of Object.entries(catStatsData)) {
+                    const lowerKey = key.toLowerCase();
+                    const labelName = catLabelsMap[lowerKey] || key;
+                    const color = catColorsMap[lowerKey] || fallbackPalette[colorIdx % fallbackPalette.length];
+                    labels.push(labelName);
+                    data.push(count);
+                    backgroundColors.push(color);
+                    totalCount += count;
+                    colorIdx++;
+                }
+            }
+
+            if (data.length === 0) {
+                labels = ['Chưa có ticket'];
+                data = [0];
+                backgroundColors = ['#e5e7eb'];
+                totalCount = 0;
+            }
+
+            const totalSpan = document.getElementById('donutTotal');
+            if (totalSpan) totalSpan.innerText = totalCount;
+
+            const ctx = document.getElementById('donutChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data.length > 0 && totalCount > 0 ? data : [1],
+                            backgroundColor: data.length > 0 && totalCount > 0 ? backgroundColors : ['#e5e7eb'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            cutout: '75%'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false }, tooltip: { enabled: totalCount > 0 } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
+            const legendContainer = document.getElementById('donutLegendList');
+            if (legendContainer) {
+                legendContainer.innerHTML = '';
+                if (totalCount > 0) {
+                    labels.forEach((label, idx) => {
+                        const val = data[idx];
+                        const pct = Math.round((val / totalCount) * 100);
+                        const color = backgroundColors[idx];
+                        const div = document.createElement('div');
+                        div.className = 'mb-2';
+                        div.innerHTML = `
+                            <div class="legend-item" style="font-weight: 700;">
+                                <span class="legend-dot" style="background-color: ${color}; width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 6px;"></span> 
+                                ${label}
+                            </div>
+                            <div style="font-size:11px; color:#6b7280; margin-left: 16px; font-weight: 700;">${pct}% (${val})</div>
+                        `;
+                        legendContainer.appendChild(div);
+                    });
+                } else {
+                    legendContainer.innerHTML = `<div class="text-muted small">Chưa có dữ liệu danh mục</div>`;
+                }
+            }
+
+            // Interactive Calendar Logic
+            window.currentCalDate = new Date();
+
+            window.renderCalendar = function(date) {
+                const monthYearSpan = document.getElementById('calendarMonthYear');
+                const datesGrid = document.getElementById('calendarDatesGrid');
+                if (!monthYearSpan || !datesGrid) return;
+
+                const year = date.getFullYear();
+                const month = date.getMonth(); // 0-11
+                
+                const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+                monthYearSpan.innerText = `${monthNames[month]} ${year}`;
+
+                const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) to 6 (Sat)
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const prevMonthLastDate = new Date(year, month, 0).getDate();
+
+                const dropdown = document.getElementById('itStaffDropdown');
+                const selectedEmail = dropdown ? dropdown.value : '';
+
+                let busyApiUrl = `/api/dashboard/busy-dates?year=${year}&month=${month + 1}`;
+                if (selectedEmail) {
+                    busyApiUrl += `&email=${encodeURIComponent(selectedEmail)}`;
+                }
+
+                fetch(busyApiUrl)
+                    .then(res => res.json())
+                    .then(busyDatesList => {
+                        const busySet = new Set(busyDatesList || []);
+                        let gridHtml = '';
+
+                        // Previous month trailing days
+                        for (let i = firstDayOfMonth; i > 0; i--) {
+                            gridHtml += `<span class="text-muted">${prevMonthLastDate - i + 1}</span>`;
+                        }
+
+                        // Current month days
+                        const today = new Date();
+                        for (let day = 1; day <= daysInMonth; day++) {
+                            const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const isBusy = busySet.has(dateStr);
+                            let classes = [];
+                            if (isToday) classes.push('active-date');
+                            if (isBusy) classes.push('has-event');
+                            const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+
+                            gridHtml += `<span ${classAttr} onclick="openItScheduleModal('${dateStr}', ${day}, ${month + 1}, ${year})">${day}</span>`;
+                        }
+
+                        // Next month leading days to complete row
+                        const totalCells = firstDayOfMonth + daysInMonth;
+                        const nextDays = (7 - (totalCells % 7)) % 7;
+                        for (let i = 1; i <= nextDays; i++) {
+                            gridHtml += `<span class="text-muted">${i}</span>`;
+                        }
+
+                        datesGrid.innerHTML = gridHtml;
+                    })
+                    .catch(() => {
+                        let gridHtml = '';
+                        for (let i = firstDayOfMonth; i > 0; i--) {
+                            gridHtml += `<span class="text-muted">${prevMonthLastDate - i + 1}</span>`;
+                        }
+                        const today = new Date();
+                        for (let day = 1; day <= daysInMonth; day++) {
+                            const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const activeClass = isToday ? 'active-date' : '';
+                            gridHtml += `<span class="${activeClass}" onclick="openItScheduleModal('${dateStr}', ${day}, ${month + 1}, ${year})">${day}</span>`;
+                        }
+                        datesGrid.innerHTML = gridHtml;
+                    });
+            };
+
+            document.getElementById('prevMonthBtn')?.addEventListener('click', () => {
+                window.currentCalDate.setMonth(window.currentCalDate.getMonth() - 1);
+                window.renderCalendar(window.currentCalDate);
             });
+
+            document.getElementById('nextMonthBtn')?.addEventListener('click', () => {
+                window.currentCalDate.setMonth(window.currentCalDate.getMonth() + 1);
+                window.renderCalendar(window.currentCalDate);
+            });
+
+            window.renderCalendar(window.currentCalDate);
         });
+
+        // Triggered when selecting an IT member from dropdown
+        function onItDropdownChange() {
+            const dropdown = document.getElementById('itStaffDropdown');
+            const infoBox = document.getElementById('selectedItInfoBox');
+            if (!dropdown) return;
+
+            const selectedOpt = dropdown.options[dropdown.selectedIndex];
+            const email = selectedOpt.value;
+
+            if (infoBox) {
+                if (!email) {
+                    infoBox.classList.add('d-none');
+                } else {
+                    const name = selectedOpt.getAttribute('data-name') || 'IT Staff';
+                    const status = selectedOpt.getAttribute('data-status') || 'Available';
+                    const groups = selectedOpt.getAttribute('data-groups') || 'IT Support';
+
+                    document.getElementById('selectedItName').innerText = name;
+                    document.getElementById('selectedItGroups').innerText = `Danh mục hỗ trợ: ${groups}`;
+                    
+                    const badge = document.getElementById('selectedItStatusBadge');
+                    if (badge) {
+                        badge.innerText = status === 'Available' ? 'Available (Sẵn sàng)' : 'Busy (Đang bận)';
+                        badge.className = status === 'Available' ? 'badge bg-success' : 'badge bg-warning text-dark';
+                    }
+
+                    infoBox.classList.remove('d-none');
+                }
+            }
+
+            if (window.renderCalendar && window.currentCalDate) {
+                window.renderCalendar(window.currentCalDate);
+            }
+        }
+
+        // Function to open IT schedule modal (with optional IT email filter from dropdown)
+        function openItScheduleModal(dateStr, day, month, year) {
+            const dropdown = document.getElementById('itStaffDropdown');
+            const selectedEmail = dropdown ? dropdown.value : '';
+
+            const modalTitleStr = document.getElementById('modalSelectedDateStr');
+            if (modalTitleStr) modalTitleStr.innerText = `${day}/${month}/${year}`;
+
+            const modalBody = document.getElementById('itScheduleModalBody');
+            if (modalBody) {
+                modalBody.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="mb-0">Đang tải lịch làm việc nhân viên IT...</p>
+                    </div>
+                `;
+            }
+
+            const modalElem = document.getElementById('itScheduleModal');
+            if (modalElem) {
+                const bsModal = new bootstrap.Modal(modalElem);
+                bsModal.show();
+            }
+
+            let apiUrl = `/api/dashboard/it-schedule?date=${dateStr}`;
+            if (selectedEmail) {
+                apiUrl += `&email=${encodeURIComponent(selectedEmail)}`;
+            }
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (!modalBody) return;
+                    if (!data || data.length === 0) {
+                        modalBody.innerHTML = `<div class="text-center py-4 text-muted"><p>Không tìm thấy nhân viên IT nào phù hợp với bộ lọc trong ngày này.</p></div>`;
+                        return;
+                    }
+
+                    let html = `<div class="row g-3">`;
+                    data.forEach(it => {
+                        const statusBadge = it.status === 'Available' ? 
+                            `<span class="badge bg-success">Sẵn sàng (Available)</span>` : 
+                            `<span class="badge bg-warning text-dark">Bận (Busy)</span>`;
+                        
+                        let ticketsHtml = '';
+                        if (it.tickets && it.tickets.length > 0) {
+                            ticketsHtml = `<div class="mt-2"><strong class="small text-muted d-block mb-1">Danh mục ticket cần xử lý / lịch làm việc:</strong><ul class="list-group list-group-flush small">`;
+                            it.tickets.forEach(t => {
+                                const statusColor = t.status === 'RESOLVED' ? 'text-success' : (t.status === 'PROGRESS' ? 'text-primary' : 'text-warning');
+                                const catLabel = t.category || 'helpdesk';
+                                ticketsHtml += `<li class="list-group-item px-0 py-1 bg-transparent border-0"><i class="fa-solid fa-ticket me-1 ${statusColor}"></i> <strong>#${t.id}</strong> [${catLabel}] ${t.title} <span class="badge bg-secondary ms-1">${t.status}</span></li>`;
+                            });
+                            ticketsHtml += `</ul></div>`;
+                        } else {
+                            ticketsHtml = `<p class="small text-muted mb-0 mt-2"><i class="fa-solid fa-check-circle text-success me-1"></i> Chưa có ticket giao riêng trong ngày.</p>`;
+                        }
+
+                        html += `
+                            <div class="col-md-6">
+                                <div class="card border rounded-3 p-3 shadow-sm h-100 bg-light bg-opacity-50">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-user-gear me-2 text-primary"></i>${it.name}</h6>
+                                            <small class="text-muted d-block">${it.email}</small>
+                                            <small class="text-primary fw-semibold">Danh mục: ${it.groupLabels || 'IT Support'}</small>
+                                        </div>
+                                        <div>${statusBadge}</div>
+                                    </div>
+                                    ${ticketsHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                    modalBody.innerHTML = html;
+                })
+                .catch(err => {
+                    if (modalBody) {
+                        modalBody.innerHTML = `<div class="alert alert-danger mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi khi tải danh sách lịch làm việc IT!</div>`;
+                    }
+                });
+        }
     </script>
