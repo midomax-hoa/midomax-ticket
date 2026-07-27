@@ -370,7 +370,8 @@
                                                      th:data-status="${r.status != null ? r.status : 'PLANNING'}"
                                                      th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                      th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
-                                                     th:onclick="${hasKids ? 'event.stopPropagation();' : 'toggleTaskCompleteEl(this); event.stopPropagation();'}"
+                                                     th:data-haskids="${hasKids}"
+                                                     onclick="toggleTaskCompleteEl(this); event.stopPropagation();"
                                                      th:title="${hasKids ? 'Tự động theo việc con — không sửa tay' : 'Đánh dấu hoàn thành / chưa hoàn thành'}"
                                                      th:style="${hasKids ? 'cursor: not-allowed;' : ''}">
                                                     <i class="fa-solid fa-check"></i>
@@ -1883,6 +1884,8 @@
         }
 
         function toggleTaskCompleteEl(el) {
+            // Việc có việc con thì tiến độ tự tính, không cho tick tay
+            if (el.getAttribute('data-haskids') === 'true') return;
             const id = el.getAttribute('data-id');
             const status = el.getAttribute('data-status') || 'PLANNING';
             const due = el.getAttribute('data-due') || '';
