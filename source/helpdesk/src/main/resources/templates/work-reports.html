@@ -185,7 +185,7 @@
 
         /* GRID STRUCTURE (UNIFIED HIERARCHICAL TREE TABLE) */
         .grid-table { display: flex; flex-direction: column; width: 100%; overflow-x: auto; overflow-y: hidden; }
-        .grid-row { display: grid; grid-template-columns: minmax(180px, 2fr) 140px 160px 120px 110px minmax(200px, 1.5fr) 100px; align-items: center; border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease; min-width: 1100px; }
+        .grid-row { display: grid; grid-template-columns: minmax(180px, 2fr) 130px 150px 115px 100px minmax(180px, 1.2fr) 115px 80px; align-items: center; border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease; min-width: 1150px; }
         .grid-header { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; }
 
         .subtask-arrow-btn {
@@ -349,6 +349,7 @@
                                 <div class="grid-cell">Trạng thái</div>
                                 <div class="grid-cell">Tiến độ (%)</div>
                                 <div class="grid-cell">Diễn giải ghi chú</div>
+                                <div class="grid-cell">SLA / Hạn định</div>
                                 <div class="grid-cell justify-content-end">Hành động</div>
                             </div>
 
@@ -358,13 +359,17 @@
                                     <!-- PARENT ROW -->
                                     <!-- hasKids: việc này có việc con thật → tiến độ & trạng thái TỰ TÍNH, khoá sửa tay -->
                                     <div th:id="'task-row-' + ${r.id}" class="grid-row task-row px-3" style="background-color: #ffffff;"
-                                         th:with="hasKids=${childReportsMap != null && childReportsMap.get(r.id) != null && !childReportsMap.get(r.id).empty}">
+                                         th:with="hasKids=${childReportsMap != null && childReportsMap.get(r.id) != null && !childReportsMap.get(r.id).empty}"
+                                         th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                         th:data-delay="${r.delayReason != null ? r.delayReason : ''}">
                                         <!-- Cell 1: Task Name -->
                                         <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="font-weight: 500; overflow: visible;">
                                             <div class="d-flex align-items-center gap-2 w-100">
                                                 <div class="task-checkbox flex-shrink-0" th:classappend="${(r.status == 'COMPLETED' ? 'checked ' : '') + (hasKids ? 'opacity-50' : '')}"
                                                      th:data-id="${r.id}"
                                                      th:data-status="${r.status != null ? r.status : 'PLANNING'}"
+                                                     th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                     th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
                                                      th:onclick="${hasKids ? 'event.stopPropagation();' : 'toggleTaskCompleteEl(this); event.stopPropagation();'}"
                                                      th:title="${hasKids ? 'Tự động theo việc con — không sửa tay' : 'Đánh dấu hoàn thành / chưa hoàn thành'}"
                                                      th:style="${hasKids ? 'cursor: not-allowed;' : ''}">
@@ -421,10 +426,13 @@
                                                 <i class="fa-solid fa-lock ms-1" style="font-size: 9px; opacity: .55;" th:if="${hasKids}"></i>
                                             </div>
                                             <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;" th:if="${!hasKids}">
-                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PLANNING" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>
-                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PROGRESS" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>
-                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="TESTING" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>
-                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="COMPLETED" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-success me-2"></i>COMPLETED</a></li>
+                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PLANNING" onclick="updateStatusAjaxEl(this, 'PLANNING', this); return false;"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>
+                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PROGRESS" onclick="updateStatusAjaxEl(this, 'PROGRESS', this); return false;"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>
+                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="TESTING" onclick="updateStatusAjaxEl(this, 'TESTING', this); return false;"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>
+                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="COMPLETED"
+                                                       th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                       th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
+                                                       onclick="updateStatusAjaxEl(this, 'COMPLETED', this); return false;"><i class="fa-solid fa-circle text-success me-2"></i>COMPLETED</a></li>
                                             </ul>
                                         </div>
 
@@ -440,18 +448,30 @@
                                             </div>
                                         </div>
 
-                                        <!-- Cell 6: Diễn giải ghi chú -->
-                                        <div class="grid-cell text-muted small" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" th:title="${r.dailyReport}">
+                                        <!-- Cell 6: Diễn giải ghi chú & Giải trình trễ hạn -->
+                                        <div class="grid-cell text-muted small d-flex align-items-center gap-1" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:title="${(r.dailyReport != null ? r.dailyReport : '') + (r.delayReason != null && !r.delayReason.isEmpty() ? ' | Giải trình trễ: ' + r.delayReason : '')}">
                                             <span th:text="${r.dailyReport != null && !r.dailyReport.isEmpty() ? r.dailyReport : '--'}"></span>
+                                            <span class="badge bg-warning-subtle text-dark border border-warning ms-1 flex-shrink-0" style="font-size: 11px; cursor: pointer;" th:if="${r.delayReason != null && !r.delayReason.isEmpty()}" th:title="'Giải trình trễ hạn: ' + ${r.delayReason}" th:data-id="${r.id}" onclick="openTaskDetailModal(this.getAttribute('data-id')); event.stopPropagation();">
+                                                <i class="fa-solid fa-clock-rotate-left text-warning me-1"></i>Trễ
+                                            </span>
                                         </div>
 
-                                        <!-- Cell 7: Actions -->
+                                        <!-- Cell 7: SLA / Hạn định -->
+                                        <div class="grid-cell">
+                                            <span class="badge rounded-pill px-2 py-1 small fw-bold" th:classappend="${r.slaBadgeClass}">
+                                                <i class="fa-solid me-1" th:classappend="${r.slaStatus == 'Đúng hạn' ? 'fa-circle-check text-success' : (r.slaStatus == 'Trễ hẹn' ? 'fa-clock-rotate-left text-warning' : (r.slaStatus == 'Quá hạn' ? 'fa-triangle-exclamation text-danger' : 'fa-hourglass-half text-info'))}"></i>
+                                                <span th:text="${r.slaStatus}">SLA</span>
+                                            </span>
+                                        </div>
+
+                                        <!-- Cell 8: Actions -->
                                         <div class="grid-cell justify-content-end">
                                             <div class="d-flex align-items-center gap-2">
                                                 <i class="fa-solid fa-pen-to-square text-secondary text-hover-scale" style="cursor: pointer; font-size: 15px;" title="Cập nhật chi tiết"
                                                    th:data-id="${r.id}" th:data-progress="${r.progressPercentage}" th:data-status="${r.status != null ? r.status : 'PLANNING'}" th:data-haskids="${hasKids}"
                                                    th:data-note="${r.dailyReport != null ? r.dailyReport : ''}" th:data-title="${r.taskTitle != null ? r.taskTitle : ''}" th:data-watchers="${r.watchers != null ? r.watchers : ''}"
                                                    th:data-project="${r.projectName != null ? r.projectName : ''}" th:data-assignee="${r.assignee != null ? r.assignee : ''}" th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                   th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
                                                    onclick="openUpdateModalFromBtn(this); event.stopPropagation();"></i>
                                                 <form th:action="@{/work-reports/delete/{id}(id=${r.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa nhiệm vụ này?');">
                                                     <button type="submit" class="btn p-0 border-0 bg-transparent text-danger text-hover-scale" title="Xóa nhiệm vụ" style="line-height: 1;"><i class="fa-solid fa-trash" style="font-size: 14px;"></i></button>
@@ -464,7 +484,9 @@
                                     <div class="subtasks-container" th:id="'subtasks-' + ${r.id}">
                                         <!-- CHILD REPORTS (VIỆC CON / BƯỚC CON) -->
                                         <th:block th:if="${childReportsMap != null && childReportsMap.get(r.id) != null}" th:each="cr : ${childReportsMap.get(r.id)}">
-                                            <div th:id="'subreport-item-' + ${cr.id}" th:class="'grid-row task-row subtask-tree-row subtask-of-' + ${r.id} + ' px-3'" style="display: none; background: #fafbfc; border-left: 4px solid #93c5fd;">
+                                            <div th:id="'subreport-item-' + ${cr.id}" th:class="'grid-row task-row subtask-tree-row subtask-of-' + ${r.id} + ' px-3'" style="display: none; background: #fafbfc; border-left: 4px solid #93c5fd;"
+                                                 th:data-due="${cr.dueDate != null ? #temporals.format(cr.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                 th:data-delay="${cr.delayReason != null ? cr.delayReason : ''}">
                                                 <!-- Cell 1: Child Title indented -->
                                                 <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="padding-left: 44px; font-weight: 500; overflow: visible;">
                                                     <div class="d-flex align-items-center gap-2 w-100">
@@ -508,10 +530,13 @@
                                                         <span th:text="${cr.status == 'PROGRESS' ? 'IN PROGRESS' : (cr.status == 'COMPLETED' ? 'COMPLETED' : (cr.status == 'TESTING' ? 'TESTING' : 'TO DO'))}">TODO</span>
                                                     </div>
                                                     <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;">
-                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="PLANNING" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>
-                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="PROGRESS" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>
-                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="TESTING" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>
-                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="COMPLETED" onclick="updateStatusAjaxEl(this.getAttribute('data-id'), this.getAttribute('data-status-val'), this); return false;"><i class="fa-solid fa-circle text-success me-2"></i>COMPLETED</a></li>
+                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="PLANNING" onclick="updateStatusAjaxEl(this, 'PLANNING', this); return false;"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>
+                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="PROGRESS" onclick="updateStatusAjaxEl(this, 'PROGRESS', this); return false;"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>
+                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="TESTING" onclick="updateStatusAjaxEl(this, 'TESTING', this); return false;"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>
+                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="COMPLETED"
+                                                               th:data-due="${cr.dueDate != null ? #temporals.format(cr.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                               th:data-delay="${cr.delayReason != null ? cr.delayReason : ''}"
+                                                               onclick="updateStatusAjaxEl(this, 'COMPLETED', this); return false;"><i class="fa-solid fa-circle text-success me-2"></i>COMPLETED</a></li>
                                                     </ul>
                                                 </div>
 
@@ -526,17 +551,29 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Cell 6: Child Diễn giải ghi chú -->
-                                                <div class="grid-cell text-muted small" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" th:title="${cr.dailyReport}">
+                                                <!-- Cell 6: Child Diễn giải ghi chú & Giải trình trễ hạn -->
+                                                <div class="grid-cell text-muted small d-flex align-items-center gap-1" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:title="${(cr.dailyReport != null ? cr.dailyReport : '') + (cr.delayReason != null && !cr.delayReason.isEmpty() ? ' | Giải trình trễ: ' + cr.delayReason : '')}">
                                                     <span th:text="${cr.dailyReport != null && !cr.dailyReport.isEmpty() ? cr.dailyReport : '--'}"></span>
+                                                    <span class="badge bg-warning-subtle text-dark border border-warning ms-1 flex-shrink-0" style="font-size: 11px; cursor: pointer;" th:if="${cr.delayReason != null && !cr.delayReason.isEmpty()}" th:title="'Giải trình trễ hạn: ' + ${cr.delayReason}" th:data-id="${cr.id}" onclick="openTaskDetailModal(this.getAttribute('data-id')); event.stopPropagation();">
+                                                        <i class="fa-solid fa-clock-rotate-left text-warning me-1"></i>Trễ
+                                                    </span>
                                                 </div>
 
-                                                <!-- Cell 7: Child Actions -->
+                                                <!-- Cell 7: Child SLA / Hạn định -->
+                                                <div class="grid-cell">
+                                                    <span class="badge rounded-pill px-2 py-1 small fw-bold" th:classappend="${cr.slaBadgeClass}">
+                                                        <i class="fa-solid me-1" th:classappend="${cr.slaStatus == 'Đúng hạn' ? 'fa-circle-check text-success' : (cr.slaStatus == 'Trễ hẹn' ? 'fa-clock-rotate-left text-warning' : (cr.slaStatus == 'Quá hạn' ? 'fa-triangle-exclamation text-danger' : 'fa-hourglass-half text-info'))}"></i>
+                                                        <span th:text="${cr.slaStatus}">SLA</span>
+                                                    </span>
+                                                </div>
+
+                                                <!-- Cell 8: Child Actions -->
                                                 <div class="grid-cell justify-content-end gap-2">
                                                     <i class="fa-solid fa-pen-to-square text-secondary text-hover-scale" style="cursor: pointer; font-size: 15px;" title="Cập nhật chi tiết"
                                                        th:data-id="${cr.id}" th:data-progress="${cr.progressPercentage}" th:data-status="${cr.status != null ? cr.status : 'PLANNING'}"
                                                        th:data-note="${cr.dailyReport != null ? cr.dailyReport : ''}" th:data-title="${cr.taskTitle != null ? cr.taskTitle : ''}" th:data-watchers="${cr.watchers != null ? cr.watchers : ''}"
                                                        th:data-project="${cr.projectName != null ? cr.projectName : ''}" th:data-assignee="${cr.assignee != null ? cr.assignee : ''}" th:data-due="${cr.dueDate != null ? #temporals.format(cr.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                       th:data-delay="${cr.delayReason != null ? cr.delayReason : ''}"
                                                        onclick="openUpdateModalFromBtn(this); event.stopPropagation();"></i>
                                                     <form th:action="@{/work-reports/delete/{id}(id=${cr.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa việc con này?');">
                                                         <button type="submit" class="btn p-0 border-0 bg-transparent text-danger text-hover-scale" title="Xóa việc con" style="line-height: 1;"><i class="fa-solid fa-trash" style="font-size: 14px;"></i></button>
@@ -776,6 +813,14 @@
                             <label class="form-label fw-bold small text-dark">Báo Cáo / Ghi Chú Tiến Độ</label>
                             <textarea name="dailyReport" id="updateReportNote" class="form-control shadow-sm" rows="3" placeholder="Cập nhật chi tiết nội dung công việc..."></textarea>
                         </div>
+                        <div class="mb-3 d-none" id="updateDelayReasonGroup">
+                            <div class="alert alert-warning border-warning border-start border-4 mb-2 p-2 rounded-3 small" style="background-color: #fffbeb;">
+                                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>
+                                <strong>Công việc này đã quá thời hạn Deadline!</strong> Vui lòng nhập lý do giải trình trễ hạn bên dưới trước khi cập nhật hoàn thành.
+                            </div>
+                            <label class="form-label fw-bold small text-warning-emphasis">Lý Do Giải Trình Trễ Hạn Deadline <span class="text-danger">*</span></label>
+                            <textarea name="delayReason" id="updateReportDelayInput" class="form-control shadow-sm border-warning" rows="2" placeholder="Nhập lý do giải trình vì sao công việc bị hoàn thành trễ deadline (bắt buộc)..."></textarea>
+                        </div>
                     </div>
                     <div class="modal-footer bg-light px-4 py-3">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
@@ -902,6 +947,14 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- OVERDUE DELAY REASON ALERT IN DETAIL -->
+                        <div class="alert alert-warning border-warning border-start border-4 d-none mb-4 shadow-sm" id="detailDelayReasonContainer" style="border-radius: 10px; background-color: #fffbeb;">
+                            <div class="fw-bold text-dark mb-1 small d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation text-warning"></i> Lý Do Giải Trình Trễ Hạn Deadline:
+                            </div>
+                            <div class="small text-secondary fw-semibold" id="detailDelayReasonText" style="white-space: pre-wrap;"></div>
+                        </div>
                         
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -952,6 +1005,37 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 7: DELAY EXPLANATION (REQUIREMENT WHEN OVERDUE DEADLINE) -->
+    <div class="modal fade" id="delayExplanationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 16px;">
+                <div class="modal-header bg-warning-subtle text-dark border-bottom-0 py-3" style="border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2" style="font-size: 16px;">
+                        <i class="fa-solid fa-triangle-exclamation text-warning fs-4"></i> Yêu Cầu Giải Trình Trễ Hạn Deadline
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="cancelDelayModal()"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning d-flex align-items-start gap-2 border-0 shadow-sm mb-3" style="border-radius: 10px; background-color: #fffbeb;">
+                        <i class="fa-solid fa-clock text-warning mt-1"></i>
+                        <div>
+                            <strong class="d-block text-dark small mb-1">Công việc này đã quá thời hạn Deadline!</strong>
+                            <span class="text-secondary small">Vui lòng nhập lý do/nguyên nhân trễ hạn để hệ thống ghi nhận giải trình trước khi hoàn thành (100% / COMPLETED).</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Lý do giải trình trễ deadline <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="delayReasonInput" rows="3" placeholder="Nhập lý do chi tiết vì sao công việc bị hoàn thành trễ hạn (bắt buộc)..." style="border-radius: 10px; font-size: 13px;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-3 pe-4">
+                    <button type="button" class="btn btn-light border px-3 text-secondary fw-semibold" data-bs-dismiss="modal" onclick="cancelDelayModal()" style="border-radius: 10px;">Hủy bỏ</button>
+                    <button type="button" class="btn btn-warning px-4 fw-bold text-dark shadow-sm" onclick="submitDelayExplanation()" style="border-radius: 10px;"><i class="fa-solid fa-check me-1"></i>Xác nhận & Cập nhật</button>
                 </div>
             </div>
         </div>
@@ -1367,11 +1451,34 @@
                 const wInput = document.getElementById('updateReportWatchers');
                 if (wInput) wInput.value = watchers;
 
+                const delay = btn.getAttribute('data-delay') || '';
+                const delayInput = document.getElementById('updateReportDelayInput');
+                if (delayInput) delayInput.value = delay;
+
+                checkUpdateModalOverdue();
+
                 const modalEl = document.getElementById('updateReportModal');
                 const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                 modal.show();
             } catch (err) {
                 console.error("Lỗi khi mở modal cập nhật:", err);
+            }
+        }
+
+        function checkUpdateModalOverdue() {
+            const dueStr = document.getElementById('updateDueDateInput') ? document.getElementById('updateDueDateInput').value : '';
+            const status = document.getElementById('updateStatusSelect') ? document.getElementById('updateStatusSelect').value : '';
+            const progress = document.getElementById('updateProgressRange') ? document.getElementById('updateProgressRange').value : 0;
+            const groupEl = document.getElementById('updateDelayReasonGroup');
+            if (!groupEl) return;
+
+            const isCompleted = (status === 'COMPLETED' || parseInt(progress) === 100);
+            const overdue = isTaskOverdue(dueStr);
+
+            if (isCompleted && overdue) {
+                groupEl.classList.remove('d-none');
+            } else {
+                groupEl.classList.add('d-none');
             }
         }
 
@@ -1457,21 +1564,89 @@
             openInlineStatusModal(id, status);
         }
 
+        let pendingDelayCallback = null;
+
+        function isTaskOverdue(dueDateStr) {
+            if (!dueDateStr || dueDateStr.trim() === '' || dueDateStr === 'null') return false;
+            let due;
+            try {
+                let cleanStr = dueDateStr.trim();
+                if (cleanStr.includes('T')) {
+                    due = new Date(cleanStr);
+                } else if (cleanStr.length === 10) { // yyyy-MM-dd
+                    due = new Date(cleanStr + 'T23:59:59');
+                } else if (cleanStr.includes(' ')) { // yyyy-MM-dd HH:mm
+                    due = new Date(cleanStr.replace(' ', 'T') + ':00');
+                } else {
+                    due = new Date(cleanStr);
+                }
+            } catch(e) {
+                return false;
+            }
+            if (!due || isNaN(due.getTime())) return false;
+            return new Date() > due;
+        }
+
+        function promptDelayReasonIfNeeded(reportId, nextStatus, nextProgress, dueDateStr, existingDelayReason, callback) {
+            const isCompleted = (nextStatus === 'COMPLETED' || parseInt(nextProgress) === 100);
+            const overdue = isTaskOverdue(dueDateStr);
+
+            if (isCompleted && overdue) {
+                document.getElementById('delayReasonInput').value = existingDelayReason || '';
+                pendingDelayCallback = callback;
+                
+                const modalEl = document.getElementById('delayExplanationModal');
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            } else {
+                callback(existingDelayReason || '');
+            }
+        }
+
+        function submitDelayExplanation() {
+            const text = document.getElementById('delayReasonInput').value.trim();
+            if (!text) {
+                alert('Vui lòng nhập lý do giải trình hoàn thành trễ deadline!');
+                document.getElementById('delayReasonInput').focus();
+                return;
+            }
+            const modalEl = document.getElementById('delayExplanationModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+            
+            if (pendingDelayCallback) {
+                const cb = pendingDelayCallback;
+                pendingDelayCallback = null;
+                cb(text);
+            }
+        }
+
+        function cancelDelayModal() {
+            pendingDelayCallback = null;
+        }
+
         function saveInlineStatus(status) {
             const id = document.getElementById('inlineStatusReportId').value;
-            const formData = new URLSearchParams();
-            formData.append('id', id);
-            formData.append('status', status);
+            const rowEl = document.getElementById('task-row-' + id) || document.getElementById('subreport-item-' + id);
+            const due = rowEl ? (rowEl.getAttribute('data-due') || '') : '';
+            const delay = rowEl ? (rowEl.getAttribute('data-delay') || '') : '';
 
-            fetch('/work-reports/update-inline', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData.toString()
-            })
-            .then(res => res.text())
-            .then(data => {
-                if (data === 'success') location.reload();
-                else alert('Lỗi khi cập nhật trạng thái!');
+            promptDelayReasonIfNeeded(id, status, (status === 'COMPLETED' ? 100 : 0), due, delay, function(reason) {
+                const formData = new URLSearchParams();
+                formData.append('id', id);
+                formData.append('status', status);
+                if (reason) formData.append('delayReason', reason);
+
+                fetch('/work-reports/update-inline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                })
+                .then(res => res.text())
+                .then(data => {
+                    if (data === 'success') location.reload();
+                    else alert('Lỗi khi cập nhật trạng thái!');
+                });
             });
         }
 
@@ -1539,6 +1714,18 @@
                     document.getElementById('detailDueDate').innerText = '-- Chưa đặt --';
                 }
                 document.getElementById('detailDailyReport').innerText = r.dailyReport && r.dailyReport.trim() !== '' ? r.dailyReport : 'Chưa có ghi chú báo cáo...';
+
+                // Display Delay Reason if present
+                const delayBox = document.getElementById('detailDelayReasonContainer');
+                const delayText = document.getElementById('detailDelayReasonText');
+                if (delayBox && delayText) {
+                    if (r.delayReason && r.delayReason.trim() !== '') {
+                        delayBox.classList.remove('d-none');
+                        delayText.innerText = r.delayReason;
+                    } else {
+                        delayBox.classList.add('d-none');
+                    }
+                }
                 
                 const badge = document.getElementById('detailStatusBadge');
                 if (badge) {
@@ -1698,18 +1885,25 @@
         function toggleTaskCompleteEl(el) {
             const id = el.getAttribute('data-id');
             const status = el.getAttribute('data-status') || 'PLANNING';
-            toggleTaskComplete(id, status);
+            const due = el.getAttribute('data-due') || '';
+            const delay = el.getAttribute('data-delay') || '';
+            toggleTaskComplete(id, status, due, delay);
         }
         function updateStatusAjaxEl(idOrEl, statusVal, el) {
-            let id, status;
+            let id, status, due, delay;
             if (typeof idOrEl === 'object' && idOrEl !== null) {
                 id = idOrEl.getAttribute('data-id');
-                status = idOrEl.getAttribute('data-status');
+                status = idOrEl.getAttribute('data-status-val') || statusVal;
+                due = idOrEl.getAttribute('data-due') || '';
+                delay = idOrEl.getAttribute('data-delay') || '';
             } else {
                 id = idOrEl;
                 status = statusVal;
+                const rowEl = document.getElementById('task-row-' + id) || document.getElementById('subreport-item-' + id);
+                due = rowEl ? (rowEl.getAttribute('data-due') || '') : '';
+                delay = rowEl ? (rowEl.getAttribute('data-delay') || '') : '';
             }
-            updateStatusAjax(id, status);
+            updateStatusAjax(id, status, due, delay);
         }
         function updateAssigneeAjaxEl(idOrEl, assigneeVal, el) {
             let id, assignee;
@@ -1723,21 +1917,60 @@
             updateAssigneeAjax(id, assignee);
         }
 
-        function toggleTaskComplete(reportId, currentStatus) {
+        function toggleTaskComplete(reportId, currentStatus, due, delay) {
             const nextStatus = (currentStatus === 'COMPLETED') ? 'PROGRESS' : 'COMPLETED';
-            const formData = new URLSearchParams();
-            formData.append('id', reportId);
-            formData.append('status', nextStatus);
+            if (!due) {
+                const rowEl = document.getElementById('task-row-' + reportId) || document.getElementById('subreport-item-' + reportId);
+                if (rowEl) {
+                    due = rowEl.getAttribute('data-due') || '';
+                    delay = delay || rowEl.getAttribute('data-delay') || '';
+                }
+            }
 
-            fetch('/work-reports/update-inline', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData.toString()
-            })
-            .then(res => res.text())
-            .then(data => {
-                if (data === 'success') location.reload();
-                else alert('Lỗi khi thay đổi trạng thái hoàn thành!');
+            promptDelayReasonIfNeeded(reportId, nextStatus, (nextStatus === 'COMPLETED' ? 100 : 0), due, delay, function(reason) {
+                const formData = new URLSearchParams();
+                formData.append('id', reportId);
+                formData.append('status', nextStatus);
+                if (reason) formData.append('delayReason', reason);
+
+                fetch('/work-reports/update-inline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                })
+                .then(res => res.text())
+                .then(data => {
+                    if (data === 'success') location.reload();
+                    else alert('Lỗi khi thay đổi trạng thái hoàn thành!');
+                });
+            });
+        }
+
+        function updateStatusAjax(reportId, status, due, delay) {
+            if (!due) {
+                const rowEl = document.getElementById('task-row-' + reportId) || document.getElementById('subreport-item-' + reportId);
+                if (rowEl) {
+                    due = rowEl.getAttribute('data-due') || '';
+                    delay = delay || rowEl.getAttribute('data-delay') || '';
+                }
+            }
+
+            promptDelayReasonIfNeeded(reportId, status, (status === 'COMPLETED' ? 100 : 0), due, delay, function(reason) {
+                const formData = new URLSearchParams();
+                formData.append('id', reportId);
+                formData.append('status', status);
+                if (reason) formData.append('delayReason', reason);
+
+                fetch('/work-reports/update-inline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                })
+                .then(res => res.text())
+                .then(data => {
+                    if (data === 'success') location.reload();
+                    else alert('Lỗi khi cập nhật trạng thái!');
+                });
             });
         }
 
@@ -1774,6 +2007,39 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Form submit listener for updateReportModal
+            const updateForm = document.querySelector('#updateReportModal form');
+            if (updateForm) {
+                updateForm.addEventListener('submit', function(e) {
+                    const dueStr = document.getElementById('updateDueDateInput') ? document.getElementById('updateDueDateInput').value : '';
+                    const status = document.getElementById('updateStatusSelect') ? document.getElementById('updateStatusSelect').value : '';
+                    const progress = document.getElementById('updateProgressRange') ? document.getElementById('updateProgressRange').value : 0;
+                    const delayInput = document.getElementById('updateReportDelayInput');
+                    const delayVal = delayInput ? delayInput.value.trim() : '';
+
+                    const isCompleted = (status === 'COMPLETED' || parseInt(progress) === 100);
+                    const overdue = isTaskOverdue(dueStr);
+
+                    if (isCompleted && overdue && !delayVal) {
+                        e.preventDefault();
+                        const id = document.getElementById('updateReportId') ? document.getElementById('updateReportId').value : '';
+                        promptDelayReasonIfNeeded(id, status, progress, dueStr, delayVal, function(reason) {
+                            if (delayInput) delayInput.value = reason;
+                            updateForm.submit();
+                        });
+                    }
+                });
+            }
+
+            const updateStatusSel = document.getElementById('updateStatusSelect');
+            if (updateStatusSel) updateStatusSel.addEventListener('change', checkUpdateModalOverdue);
+
+            const updateProgressRng = document.getElementById('updateProgressRange');
+            if (updateProgressRng) updateProgressRng.addEventListener('input', checkUpdateModalOverdue);
+
+            const updateDueDateInp = document.getElementById('updateDueDateInput');
+            if (updateDueDateInp) updateDueDateInp.addEventListener('change', checkUpdateModalOverdue);
+
             // Tự động mở rộng subtask tree nếu vừa tạo xong công việc con
             const expandId = sessionStorage.getItem('expandSubtasksOf');
             if (expandId) {

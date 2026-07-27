@@ -103,6 +103,12 @@ public class WorkReportController {
                 .sorted(Comparator.comparing(WorkReport::getId).reversed())
                 .collect(Collectors.toList());
         for (WorkReport r : parentReports) {
+            workReportService.recalculateParentProgress(r.getId());
+            WorkReport fresh = workReportService.getReportById(r.getId());
+            if (fresh != null) {
+                r.setProgressPercentage(fresh.getProgressPercentage());
+                r.setStatus(fresh.getStatus());
+            }
             subtasksMap.put(r.getId(), workReportService.getSubTasks(r.getId()));
             childReportsMap.put(r.getId(), allReports.stream()
                     .filter(c -> c.getParentId() != null && c.getParentId() > 0 && r.getId().equals(c.getParentId()))
@@ -262,6 +268,7 @@ public class WorkReportController {
             @RequestParam(value = "watchers", required = false) String watchers,
             @RequestParam(value = "dueDateStr", required = false) String dueDateStr,
             @RequestParam(value = "dailyReport", required = false) String dailyReport,
+            @RequestParam(value = "delayReason", required = false) String delayReason,
             RedirectAttributes redirectAttributes) {
         Integer progressPercentage = null;
         if (progressPercentageStr != null && !progressPercentageStr.trim().isEmpty()) {
@@ -269,7 +276,7 @@ public class WorkReportController {
                 progressPercentage = Integer.parseInt(progressPercentageStr.trim());
             } catch (Exception e) {}
         }
-        workReportService.updateFullReport(id, taskTitle, projectName, assignee, status, progressPercentage, dailyReport, watchers, dueDateStr);
+        workReportService.updateFullReport(id, taskTitle, projectName, assignee, status, progressPercentage, dailyReport, watchers, dueDateStr, delayReason);
         redirectAttributes.addFlashAttribute("successMessage", "Đã cập nhật công việc thành công!");
         return "redirect:/work-reports";
     }
@@ -284,7 +291,8 @@ public class WorkReportController {
             @RequestParam(value = "assignee", required = false) String assignee,
             @RequestParam(value = "dailyReport", required = false) String dailyReport,
             @RequestParam(value = "watchers", required = false) String watchers,
-            @RequestParam(value = "dueDate", required = false) String dueDateStr) {
+            @RequestParam(value = "dueDate", required = false) String dueDateStr,
+            @RequestParam(value = "delayReason", required = false) String delayReason) {
         try {
             Integer progress = null;
             if (progressStr != null && !progressStr.trim().isEmpty()) {
@@ -292,11 +300,11 @@ public class WorkReportController {
                     progress = Integer.parseInt(progressStr.trim());
                 } catch (Exception e) {}
             }
-            if (progress != null || dailyReport != null) {
-                workReportService.updateProgressAndReport(id, progress, status, dailyReport, watchers);
+            if (progress != null || dailyReport != null || (delayReason != null && !delayReason.trim().isEmpty())) {
+                workReportService.updateProgressAndReport(id, progress, status, dailyReport, watchers, delayReason);
             }
             if (priority != null || assignee != null || dueDateStr != null || (status != null && progress == null)) {
-                workReportService.updateInline(id, status, priority, assignee, watchers, dueDateStr);
+                workReportService.updateInline(id, status, priority, assignee, watchers, dueDateStr, delayReason);
             }
             return "success";
         } catch (Exception e) {

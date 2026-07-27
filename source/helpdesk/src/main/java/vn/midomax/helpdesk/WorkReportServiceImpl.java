@@ -78,15 +78,19 @@ public class WorkReportServiceImpl implements WorkReportService {
         if (report.getParentId() != null && report.getParentId() <= 0) {
             report.setParentId(null);
         }
-        return workReportRepository.save(report);
+        WorkReport saved = workReportRepository.save(report);
+        if (saved.getParentId() != null && saved.getParentId() > 0) {
+            recalculateParentProgress(saved.getParentId());
+        }
+        return saved;
     }
 
     @Override
     public void deleteReport(Long id) {
         System.out.println(">>> [DELETE SERVICE] Bắt đầu xóa ID: " + id);
-        // Nhớ cha trước khi xóa để tính lại tỷ lệ cho cha sau khi con biến mất
-        WorkReport toDelete = getReportById(id);
-        Long grandParentId = (toDelete != null) ? toDelete.getParentId() : null;
+        WorkReport reportToDelete = getReportById(id);
+        Long parentId = reportToDelete != null ? reportToDelete.getParentId() : null;
+
         List<WorkReport> children = workReportRepository.findByParentIdOrderByCreatedAtAsc(id);
         System.out.println(">>> [DELETE SERVICE] Tìm thấy số lượng con: " + children.size());
         for (WorkReport child : children) {
@@ -100,13 +104,14 @@ public class WorkReportServiceImpl implements WorkReportService {
         workSubTaskRepository.deleteByWorkReportId(id);
         workReportRepository.deleteById(id);
         System.out.println(">>> [DELETE SERVICE] Hoàn tất xóa ID: " + id);
-        if (grandParentId != null) {
-            syncHierarchy(getReportById(grandParentId));
+
+        if (parentId != null && parentId > 0) {
+            recalculateParentProgress(parentId);
         }
     }
 
     @Override
-    public WorkReport updateProgressAndReport(Long id, Integer progress, String status, String dailyReport, String watchers) {
+    public WorkReport updateProgressAndReport(Long id, Integer progress, String status, String dailyReport, String watchers, String delayReason) {
         WorkReport existing = getReportById(id);
         if (existing != null) {
             if (progress != null) {
@@ -117,6 +122,9 @@ public class WorkReportServiceImpl implements WorkReportService {
             }
             if (status != null && !status.isEmpty()) {
                 existing.setStatus(status);
+                if ("COMPLETED".equalsIgnoreCase(status) && (progress == null || progress < 100)) {
+                    existing.setProgressPercentage(100);
+                }
             }
             if (dailyReport != null) {
                 existing.setDailyReport(dailyReport);
@@ -124,9 +132,14 @@ public class WorkReportServiceImpl implements WorkReportService {
             if (watchers != null) {
                 existing.setWatchers(watchers);
             }
+            if (delayReason != null && !delayReason.trim().isEmpty()) {
+                existing.setDelayReason(delayReason.trim());
+            }
             existing.setUpdatedAt(LocalDateTime.now());
             WorkReport saved = workReportRepository.save(existing);
-            syncHierarchy(saved);   // sửa con → cha tự tính lại; sửa cha có con → khoá theo con
+            if (saved.getParentId() != null && saved.getParentId() > 0) {
+                recalculateParentProgress(saved.getParentId());
+            }
             return saved;
         }
         return null;
@@ -173,71 +186,54 @@ public class WorkReportServiceImpl implements WorkReportService {
         }
     }
 
-    private void recalculateParentProgress(Long workReportId) {
+    @Override
+    public void recalculateParentProgress(Long workReportId) {
+        if (workReportId == null || workReportId <= 0) return;
+
         List<WorkSubTask> subtasks = workSubTaskRepository.findByWorkReportIdOrderByIdAsc(workReportId);
-        if (!subtasks.isEmpty()) {
-            long completedCount = subtasks.stream().filter(s -> Boolean.TRUE.equals(s.getCompleted())).count();
-            int newProgress = (int) Math.round(((double) completedCount / subtasks.size()) * 100);
+        List<WorkReport> childReports = workReportRepository.findByParentIdOrderByCreatedAtAsc(workReportId);
+
+        int totalCount = subtasks.size() + childReports.size();
+        if (totalCount > 0) {
+            double totalProgressSum = 0.0;
+
+            for (WorkSubTask st : subtasks) {
+                if (Boolean.TRUE.equals(st.getCompleted())) {
+                    totalProgressSum += 100.0;
+                }
+            }
+
+            for (WorkReport cr : childReports) {
+                int crProgress = cr.getProgressPercentage() != null ? cr.getProgressPercentage() : 0;
+                if ("COMPLETED".equalsIgnoreCase(cr.getStatus())) {
+                    crProgress = 100;
+                }
+                totalProgressSum += crProgress;
+            }
+
+            int newProgress = (int) Math.round(totalProgressSum / totalCount);
+
             WorkReport parent = workReportRepository.findById(workReportId).orElse(null);
             if (parent != null) {
                 parent.setProgressPercentage(newProgress);
                 if (newProgress == 100) {
                     parent.setStatus("COMPLETED");
-                } else if (newProgress > 0 && "PLANNING".equals(parent.getStatus())) {
-                    parent.setStatus("PROGRESS");
+                } else if (newProgress > 0) {
+                    if ("PLANNING".equalsIgnoreCase(parent.getStatus()) || "COMPLETED".equalsIgnoreCase(parent.getStatus())) {
+                        parent.setStatus("PROGRESS");
+                    }
+                } else if (newProgress == 0) {
+                    if ("COMPLETED".equalsIgnoreCase(parent.getStatus())) {
+                        parent.setStatus("PLANNING");
+                    }
                 }
                 parent.setUpdatedAt(LocalDateTime.now());
                 workReportRepository.save(parent);
+
+                if (parent.getParentId() != null && parent.getParentId() > 0) {
+                    recalculateParentProgress(parent.getParentId());
+                }
             }
-        }
-    }
-
-    /**
-     * Tính lại tiến độ + trạng thái của một việc CHA từ các việc CON thật
-     * (WorkReport có parentId = id này). Không có con thì giữ nguyên (việc lá
-     * nhập tay bình thường).
-     *   - Tiến độ cha = TRUNG BÌNH % của tất cả con (làm tròn). Tất cả con 100%
-     *     thì cha = 100%; có con 90% thì cha = tổng/tỷ lệ tương ứng.
-     *   - Trạng thái tự suy ra: con xong hết → COMPLETED; có con đang chạy →
-     *     PROGRESS; con chưa động gì → PLANNING.
-     */
-    private void recalcFromChildren(Long id) {
-        List<WorkReport> children = workReportRepository.findByParentIdOrderByCreatedAtAsc(id);
-        if (children.isEmpty()) return;   // việc lá: không đụng tới
-
-        int sum = 0, allDone = 0, anyStarted = 0;
-        for (WorkReport c : children) {
-            int p = (c.getProgressPercentage() == null) ? 0 : c.getProgressPercentage();
-            if (p < 0) p = 0; else if (p > 100) p = 100;
-            sum += p;
-            if (p >= 100) allDone++;
-            if (p > 0 || (c.getStatus() != null && !"PLANNING".equalsIgnoreCase(c.getStatus()))) anyStarted++;
-        }
-        int avg = (int) Math.round((double) sum / children.size());
-
-        WorkReport parent = workReportRepository.findById(id).orElse(null);
-        if (parent == null) return;
-        if (allDone == children.size()) {
-            parent.setProgressPercentage(100);
-            parent.setStatus("COMPLETED");
-        } else {
-            parent.setProgressPercentage(avg);
-            parent.setStatus(anyStarted > 0 ? "PROGRESS" : "PLANNING");
-        }
-        parent.setUpdatedAt(LocalDateTime.now());
-        workReportRepository.save(parent);
-    }
-
-    /**
-     * Đồng bộ cả cây: tính lại chính việc này từ con (nếu có con → khoá giá trị
-     * theo con), rồi lan LÊN cha, ông... để mọi tầng đều đúng tỷ lệ.
-     */
-    private void syncHierarchy(WorkReport report) {
-        if (report == null) return;
-        recalcFromChildren(report.getId());   // nếu nó là cha → cập nhật theo con
-        Long parentId = report.getParentId();
-        if (parentId != null) {
-            syncHierarchy(workReportRepository.findById(parentId).orElse(null));
         }
     }
 
@@ -253,7 +249,7 @@ public class WorkReportServiceImpl implements WorkReportService {
     }
 
     @Override
-    public WorkReport updateInline(Long id, String status, String priority, String assignee, String watchers, String dueDateStr) {
+    public WorkReport updateInline(Long id, String status, String priority, String assignee, String watchers, String dueDateStr, String delayReason) {
         WorkReport existing = getReportById(id);
         if (existing == null) return null;
 
@@ -272,6 +268,9 @@ public class WorkReportServiceImpl implements WorkReportService {
         if (watchers != null) {
             existing.setWatchers(watchers.trim());
         }
+        if (delayReason != null && !delayReason.trim().isEmpty()) {
+            existing.setDelayReason(delayReason.trim());
+        }
         if (dueDateStr != null) {
             if (dueDateStr.trim().isEmpty()) {
                 existing.setDueDate(null);
@@ -286,7 +285,9 @@ public class WorkReportServiceImpl implements WorkReportService {
         }
         existing.setUpdatedAt(LocalDateTime.now());
         WorkReport saved = workReportRepository.save(existing);
-        syncHierarchy(saved);
+        if (saved.getParentId() != null && saved.getParentId() > 0) {
+            recalculateParentProgress(saved.getParentId());
+        }
         return saved;
     }
 
@@ -305,6 +306,9 @@ public class WorkReportServiceImpl implements WorkReportService {
         child.setProjectName(parent != null ? parent.getProjectName() : "Dự án chung");
         child.setStatus((status != null && !status.trim().isEmpty()) ? status.trim() : (parent != null && parent.getStatus() != null ? parent.getStatus() : "PLANNING"));
         child.setProgressPercentage(0);
+        if ("COMPLETED".equalsIgnoreCase(child.getStatus())) {
+            child.setProgressPercentage(100);
+        }
 
         if (dueDateStr != null && !dueDateStr.trim().isEmpty()) {
             try {
@@ -321,13 +325,14 @@ public class WorkReportServiceImpl implements WorkReportService {
         child.setCreatedAt(LocalDateTime.now());
         child.setUpdatedAt(LocalDateTime.now());
         WorkReport saved = workReportRepository.save(child);
-        // Có thêm con mới (0%) → cha tính lại ngay để tỷ lệ đúng
-        syncHierarchy(getReportById(parentId));
+        if (parentId != null && parentId > 0) {
+            recalculateParentProgress(parentId);
+        }
         return saved;
     }
 
     @Override
-    public WorkReport updateFullReport(Long id, String taskTitle, String projectName, String assignee, String status, Integer progress, String dailyReport, String watchers, String dueDateStr) {
+    public WorkReport updateFullReport(Long id, String taskTitle, String projectName, String assignee, String status, Integer progress, String dailyReport, String watchers, String dueDateStr, String delayReason) {
         WorkReport existing = getReportById(id);
         if (existing != null) {
             if (taskTitle != null && !taskTitle.trim().isEmpty()) {
@@ -347,12 +352,18 @@ public class WorkReportServiceImpl implements WorkReportService {
             }
             if (status != null && !status.trim().isEmpty()) {
                 existing.setStatus(status.trim().toUpperCase());
+                if ("COMPLETED".equalsIgnoreCase(status) && (progress == null || progress < 100)) {
+                    existing.setProgressPercentage(100);
+                }
             }
             if (dailyReport != null) {
                 existing.setDailyReport(dailyReport.trim());
             }
             if (watchers != null) {
                 existing.setWatchers(watchers.trim());
+            }
+            if (delayReason != null && !delayReason.trim().isEmpty()) {
+                existing.setDelayReason(delayReason.trim());
             }
             if (dueDateStr != null) {
                 if (dueDateStr.trim().isEmpty()) {
@@ -368,7 +379,9 @@ public class WorkReportServiceImpl implements WorkReportService {
             }
             existing.setUpdatedAt(LocalDateTime.now());
             WorkReport saved = workReportRepository.save(existing);
-            syncHierarchy(saved);
+            if (saved.getParentId() != null && saved.getParentId() > 0) {
+                recalculateParentProgress(saved.getParentId());
+            }
             return saved;
         }
         return null;

@@ -128,6 +128,45 @@ public class WorkReport {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
+    @Column(columnDefinition = "TEXT")
+    private String delayReason; // Lý do giải trình khi hoàn thành trễ hạn (overdue)
+
+    public String getDelayReason() { return delayReason; }
+    public void setDelayReason(String delayReason) { this.delayReason = delayReason; }
+
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
+
+    @jakarta.persistence.Transient
+    public String getSlaStatus() {
+        boolean isDone = "COMPLETED".equals(status) || (progressPercentage != null && progressPercentage == 100);
+        if (dueDate == null) {
+            return isDone ? "Đúng hạn" : "Chưa kết thúc";
+        }
+        boolean overdue = java.time.LocalDateTime.now().isAfter(dueDate);
+        boolean hasDelayReason = delayReason != null && !delayReason.trim().isEmpty();
+        if (isDone) {
+            if (hasDelayReason || overdue) {
+                return "Trễ hẹn";
+            } else {
+                return "Đúng hạn";
+            }
+        } else {
+            if (overdue) {
+                return "Quá hạn";
+            } else {
+                return "Chưa kết thúc";
+            }
+        }
+    }
+
+    @jakarta.persistence.Transient
+    public String getSlaBadgeClass() {
+        String sla = getSlaStatus();
+        if ("Đúng hạn".equals(sla)) return "bg-success-subtle text-success border border-success-subtle";
+        if ("Trễ hẹn".equals(sla)) return "bg-warning-subtle text-dark border border-warning";
+        if ("Quá hạn".equals(sla)) return "bg-danger-subtle text-danger border border-danger-subtle";
+        if ("Chưa kết thúc".equals(sla)) return "bg-info-subtle text-info border border-info-subtle";
+        return "bg-light text-secondary border";
+    }
 }
