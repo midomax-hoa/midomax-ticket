@@ -67,7 +67,7 @@
                         sec:authorize="hasAnyRole('ADMIN','IT','MANAGER')" title="Tạo quỹ mới">
                     <i class="fa-solid fa-plus"></i><span class="d-none d-md-inline ms-1"> Tạo quỹ mới</span>
                 </button>
-                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer;"></i>
+                <span class="position-relative ms-2 d-none d-md-inline-block"><i class="fa-solid fa-bell fs-5" style="color: #6b7280; cursor: pointer;"></i></span>
             </div>
         </div>
 
@@ -188,6 +188,8 @@
                 </form>
             </div>
         </div>
+    </div>
+
     <!-- MODAL IMPORT EXCEL NGÂN SÁCH -->
     <div class="modal fade" id="importBudgetModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -199,11 +201,17 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Chọn Quỹ Ngân Sách Áp Dụng <span class="text-danger">*</span></label>
-                            <select name="fundId" class="form-select" required>
-                                <option value="" disabled selected>-- Chọn quỹ --</option>
+                            <label class="form-label fw-bold">Quỹ Ngân Sách Áp Dụng</label>
+                            <select name="fundId" class="form-select" id="importFundSelect"
+                                    onchange="document.getElementById('newFundNameWrap').style.display = this.value ? 'none' : '';">
+                                <option value="" selected>✨ Tự tạo quỹ mới từ file (khuyên dùng)</option>
                                 <option th:each="s : ${summaries}" th:value="${s.fund.id}" th:text="${s.fund.name} + ' (Hiện tại: ' + ${#numbers.formatInteger(s.fund.allocatedAmount, 0, 'POINT')} + ' đ)'"></option>
                             </select>
+                            <div class="form-text">Không chọn quỹ → hệ thống tự tạo quỹ mới, các hạng mục con sẽ được nạp theo quỹ cha.</div>
+                        </div>
+                        <div class="mb-3" id="newFundNameWrap">
+                            <label class="form-label fw-bold">Tên quỹ mới (tùy chọn)</label>
+                            <input type="text" name="newFundName" class="form-control" placeholder="Để trống sẽ lấy theo tên file Excel">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Tệp Excel Ngân Sách (.xlsx) <span class="text-danger">*</span></label>
@@ -228,6 +236,7 @@
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // Chạy các thanh tiến trình

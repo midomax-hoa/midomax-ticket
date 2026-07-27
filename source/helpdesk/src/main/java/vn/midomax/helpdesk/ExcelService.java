@@ -219,7 +219,7 @@ public class ExcelService {
             r++; // dòng trống
 
             String[] headers = {"STT", "Dự án", "Loại", "Tên công việc / Báo cáo", "Người nhận nhiệm vụ",
-                    "Người theo dõi", "Trạng thái", "Tiến độ (%)", "Ưu tiên", "Ngày tạo", "Hạn chót", "Diễn giải / Ghi chú"};
+                    "Người theo dõi", "Trạng thái", "Tiến độ (%)", "Ưu tiên", "Ngày tạo", "Hạn chót", "Diễn giải / Ghi chú", "Trạng thái SLA", "Giải trình trễ hạn"};
             Row headerRow = sheet.createRow(r++);
             for (int c = 0; c < headers.length; c++) {
                 Cell cell = headerRow.createCell(c);
@@ -256,6 +256,8 @@ public class ExcelService {
                 row.createCell(9).setCellValue(w.getCreatedAt() != null ? w.getCreatedAt().format(dtf) : "");
                 row.createCell(10).setCellValue(w.getDueDate() != null ? w.getDueDate().format(dtf) : "");
                 row.createCell(11).setCellValue(w.getDailyReport() != null ? w.getDailyReport() : "");
+                row.createCell(12).setCellValue(w.getSlaStatus());
+                row.createCell(13).setCellValue(w.getDelayReason() != null ? w.getDelayReason() : "");
             }
 
             for (int c = 0; c < headers.length; c++) {
@@ -770,6 +772,22 @@ public class ExcelService {
     public List<BudgetItem> parseBudgetItemsFromExcel(java.io.InputStream inputStream, Long fundId) throws IOException {
         List<BudgetItem> items = new ArrayList<>();
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
+            // Format ITD (file ngân sách năm thật): có các sheet IT_OPEX / IT_CAPEX
+            List<Sheet> itdSheets = new ArrayList<>();
+            for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
+                String name = workbook.getSheetName(s).toUpperCase();
+                if (name.contains("OPEX") || name.contains("CAPEX")) {
+                    itdSheets.add(workbook.getSheetAt(s));
+                }
+            }
+            if (!itdSheets.isEmpty()) {
+                for (Sheet sheet : itdSheets) {
+                    items.addAll(parseItdBudgetSheet(sheet, fundId));
+                }
+                return items;
+            }
+
+            // Format mẫu cũ (9 cột, sheet đầu tiên)
             Sheet sheet = workbook.getSheetAt(0);
             if (sheet == null) return items;
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
@@ -791,6 +809,57 @@ public class ExcelService {
                 item.setNotes(getCellString(row, 8));
                 items.add(item);
             }
+        }
+        return items;
+    }
+
+    /**
+     * Parse một sheet ngân sách theo format ITD (IT_OPEX / IT_CAPEX).
+     * Cột: B=Hạng mục, C=Loại chi phí, D=Đơn giá, E=ĐVT, F=PBCM, G=Tổng SL,
+     * V(21)=Tổng giá trị (VND), W..AH(22..33)=Giá trị theo tháng 1..12, AI(34)=Mô tả.
+     */
+    private List<BudgetItem> parseItdBudgetSheet(Sheet sheet, Long fundId) {
+        List<BudgetItem> items = new ArrayList<>();
+        String group = sheet.getSheetName().toUpperCase().contains("CAPEX") ? "CAPEX" : "OPEX";
+
+        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+
+            String itemName = getCellString(row, 1); // cột B
+            if (itemName == null || itemName.isBlank()) continue;
+
+            String lower = itemName.trim().toLowerCase();
+            // Bỏ qua dòng tiêu đề / tổng / hướng dẫn
+            if (lower.startsWith("ngân sách") || lower.equals("tổng") || lower.equals("hạng mục")
+                    || lower.startsWith("thêm trên dòng")) continue;
+
+            long total = getCellLong(row, 21); // cột V: Tổng giá trị (VND)
+            long[] months = new long[12];
+            long monthSum = 0;
+            for (int m = 0; m < 12; m++) {
+                months[m] = getCellLong(row, 22 + m);
+                monthSum += months[m];
+            }
+            // Một số dòng cột tổng là công thức lỗi / trống -> lấy tổng các tháng
+            if (total <= 0) total = monthSum;
+
+            BudgetItem item = new BudgetItem();
+            item.setFundId(fundId);
+            item.setGroupCategory(group);
+            item.setSubCategory(getCellString(row, 2)); // Loại chi phí: GIA HẠN, MUA MỚI...
+            item.setCostType(getCellString(row, 2));
+            item.setItemName(itemName.trim());
+            item.setUnitPrice(getCellLong(row, 3));
+            item.setUnit(getCellString(row, 4));
+            item.setQuantity(getCellInt(row, 6));
+            item.setAllocatedAmount(total);
+            String desc = getCellString(row, 34);
+            if (desc == null || desc.isBlank()) desc = getCellString(row, 19);
+            item.setDescription(desc);
+            if (total <= 0) item.setNotes("Chưa phân bổ tháng (tổng = 0 trong file Excel)");
+            item.setMonthlyAmountsFromArray(months);
+            items.add(item);
         }
         return items;
     }
@@ -841,7 +910,9 @@ public class ExcelService {
     private String getCellString(Row row, int col) {
         Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) return null;
-        switch (cell.getCellType()) {
+        CellType type = cell.getCellType();
+        if (type == CellType.FORMULA) type = cell.getCachedFormulaResultType();
+        switch (type) {
             case STRING:  return cell.getStringCellValue().trim();
             case NUMERIC: return String.valueOf((long) cell.getNumericCellValue());
             default: return null;
@@ -851,14 +922,18 @@ public class ExcelService {
     private Long getCellLong(Row row, int col) {
         Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) return 0L;
-        if (cell.getCellType() == CellType.NUMERIC) return (long) cell.getNumericCellValue();
+        CellType type = cell.getCellType();
+        if (type == CellType.FORMULA) type = cell.getCachedFormulaResultType();
+        if (type == CellType.NUMERIC) return Math.round(cell.getNumericCellValue());
         try { return Long.parseLong(cell.getStringCellValue().replaceAll("[^0-9]", "")); } catch (Exception e) { return 0L; }
     }
 
     private Integer getCellInt(Row row, int col) {
         Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) return 1;
-        if (cell.getCellType() == CellType.NUMERIC) return (int) cell.getNumericCellValue();
+        CellType type = cell.getCellType();
+        if (type == CellType.FORMULA) type = cell.getCachedFormulaResultType();
+        if (type == CellType.NUMERIC) return (int) cell.getNumericCellValue();
         try { return Integer.parseInt(cell.getStringCellValue().replaceAll("[^0-9]", "")); } catch (Exception e) { return 1; }
     }
 }

@@ -51,6 +51,17 @@
         .empty-state { text-align: center; padding: 50px 20px; color: #94a3b8; }
         .empty-state i { font-size: 46px; margin-bottom: 12px; }
 
+        /* Tabs điều hướng */
+        #fundTabs .nav-link { color: #475569; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 18px; font-size: 14px; }
+        #fundTabs .nav-link:hover { border-color: #93c5fd; color: #1e3a8a; }
+        #fundTabs .nav-link.active { background: #1e3a8a; color: #fff; border-color: #1e3a8a; box-shadow: 0 4px 10px -2px rgba(30,58,138,0.35); }
+        #fundTabs .nav-link.active .badge { background: #fff !important; color: #1e3a8a !important; }
+
+        /* Nhóm OPEX/CAPEX đóng mở */
+        .group-toggle .chev { transition: transform 0.25s ease; font-size: 13px; }
+        .group-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+        .group-toggle:hover { filter: brightness(1.08); }
+
         @media (max-width: 991px) {
             .main-content { margin-left: 0; width: 100%; padding: 15px; }
         }
@@ -71,8 +82,8 @@
                 <a th:href="@{/expenses}" class="btn btn-light border me-2" title="Về tổng quan">
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
-                <div>
-                    <h4 class="fw-bold m-0" style="color:#1e3a8a;" th:text="${fund.name}">Quỹ CCDC</h4>
+                <div class="overflow-hidden">
+                    <h5 class="fw-bold m-0 text-truncate" style="color:#1e3a8a; max-width: 420px;" th:text="${fund.name}" th:title="${fund.name}">Quỹ CCDC</h5>
                     <small class="text-muted">Chi tiết chi tiêu của quỹ</small>
                 </div>
             </div>
@@ -91,7 +102,7 @@
                 <button class="btn btn-primary fw-semibold shadow-sm text-nowrap flex-shrink-0" style="background:#1e3a8a; border:none;" data-bs-toggle="modal" data-bs-target="#addExpenseModal" title="Thêm khoản chi">
                     <i class="fa-solid fa-plus"></i><span class="d-none d-md-inline ms-1">Thêm khoản chi</span>
                 </button>
-                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer;"></i>
+                <span class="position-relative ms-2 d-none d-md-inline-block"><i class="fa-solid fa-bell fs-5" style="color: #6b7280; cursor: pointer;"></i></span>
             </div>
         </div>
 
@@ -150,7 +161,32 @@
             </div>
         </div>
 
-        <!-- ===== BẢNG NGÂN SÁCH HẠNG MỤC & TỰ ĐỘNG KHẤU TRỪ ===== -->
+        <!-- ===== TABS ĐIỀU HƯỚNG ===== -->
+        <ul class="nav nav-pills gap-2 mb-3" id="fundTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" th:classappend="${selectedMonth == null} ? 'active' : ''"
+                        id="tab-budget-btn" data-bs-toggle="pill" data-bs-target="#tab-budget" type="button" role="tab">
+                    <i class="fa-solid fa-table-cells me-1"></i> Ngân Sách Hạng Mục
+                    <span class="badge bg-white text-primary ms-1" th:text="${budgetItems.size()}">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" th:classappend="${selectedMonth != null} ? 'active' : ''"
+                        id="tab-expenses-btn" data-bs-toggle="pill" data-bs-target="#tab-expenses" type="button" role="tab">
+                    <i class="fa-solid fa-list-check me-1"></i> Lịch Sử Chi Tiêu
+                    <span class="badge bg-white text-primary ms-1" th:text="${expenseCount}">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-monthly-btn" data-bs-toggle="pill" data-bs-target="#tab-monthly" type="button" role="tab">
+                    <i class="fa-solid fa-calendar-days me-1"></i> Báo Cáo Tháng
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+        <!-- ===== TAB 1: NGÂN SÁCH HẠNG MỤC ===== -->
+        <div class="tab-pane fade" th:classappend="${selectedMonth == null} ? 'show active' : ''" id="tab-budget" role="tabpanel">
         <div class="widget-card mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
@@ -179,16 +215,30 @@
                 </button>
             </div>
 
-            <!-- Bảng hiển thị danh mục đã import -->
+            <!-- Bảng hiển thị danh mục đã import: nhóm OPEX / CAPEX đóng mở -->
             <div th:if="${!budgetItems.isEmpty()}">
-                <div th:each="entry : ${budgetGroupMap}" class="mb-4 border rounded-3 overflow-hidden shadow-sm bg-white">
-                    <div class="p-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(90deg, #1e3a8a, #3b82f6); color:#fff;">
+                <div th:each="entry, gIter : ${budgetGroupMap}"
+                     th:with="gSum=${groupSummaryMap.get(entry.key)},
+                              gAlloc=${gSum[0]}, gSpent=${gSum[1]}, gPct=${gSum[2]}"
+                     class="mb-3 border rounded-3 overflow-hidden shadow-sm bg-white">
+                    <div class="p-3 d-flex justify-content-between align-items-center group-toggle"
+                         style="background: linear-gradient(90deg, #1e3a8a, #3b82f6); color:#fff; cursor:pointer;"
+                         data-bs-toggle="collapse" th:attr="data-bs-target='#group-' + ${gIter.index}">
                         <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-chevron-right chev"></i>
                             <i class="fa-solid fa-layer-group text-warning"></i>
-                            <h6 class="fw-bold m-0 text-uppercase" th:text="${entry.key}">CHÍ PHÍ PHẦN CỨNG</h6>
+                            <h6 class="fw-bold m-0 text-uppercase" th:text="${entry.key}">OPEX</h6>
                             <span class="badge bg-white text-dark ms-2 fw-semibold" th:text="${entry.value.size()} + ' mục'">3 mục</span>
                         </div>
+                        <div class="d-flex align-items-center gap-3 text-nowrap" style="font-size:13px;">
+                            <span>Cấp: <b th:text="${#numbers.formatInteger(gAlloc, 0, 'POINT')} + ' đ'">0 đ</b></span>
+                            <span>Đã chi: <b th:text="${#numbers.formatInteger(gSpent, 0, 'POINT')} + ' đ'">0 đ</b></span>
+                            <span class="badge fw-bold"
+                                  th:classappend="${gPct >= 100} ? 'bg-danger' : (${gPct >= 90} ? 'bg-warning text-dark' : (${gPct >= 70} ? 'bg-warning text-dark' : 'bg-success'))"
+                                  th:text="${gPct} + '%'">0%</span>
+                        </div>
                     </div>
+                    <div class="collapse" th:id="'group-' + ${gIter.index}">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
                             <thead class="table-light">
@@ -237,11 +287,19 @@
                             </tbody>
                         </table>
                     </div>
+                    </div><!-- /collapse -->
                 </div>
             </div>
         </div>
 
-        <!-- ===== BÁO CÁO THEO THÁNG ===== -->
+        </div><!-- /tab-budget -->
+
+        <!-- ===== TAB 2: BÁO CÁO THEO THÁNG ===== -->
+        <div class="tab-pane fade" id="tab-monthly" role="tabpanel">
+        <div th:if="${monthlyReport.isEmpty()}" class="widget-card empty-state">
+            <i class="fa-solid fa-calendar-days d-block"></i>
+            <p class="mb-0 fw-semibold">Chưa có dữ liệu chi tiêu theo tháng</p>
+        </div>
         <div class="widget-card mb-4" th:if="${!monthlyReport.isEmpty()}">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="fw-bold m-0" style="color:#1e3a8a;"><i class="fa-solid fa-calendar-days me-2"></i>Báo cáo theo tháng</h5>
@@ -278,7 +336,10 @@
             </div>
         </div>
 
-        <!-- ===== EXPENSE TABLE ===== -->
+        </div><!-- /tab-monthly -->
+
+        <!-- ===== TAB 3: LỊCH SỬ CHI TIÊU ===== -->
+        <div class="tab-pane fade" th:classappend="${selectedMonth != null} ? 'show active' : ''" id="tab-expenses" role="tabpanel">
         <div class="widget-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="fw-bold m-0" style="color:#1e3a8a;">
@@ -347,6 +408,8 @@
                 </button>
             </div>
         </div>
+        </div><!-- /tab-expenses -->
+        </div><!-- /tab-content -->
     </div>
 
     <!-- ===== MODAL: THÊM KHOẢN CHI ===== -->
@@ -468,6 +531,8 @@
                 </div>
             </div>
         </div>
+    </div>
+
     <!-- MODAL IMPORT EXCEL NGÂN SÁCH -->
     <div class="modal fade" id="importBudgetModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">

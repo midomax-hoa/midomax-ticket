@@ -41,6 +41,12 @@ public class BudgetItem {
     @Column(columnDefinition = "TEXT")
     private String notes; // Ghi chú
 
+    private String costType; // Loại chi phí: OPEX, CAPEX, GIA HẠN, MUA MỚI, DỰ ÁN MỚI...
+
+    /** Kế hoạch phân bổ ngân sách 12 tháng, dạng CSV "0,0,0,0,0,131750000,..." (T1..T12). */
+    @Column(length = 500)
+    private String monthlyAmounts;
+
     private LocalDateTime createdAt;
 
     public BudgetItem() {
@@ -82,6 +88,42 @@ public class BudgetItem {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public String getCostType() { return costType; }
+    public void setCostType(String costType) { this.costType = costType; }
+
+    public String getMonthlyAmounts() { return monthlyAmounts; }
+    public void setMonthlyAmounts(String monthlyAmounts) { this.monthlyAmounts = monthlyAmounts; }
+
+    /** Gán kế hoạch 12 tháng từ mảng long[12]. */
+    public void setMonthlyAmountsFromArray(long[] months) {
+        if (months == null) { this.monthlyAmounts = null; return; }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(i < months.length ? months[i] : 0L);
+        }
+        this.monthlyAmounts = sb.toString();
+    }
+
+    /** Kế hoạch 12 tháng dạng mảng long[12] (thiếu/lỗi -> 0). */
+    public long[] getMonthlyAmountsArray() {
+        long[] result = new long[12];
+        if (monthlyAmounts == null || monthlyAmounts.isBlank()) return result;
+        String[] parts = monthlyAmounts.split(",");
+        for (int i = 0; i < 12 && i < parts.length; i++) {
+            try { result[i] = Long.parseLong(parts[i].trim()); } catch (NumberFormatException ignored) { }
+        }
+        return result;
+    }
+
+    /** Ngân sách kế hoạch lũy kế từ đầu năm đến hết tháng chỉ định (1..12). */
+    public long getPlannedUpToMonth(int month) {
+        long[] arr = getMonthlyAmountsArray();
+        long sum = 0;
+        for (int i = 0; i < Math.min(month, 12); i++) sum += arr[i];
+        return sum;
+    }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

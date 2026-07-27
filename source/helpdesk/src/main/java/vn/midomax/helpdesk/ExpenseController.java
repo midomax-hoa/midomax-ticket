@@ -121,6 +121,15 @@ public class ExpenseController {
             budgetGroupMap.computeIfAbsent(item.getGroupCategory(), k -> new java.util.ArrayList<>()).add(item);
         }
 
+        // Tổng hợp theo nhóm: [0]=cấp, [1]=đã chi, [2]=% đã chi (cho header OPEX/CAPEX)
+        java.util.Map<String, long[]> groupSummaryMap = new java.util.HashMap<>();
+        for (var entry : budgetGroupMap.entrySet()) {
+            long gAlloc = entry.getValue().stream().mapToLong(BudgetItem::getAllocatedAmount).sum();
+            long gSpent = entry.getValue().stream().mapToLong(BudgetItem::getSpentAmount).sum();
+            long gPct = gAlloc > 0 ? Math.round(gSpent * 100.0 / gAlloc) : 0;
+            groupSummaryMap.put(entry.getKey(), new long[]{gAlloc, gSpent, gPct});
+        }
+
         // Báo cáo theo tháng (gộp toàn bộ khoản chi của quỹ)
         List<MonthlyExpenseSummary> monthlyReport = buildMonthlyReport(allExpenses);
 
@@ -140,6 +149,7 @@ public class ExpenseController {
         model.addAttribute("expenseCount", expenses.size());
         model.addAttribute("budgetItems", budgetItems);
         model.addAttribute("budgetGroupMap", budgetGroupMap);
+        model.addAttribute("groupSummaryMap", groupSummaryMap);
         model.addAttribute("budgetItemNameMap", budgetItemNameMap);
         model.addAttribute("monthlyReport", monthlyReport);
         model.addAttribute("selectedMonth", month);
@@ -295,28 +305,49 @@ public class ExpenseController {
         return "redirect:/expenses/fund/" + fundId;
     }
 
-    /** Import file Excel phân bổ ngân sách năm cho Quỹ (theo định dạng Screenshot 2). */
+    /**
+     * Import file Excel phân bổ ngân sách.
+     * - Chọn quỹ có sẵn (fundId) -> nạp vào quỹ đó.
+     * - Không chọn quỹ -> tự tạo quỹ mới (mục cha) từ file, các hạng mục con ăn theo.
+     */
     @PostMapping("/import-budget")
-    public String importBudget(@RequestParam("fundId") Long fundId,
+    public String importBudget(@RequestParam(value = "fundId", required = false) Long fundId,
+                               @RequestParam(value = "newFundName", required = false) String newFundName,
                                @RequestParam("excelFile") MultipartFile file,
+                               Authentication authentication,
                                RedirectAttributes redirectAttributes) {
 
         if (file == null || file.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel để upload.");
-            return "redirect:/expenses/fund/" + fundId;
+            return "redirect:/expenses";
         }
 
-        ExpenseFund fund = fundRepository.findById(fundId).orElse(null);
-        if (fund == null) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy quỹ ngân sách.");
-            return "redirect:/expenses";
+        boolean autoCreated = false;
+        ExpenseFund fund = null;
+        if (fundId != null) {
+            fund = fundRepository.findById(fundId).orElse(null);
+            if (fund == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy quỹ ngân sách.");
+                return "redirect:/expenses";
+            }
+        } else {
+            // Tự tạo quỹ mới (mục cha) từ file Excel
+            String fundName = (newFundName != null && !newFundName.isBlank())
+                    ? newFundName.trim()
+                    : fundNameFromFile(file.getOriginalFilename());
+            String creator = authentication != null ? authentication.getName() : "system";
+            fund = new ExpenseFund(fundName, 0L, creator);
+            fund = fundRepository.save(fund);
+            fundId = fund.getId();
+            autoCreated = true;
         }
 
         try {
             List<BudgetItem> items = excelService.parseBudgetItemsFromExcel(file.getInputStream(), fundId);
             if (items.isEmpty()) {
+                if (autoCreated) fundRepository.delete(fund); // không giữ lại quỹ rỗng vừa tự tạo
                 redirectAttributes.addFlashAttribute("errorMessage", "Không đọc được dữ liệu hạng mục nào từ file Excel. Vui lòng kiểm tra mẫu file.");
-                return "redirect:/expenses/fund/" + fundId;
+                return autoCreated ? "redirect:/expenses" : "redirect:/expenses/fund/" + fundId;
             }
 
             // Xóa ngân sách cũ của quỹ và lưu ngân sách mới
@@ -335,10 +366,27 @@ public class ExpenseController {
 
         } catch (Exception e) {
             e.printStackTrace();
+            if (autoCreated) {
+                fundRepository.delete(fund); // không giữ lại quỹ rỗng vừa tự tạo
+                redirectAttributes.addFlashAttribute("errorMessage", "Lỗi đọc file Excel: " + e.getMessage());
+                return "redirect:/expenses";
+            }
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi đọc file Excel: " + e.getMessage());
         }
 
         return "redirect:/expenses/fund/" + fundId;
+    }
+
+    /** Sinh tên quỹ từ tên file Excel (bỏ đuôi .xlsx và các ký tự thừa). */
+    private String fundNameFromFile(String filename) {
+        if (filename == null || filename.isBlank()) return "Ngân sách import " + LocalDateTime.now().getYear();
+        String name = filename;
+        int slash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+        if (slash >= 0) name = name.substring(slash + 1);
+        int dot = name.lastIndexOf('.');
+        if (dot > 0) name = name.substring(0, dot);
+        name = name.replaceAll("\\s*\\(\\d+\\)\\s*$", "").trim(); // bỏ " (1)" cuối tên
+        return name.isBlank() ? "Ngân sách import " + LocalDateTime.now().getYear() : name;
     }
 
     /** Tải file Excel mẫu phân bổ ngân sách. */
