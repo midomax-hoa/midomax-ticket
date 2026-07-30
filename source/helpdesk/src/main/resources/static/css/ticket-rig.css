@@ -262,8 +262,12 @@
     gap: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    /* Đáy sát mép trang; trên chừa ít chỗ cho thẻ giữa phóng to mọc lên */
-    padding: 22px 40% 8px;
+    /* Trên: chỗ cho thẻ giữa phóng to mọc lên.
+       Dưới: PHẢI đủ chỗ cho bóng đổ (0 10px 24px, hover tới 0 22px 44px), nếu không
+       overflow-y:hidden sẽ cắt phẳng bóng làm thẻ trông như bị cụt chân.
+       Ngang: canh sao cho thẻ đầu/cuối vẫn về được chính giữa ray. Dùng 40% thì trên
+       màn rộng phần đệm phình ra ~700px, đẩy cả cỗ bài lệch hẳn sang phải. */
+    padding: 26px calc(50% - 76px) 46px;
     margin: 0 auto;
     max-width: 100%;
     scroll-snap-type: x mandatory;
@@ -282,6 +286,27 @@
     mask-image: linear-gradient(90deg,
         transparent 0, #000 7%, #000 93%, transparent 100%);
 }
+
+@media (max-width: 991px) {
+    .rig-panel {
+        display: flex !important;
+        flex-direction: column !important;
+        flex-grow: 1 !important;
+        justify-content: space-between !important;
+        margin-bottom: 0 !important;
+    }
+
+    .sc-grid {
+        margin-top: auto !important;
+        padding-top: 10px !important;
+        padding-bottom: 6px !important;
+    }
+
+    .rig-svg {
+        max-width: 480px !important;
+        max-height: 220px !important;
+    }
+}
 .sc-grid::-webkit-scrollbar { display: none; }
 .sc-grid.is-dragging { cursor: grabbing; scroll-snap-type: none; }
 
@@ -290,7 +315,9 @@
     --ic-a: #3b82f6;
     --ic-b: #1d4ed8;
     flex: 0 0 152px;
-    margin-left: -48px;              /* chồng mép thẻ trước (cỗ bài gọn) */
+    /* Chồng mép vừa phải thôi: chồng 48px thì phần thấy được của mỗi thẻ chỉ còn
+       104px, tên dài như "Quản trị Mạng" bị thẻ sau che mất chữ. */
+    margin-left: -12px;
     scroll-snap-align: center;
     transform-origin: bottom center;
     will-change: transform;
@@ -336,7 +363,8 @@
     text-shadow: 0 1px 5px rgba(0,0,0,.28);
     position: relative;
     z-index: 1;
-    max-width: 90%;
+    max-width: 100%;
+    overflow-wrap: anywhere;   /* tên dài xuống dòng, không tràn ra khỏi thẻ */
 }
 
 /* Icon = "hình nền" lớn mờ ở góc dưới-phải, như art của thẻ game */

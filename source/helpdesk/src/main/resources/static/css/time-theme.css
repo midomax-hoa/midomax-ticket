@@ -334,9 +334,34 @@ body.time-night   .main-content {
     box-shadow: 2px 0 20px rgba(0,0,0,0.12) !important;
 }
 .sidebar .brand-text { color: #ffffff !important; text-shadow: 0 1px 6px rgba(0,0,0,0.4); }
-.sidebar .sidebar-menu a { color: rgba(255,255,255,0.85) !important; }
-.sidebar .sidebar-menu a:hover { background: rgba(255,255,255,0.15) !important; color: #ffffff !important; }
-.sidebar .sidebar-menu a.active { color: #ffffff !important; }
+.sidebar .sidebar-menu a {
+    color: rgba(255,255,255,0.85) !important;
+    border-radius: 14px !important;
+    margin: 0 12px !important;
+    width: calc(100% - 24px) !important;
+    padding-left: 14px !important;
+}
+.sidebar .sidebar-menu a:hover {
+    background: rgba(255,255,255,0.18) !important;
+    color: #ffffff !important;
+    border-radius: 14px !important;
+}
+.sidebar .sidebar-menu a.active {
+    background: rgba(255, 255, 255, 0.28) !important;
+    color: #ffffff !important;
+    border-radius: 16px !important;
+    backdrop-filter: blur(8px) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+}
+.sidebar .sidebar-menu a.active::before,
+.sidebar .sidebar-menu a.active::after {
+    display: none !important;
+    content: none !important;
+}
+.sidebar .sidebar-menu a.active .icon-wrapper {
+    background: rgba(255, 255, 255, 0.35) !important;
+    color: #ffffff !important;
+}
 .sidebar .quantum-toggle { --uib-color: #ffffff !important; }
 .sidebar .sidebar-user-name { color: #ffffff !important; text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
 .sidebar .sidebar-user-role { color: rgba(255,255,255,0.7) !important; }

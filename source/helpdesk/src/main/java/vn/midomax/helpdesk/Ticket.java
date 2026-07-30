@@ -144,19 +144,26 @@ public class Ticket {
     public void setSlaDeadline(LocalDateTime slaDeadline) { this.slaDeadline = slaDeadline; }
     
     public LocalDateTime getEstimatedCompletionTime() { return estimatedCompletionTime; }
+
+    /**
+     * Thời gian dự kiến hoàn thành là ước lượng của IT, KHÔNG được dời hạn cam kết
+     * (slaDeadline) mà người yêu cầu đã chốt lúc tạo ticket. Chỉ điền vào slaDeadline
+     * khi ticket chưa có hạn nào cả.
+     */
     public void setEstimatedCompletionTime(LocalDateTime estimatedCompletionTime) {
         this.estimatedCompletionTime = estimatedCompletionTime;
-        if (estimatedCompletionTime != null) {
+        if (estimatedCompletionTime != null && this.slaDeadline == null) {
             this.slaDeadline = estimatedCompletionTime;
         }
     }
 
     public LocalDateTime getEffectiveSlaDeadline() {
-        if (estimatedCompletionTime != null) {
-            return estimatedCompletionTime;
-        }
+        // Hạn cam kết (lịch hẹn) luôn được ưu tiên hơn ước lượng của IT.
         if (slaDeadline != null) {
             return slaDeadline;
+        }
+        if (estimatedCompletionTime != null) {
+            return estimatedCompletionTime;
         }
         if (createdAt != null) {
             if ("HIGH".equalsIgnoreCase(priority)) {
@@ -177,6 +184,16 @@ public class Ticket {
         try {
             java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             return completedAt.format(formatter);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Hạn hẹn xử lý dạng "HH:mm dd/MM/yyyy" để hiển thị chỉ đọc trên modal chi tiết. */
+    public String getSlaDeadlineStr() {
+        if (slaDeadline == null) return "";
+        try {
+            return slaDeadline.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"));
         } catch (Exception e) {
             return "";
         }

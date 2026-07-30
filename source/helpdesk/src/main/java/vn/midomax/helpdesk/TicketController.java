@@ -230,6 +230,14 @@ public class TicketController {
             ticket.setLocation(location != null ? location : "Hà Nội");
         }
 
+        // Ngày & giờ hẹn xử lý do người yêu cầu chốt lúc tạo ticket chính là hạn cam kết.
+        // Trước đây tham số này bị bỏ qua nên hạn bị tính tự động và IT nhận việc lại
+        // dời được deadline khi nhập thời gian dự kiến hoàn thành.
+        LocalDateTime bookedStart = parseDateTime(bookedStartTime);
+        if (bookedStart != null) {
+            ticket.setSlaDeadline(bookedStart);
+        }
+
         // Parse estimatedCompletionTime if provided
         if (estimatedCompletionTime != null && !estimatedCompletionTime.trim().isEmpty()) {
             try {
@@ -638,6 +646,18 @@ public class TicketController {
         }
         schedule.sort(java.util.Comparator.comparing(m -> (String) m.get("bookedStartTime")));
         return schedule;
+    }
+
+    /** Parse chuỗi ngày giờ dạng "yyyy-MM-dd HH:mm" từ form, trả về null nếu trống/sai định dạng. */
+    private LocalDateTime parseDateTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String resolveReporterIdentity(Authentication authentication) {
