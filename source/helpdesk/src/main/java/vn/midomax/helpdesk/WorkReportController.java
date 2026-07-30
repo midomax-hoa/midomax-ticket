@@ -32,6 +32,33 @@ public class WorkReportController {
     @Autowired
     private ExcelService excelService;
 
+    /**
+     * Báo cáo công việc lưu người phụ trách / người theo dõi / người tạo bằng "handle" —
+     * phần trước dấu @ của email, viết thường (vd "tinnt", "admin", "user2").
+     * Tài khoản local có email chính là tên đăng nhập nên không có dấu @, giữ nguyên.
+     */
+    private static String handleOf(String emailOrLogin) {
+        if (emailOrLogin == null) return null;
+        String value = emailOrLogin.trim().toLowerCase();
+        if (value.isEmpty()) return null;
+        int at = value.indexOf('@');
+        return at > 0 ? value.substring(0, at) : value;
+    }
+
+    /**
+     * Handle của người đang đăng nhập. Với tài khoản Microsoft 365,
+     * authentication.getName() trả về TÊN HIỂN THỊ (user-name-attribute=name) nên phải
+     * lấy email từ claim qua ReporterIdentity, nếu không "Nguyễn Thành Tín" sẽ không bao giờ
+     * khớp với "tinnt" đang lưu ở assignee/watchers/created_by.
+     */
+    private static String currentHandle(Authentication authentication) {
+        if (authentication == null) return "guest";
+        String handle = handleOf(ReporterIdentity.emailOf(authentication));
+        if (handle != null) return handle;
+        handle = handleOf(authentication.getName());
+        return handle != null ? handle : "guest";
+    }
+
     @GetMapping
     public String showWorkReports(
             @RequestParam(name = "assignee", required = false, defaultValue = "ALL") String assignee,
@@ -42,7 +69,7 @@ public class WorkReportController {
             Model model,
             Authentication authentication) {
 
-        String username = authentication != null ? authentication.getName() : "Guest";
+        String username = currentHandle(authentication);
         boolean isManagerOrIT = authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_IT") || a.getAuthority().equals("ROLE_MANAGER"));
 
@@ -81,7 +108,9 @@ public class WorkReportController {
                 .filter(p -> p != null && !p.isEmpty())
                 .collect(Collectors.toCollection(TreeSet::new));
 
-        // Assignees (from reports + IT/Admin users)
+        // Danh sách tên để giao việc / gõ "@ten": lấy TOÀN BỘ app_users, không lọc theo role,
+        // vì báo cáo công việc nay mở cho mọi user nên ai cũng có thể được tag hoặc giao việc con.
+        // Không dùng allReports làm nguồn chính vì với user thường nó đã bị lọc theo quyền xem.
         Set<String> assignees = new TreeSet<>();
         allReports.forEach(r -> {
             if (r.getAssignee() != null && !r.getAssignee().isEmpty()) {
@@ -89,10 +118,9 @@ public class WorkReportController {
             }
         });
         appUserRepository.findAll().forEach(u -> {
-            if (u.getRole() != null && (u.getRole().contains("IT") || u.getRole().contains("ADMIN") || u.getRole().contains("MANAGER"))) {
-                if (u.getEmail() != null) {
-                    assignees.add(u.getEmail().split("@")[0]);
-                }
+            String handle = handleOf(u.getEmail());
+            if (handle != null) {
+                assignees.add(handle);
             }
         });
         if (assignees.isEmpty()) {
@@ -237,9 +265,7 @@ public class WorkReportController {
         report.setProjectName(projectName.trim());
         report.setTaskTitle(taskTitle.trim());
         report.setAssignee(assignee.trim().toLowerCase());
-        if (authentication != null) {
-            report.setCreatedBy(authentication.getName());
-        }
+        report.setCreatedBy(currentHandle(authentication));
         if (watchersList != null && !watchersList.isEmpty()) {
             report.setWatchers(String.join(",", watchersList));
         }
@@ -400,7 +426,7 @@ public class WorkReportController {
         Map<String, Object> res = new HashMap<>();
         try {
             if (assignee == null || assignee.trim().isEmpty()) {
-                assignee = (authentication != null) ? authentication.getName().split("@")[0] : "admin";
+                assignee = currentHandle(authentication);
             }
             Long parentId = null;
             if (parentIdStr != null && !parentIdStr.trim().isEmpty() && !parentIdStr.trim().equalsIgnoreCase("null")) {
@@ -417,9 +443,7 @@ public class WorkReportController {
             report.setProjectName(projectName != null ? projectName.trim() : "Dự án chung");
             report.setTaskTitle(taskTitle != null ? taskTitle.trim() : "Nhiệm vụ mới");
             report.setAssignee(assignee.trim().toLowerCase());
-            if (authentication != null) {
-                report.setCreatedBy(authentication.getName());
-            }
+            report.setCreatedBy(currentHandle(authentication));
             if (status == null || status.trim().isEmpty() || "null".equalsIgnoreCase(status.trim())) {
                 status = "PLANNING";
             }
@@ -439,6 +463,23 @@ public class WorkReportController {
         return res;
     }
 
+    /** Người tạo báo cáo chốt hoàn thành việc cha đang dừng ở 90% chờ xác nhận. */
+    @PostMapping("/api/{id}/confirm-complete")
+    @ResponseBody
+    public Map<String, Object> confirmComplete(@PathVariable("id") Long id, Authentication authentication) {
+        Map<String, Object> res = new HashMap<>();
+        try {
+            WorkReport saved = workReportService.confirmCompletion(id, currentHandle(authentication));
+            res.put("status", "success");
+            res.put("progressPercentage", saved.getProgressPercentage());
+            res.put("reportStatus", saved.getStatus());
+        } catch (Exception e) {
+            res.put("status", "error");
+            res.put("message", e.getMessage());
+        }
+        return res;
+    }
+
     @PostMapping("/api/create-subtask")
     @ResponseBody
     public Map<String, Object> createSubtaskApi(
@@ -452,10 +493,8 @@ public class WorkReportController {
         Map<String, Object> res = new HashMap<>();
         try {
             WorkReport child = workReportService.createSubReport(parentId, taskTitle, assignee, watchers, status, dueDateStr);
-            if (authentication != null) {
-                child.setCreatedBy(authentication.getName());
-                workReportService.saveReport(child);
-            }
+            child.setCreatedBy(currentHandle(authentication));
+            workReportService.saveReport(child);
             res.put("status", "success");
             res.put("id", child.getId());
             res.put("report", child);

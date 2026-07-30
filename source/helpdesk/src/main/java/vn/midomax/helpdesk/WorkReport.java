@@ -56,6 +56,9 @@ public class WorkReport {
     @Column(name = "completed_at")
     private LocalDateTime completedAt; // Thời điểm thực sự đạt 100% / COMPLETED, dùng để chấm SLA
 
+    @Column(name = "owner_confirmed", nullable = false)
+    private Boolean ownerConfirmed = false; // Người tạo báo cáo đã chốt hoàn thành hay chưa
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
@@ -174,6 +177,24 @@ public class WorkReport {
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
 
+    public Boolean getOwnerConfirmed() { return Boolean.TRUE.equals(ownerConfirmed); }
+    public void setOwnerConfirmed(Boolean ownerConfirmed) { this.ownerConfirmed = Boolean.TRUE.equals(ownerConfirmed); }
+
+    /**
+     * Việc cha đã gom đủ 100% từ các việc con nhưng còn chờ người tạo xác nhận —
+     * lúc này thanh tổng bị giữ ở {@link #AWAITING_CONFIRM_PROGRESS}%.
+     */
+    @jakarta.persistence.Transient
+    public boolean isAwaitingOwnerConfirm() {
+        return !getOwnerConfirmed()
+                && progressPercentage != null
+                && progressPercentage == AWAITING_CONFIRM_PROGRESS
+                && !"COMPLETED".equalsIgnoreCase(status);
+    }
+
+    /** Mức tiến độ tối đa của việc cha khi mọi việc con đã xong nhưng chủ báo cáo chưa chốt. */
+    public static final int AWAITING_CONFIRM_PROGRESS = 90;
+
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
@@ -186,9 +207,30 @@ public class WorkReport {
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
 
+    /**
+     * Hạn chót của việc cha gần nhất, do service nạp vào khi đọc danh sách.
+     * Không lưu DB — chỉ dùng để suy ra hạn hiệu lực của việc con.
+     */
+    @jakarta.persistence.Transient
+    private LocalDateTime parentDueDate;
+
+    public void setParentDueDate(LocalDateTime parentDueDate) { this.parentDueDate = parentDueDate; }
+    public LocalDateTime getParentDueDate() { return parentDueDate; }
+
+    /**
+     * Hạn chấm SLA thực tế: việc con ăn theo deadline mà chủ công việc đặt ở việc cha,
+     * không bị hạn riêng (thường chỉ là mốc nội bộ, chặt hơn) làm thành trễ hẹn oan.
+     * Việc cha hoặc việc con không thuộc nhánh nào thì dùng hạn của chính nó.
+     */
+    @jakarta.persistence.Transient
+    public LocalDateTime getEffectiveDueDate() {
+        return parentDueDate != null ? parentDueDate : dueDate;
+    }
+
     @jakarta.persistence.Transient
     public String getSlaStatus() {
         boolean done = isDone();
+        LocalDateTime dueDate = getEffectiveDueDate();
         if (dueDate == null) {
             return done ? "Đúng hạn" : "Chưa kết thúc";
         }

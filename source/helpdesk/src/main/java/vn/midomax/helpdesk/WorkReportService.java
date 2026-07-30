@@ -24,4 +24,7 @@ public interface WorkReportService {
     WorkReport createSubReport(Long parentId, String taskTitle, String assignee, String watchers, String status, String dueDateStr);
     WorkReport updateFullReport(Long id, String taskTitle, String projectName, String assignee, String status, Integer progress, String dailyReport, String watchers, String dueDateStr, String delayReason);
     void recalculateParentProgress(Long workReportId);
+
+    /** Người tạo báo cáo chốt hoàn thành: đưa việc cha từ 90% (chờ xác nhận) lên 100%. */
+    WorkReport confirmCompletion(Long id, String username);
 }
