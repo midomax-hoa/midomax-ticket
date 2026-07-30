@@ -21,6 +21,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       # Flyway lo tao/sua bang, Hibernate chi kiem tra lai
       FLYWAY_ENABLED: "true"
+      # Chi dat "true" khi can sua checksum lech, deploy 1 lan roi tra ve "false".
+      FLYWAY_REPAIR: ${FLYWAY_REPAIR:-false}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
       JPA_SHOW_SQL: "false"
       LOG_LEVEL_TRANSACTION: INFO
