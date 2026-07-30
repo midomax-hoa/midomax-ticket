@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -297,12 +299,16 @@ public class WorkReportServiceImpl implements WorkReportService {
     }
 
     @Override
-    public WorkReport createSubReport(Long parentId, String taskTitle, String assignee, String status, String dueDateStr) {
+    public WorkReport createSubReport(Long parentId, String taskTitle, String assignee, String watchers, String status, String dueDateStr) {
         WorkReport parent = getReportById(parentId);
         WorkReport child = new WorkReport();
         child.setParentId(parentId);
         child.setTaskTitle(taskTitle != null ? taskTitle.trim() : "Việc con mới");
         child.setAssignee((assignee != null && !assignee.trim().isEmpty()) ? assignee.trim() : (parent != null ? parent.getAssignee() : "tin"));
+        // Chọn nhiều người: người đầu là phụ trách chính, các tên còn lại thành watchers.
+        if (watchers != null && !watchers.trim().isEmpty()) {
+            child.setWatchers(watchers);
+        }
         child.setProjectName(parent != null ? parent.getProjectName() : "Dự án chung");
         child.setStatus((status != null && !status.trim().isEmpty()) ? status.trim() : (parent != null && parent.getStatus() != null ? parent.getStatus() : "PLANNING"));
         child.setProgressPercentage(0);
@@ -385,5 +391,48 @@ public class WorkReportServiceImpl implements WorkReportService {
             return saved;
         }
         return null;
+    }
+
+    @Override
+    public List<WorkReport> getVisibleReports(String currentUsername) {
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<WorkReport> allReports = getAllReports();
+        String userPattern = ".*\\b" + Pattern.quote(currentUsername) + "\\b.*";
+
+        return allReports.stream()
+            .filter(r -> {
+                if (r.getCreatedBy() != null && currentUsername.equalsIgnoreCase(r.getCreatedBy())) return true;
+                if (currentUsername.equalsIgnoreCase(r.getAssignee())) return true;
+                if (r.getWatchers() != null && r.getWatchers().matches(userPattern)) return true;
+                List<WorkSubTask> subtasks = workSubTaskRepository.findByWorkReportIdOrderByIdAsc(r.getId());
+                return subtasks.stream().anyMatch(st -> currentUsername.equalsIgnoreCase(st.getAssignee()));
+            })
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<WorkReport> getVisibleReportsFiltered(String currentUsername, String assignee, String projectName, String status) {
+        List<WorkReport> visible = getVisibleReports(currentUsername);
+
+        if (assignee != null && !assignee.isEmpty() && !assignee.equals("ALL")) {
+            visible = visible.stream()
+                .filter(r -> assignee.equalsIgnoreCase(r.getAssignee()))
+                .collect(Collectors.toList());
+        }
+        if (projectName != null && !projectName.isEmpty() && !projectName.equals("ALL")) {
+            visible = visible.stream()
+                .filter(r -> projectName.equalsIgnoreCase(r.getProjectName()))
+                .collect(Collectors.toList());
+        }
+        if (status != null && !status.isEmpty() && !status.equals("ALL")) {
+            visible = visible.stream()
+                .filter(r -> status.equalsIgnoreCase(r.getStatus()))
+                .collect(Collectors.toList());
+        }
+
+        return visible;
     }
 }

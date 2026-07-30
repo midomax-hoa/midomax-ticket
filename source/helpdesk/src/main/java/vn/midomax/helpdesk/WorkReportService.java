@@ -7,6 +7,8 @@ public interface WorkReportService {
     List<WorkReport> getReportsByAssignee(String assignee);
     List<WorkReport> getReportsByProject(String projectName);
     List<WorkReport> getReportsFiltered(String assignee, String projectName, String status);
+    List<WorkReport> getVisibleReports(String currentUsername);
+    List<WorkReport> getVisibleReportsFiltered(String currentUsername, String assignee, String projectName, String status);
     WorkReport getReportById(Long id);
     WorkReport saveReport(WorkReport report);
     void deleteReport(Long id);
@@ -19,7 +21,7 @@ public interface WorkReportService {
     WorkComment addComment(Long workReportId, String author, String content);
     WorkReport updateInline(Long id, String status, String priority, String assignee, String watchers, String dueDateStr, String delayReason);
     List<WorkReport> getChildReports(Long parentId);
-    WorkReport createSubReport(Long parentId, String taskTitle, String assignee, String status, String dueDateStr);
+    WorkReport createSubReport(Long parentId, String taskTitle, String assignee, String watchers, String status, String dueDateStr);
     WorkReport updateFullReport(Long id, String taskTitle, String projectName, String assignee, String status, Integer progress, String dailyReport, String watchers, String dueDateStr, String delayReason);
     void recalculateParentProgress(Long workReportId);
 }

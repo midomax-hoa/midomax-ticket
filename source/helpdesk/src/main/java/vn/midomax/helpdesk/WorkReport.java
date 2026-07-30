@@ -20,10 +20,13 @@ public class WorkReport {
     @Column(nullable = false)
     private String assignee; // Username của IT/Dev
 
+    @Column(nullable = false)
+    private String createdBy; // Username của người tạo báo cáo
+
     private String watchers; // Danh sách username người theo dõi (cách nhau bởi dấu phẩy)
 
     @Column(nullable = false)
-    private String status; // PLANNING, PROGRESS, TESTING, COMPLETED
+    private String status; // PLANNING, PROGRESS, COMPLETED
 
     @Column(nullable = false)
     private Integer progressPercentage = 0; // 0 to 100
@@ -50,9 +53,30 @@ public class WorkReport {
     @Column(name = "parent_id")
     private Long parentId; // ID của công việc cha (nếu là việc con / sub-task)
 
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt; // Thời điểm thực sự đạt 100% / COMPLETED, dùng để chấm SLA
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    /** Việc được xem là xong khi trạng thái COMPLETED hoặc tiến độ đạt 100%. */
+    private boolean isDone() {
+        return "COMPLETED".equals(status) || (progressPercentage != null && progressPercentage == 100);
+    }
+
+    /**
+     * Đóng dấu mốc hoàn thành ngay khi việc đạt 100% và xoá mốc nếu bị mở lại.
+     * Đặt ở lifecycle callback để mọi đường cập nhật (inline, modal, tự tính từ việc con)
+     * đều được chấm mốc giống nhau.
+     */
+    private void stampCompletion() {
+        if (isDone()) {
+            if (completedAt == null) completedAt = LocalDateTime.now();
+        } else {
+            completedAt = null;
+        }
+    }
 
     public WorkReport() {
     }
@@ -66,11 +90,14 @@ public class WorkReport {
         if (priority == null || priority.isEmpty()) priority = "NORMAL";
         if (loggedHours == null) loggedHours = 0.0;
         if (isTimerRunning == null) isTimerRunning = false;
+        if (createdBy == null || createdBy.isEmpty()) createdBy = "system";
+        stampCompletion();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        stampCompletion();
     }
 
     // Getters and Setters
@@ -86,8 +113,27 @@ public class WorkReport {
     public String getAssignee() { return assignee; }
     public void setAssignee(String assignee) { this.assignee = assignee; }
 
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
     public String getWatchers() { return watchers; }
-    public void setWatchers(String watchers) { this.watchers = watchers; }
+
+    /**
+     * Giao diện cho gõ "@ten" để tag người theo dõi nên chuỗi gửi lên có thể lẫn ký tự @
+     * và khoảng trắng thừa. Chuẩn hoá tại một chỗ để dữ liệu lưu luôn dạng "tin,trung".
+     */
+    public void setWatchers(String watchers) {
+        if (watchers == null || watchers.isBlank()) {
+            this.watchers = watchers;
+            return;
+        }
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        for (String name : watchers.split(",")) {
+            String clean = name.trim().replace("@", "");
+            if (!clean.isEmpty()) names.add(clean);
+        }
+        this.watchers = String.join(",", names);
+    }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -125,6 +171,9 @@ public class WorkReport {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
@@ -139,25 +188,21 @@ public class WorkReport {
 
     @jakarta.persistence.Transient
     public String getSlaStatus() {
-        boolean isDone = "COMPLETED".equals(status) || (progressPercentage != null && progressPercentage == 100);
+        boolean done = isDone();
         if (dueDate == null) {
-            return isDone ? "Đúng hạn" : "Chưa kết thúc";
+            return done ? "Đúng hạn" : "Chưa kết thúc";
         }
-        boolean overdue = java.time.LocalDateTime.now().isAfter(dueDate);
+        if (!done) {
+            return LocalDateTime.now().isAfter(dueDate) ? "Quá hạn" : "Chưa kết thúc";
+        }
+        // Đã xong: chấm theo mốc hoàn thành thực tế, xong trước hạn thì luôn là đúng hạn
+        // dù sau đó thời gian có trôi qua hạn chót.
+        if (completedAt != null) {
+            return completedAt.isAfter(dueDate) ? "Trễ hẹn" : "Đúng hạn";
+        }
+        // Dữ liệu cũ chưa có mốc hoàn thành: suy đoán theo giải trình trễ / thời điểm hiện tại.
         boolean hasDelayReason = delayReason != null && !delayReason.trim().isEmpty();
-        if (isDone) {
-            if (hasDelayReason || overdue) {
-                return "Trễ hẹn";
-            } else {
-                return "Đúng hạn";
-            }
-        } else {
-            if (overdue) {
-                return "Quá hạn";
-            } else {
-                return "Chưa kết thúc";
-            }
-        }
+        return (hasDelayReason || LocalDateTime.now().isAfter(dueDate)) ? "Trễ hẹn" : "Đúng hạn";
     }
 
     @jakarta.persistence.Transient

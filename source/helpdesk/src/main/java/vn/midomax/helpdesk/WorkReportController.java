@@ -46,8 +46,12 @@ public class WorkReportController {
         boolean isManagerOrIT = authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_IT") || a.getAuthority().equals("ROLE_MANAGER"));
 
-        List<WorkReport> rawReports = workReportService.getReportsFiltered(assignee, project, status);
-        List<WorkReport> allReports = workReportService.getAllReports();
+        List<WorkReport> rawReports = isManagerOrIT
+            ? workReportService.getReportsFiltered(assignee, project, status)
+            : workReportService.getVisibleReportsFiltered(username, assignee, project, status);
+        List<WorkReport> allReports = isManagerOrIT
+            ? workReportService.getAllReports()
+            : workReportService.getVisibleReports(username);
 
         LocalDate today = LocalDate.now();
         List<WorkReport> reports = rawReports.stream().filter(r -> {
@@ -69,7 +73,6 @@ public class WorkReportController {
         long total = allReports.size();
         long planning = allReports.stream().filter(r -> "PLANNING".equalsIgnoreCase(r.getStatus())).count();
         long progress = allReports.stream().filter(r -> "PROGRESS".equalsIgnoreCase(r.getStatus())).count();
-        long testing = allReports.stream().filter(r -> "TESTING".equalsIgnoreCase(r.getStatus())).count();
         long completed = allReports.stream().filter(r -> "COMPLETED".equalsIgnoreCase(r.getStatus())).count();
 
         // Distinct project names for dropdown
@@ -130,7 +133,6 @@ public class WorkReportController {
         model.addAttribute("totalCount", total);
         model.addAttribute("planningCount", planning);
         model.addAttribute("progressCount", progress);
-        model.addAttribute("testingCount", testing);
         model.addAttribute("completedCount", completed);
         model.addAttribute("projectNames", projectNames);
         model.addAttribute("assignees", assignees);
@@ -200,7 +202,8 @@ public class WorkReportController {
             @RequestParam(value = "progressPercentage", required = false, defaultValue = "0") String progressPercentageStr,
             @RequestParam(value = "dueDateStr", required = false) String dueDateStr,
             @RequestParam(value = "dailyReport", required = false) String dailyReport,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            Authentication authentication) {
 
         if (projectName == null || projectName.trim().isEmpty()) projectName = "Dự án chung";
         if (taskTitle == null || taskTitle.trim().isEmpty()) taskTitle = "Nhiệm vụ mới";
@@ -234,6 +237,9 @@ public class WorkReportController {
         report.setProjectName(projectName.trim());
         report.setTaskTitle(taskTitle.trim());
         report.setAssignee(assignee.trim().toLowerCase());
+        if (authentication != null) {
+            report.setCreatedBy(authentication.getName());
+        }
         if (watchersList != null && !watchersList.isEmpty()) {
             report.setWatchers(String.join(",", watchersList));
         }
@@ -411,6 +417,9 @@ public class WorkReportController {
             report.setProjectName(projectName != null ? projectName.trim() : "Dự án chung");
             report.setTaskTitle(taskTitle != null ? taskTitle.trim() : "Nhiệm vụ mới");
             report.setAssignee(assignee.trim().toLowerCase());
+            if (authentication != null) {
+                report.setCreatedBy(authentication.getName());
+            }
             if (status == null || status.trim().isEmpty() || "null".equalsIgnoreCase(status.trim())) {
                 status = "PLANNING";
             }
@@ -436,11 +445,17 @@ public class WorkReportController {
             @RequestParam("parentId") Long parentId,
             @RequestParam("taskTitle") String taskTitle,
             @RequestParam(value = "assignee", required = false) String assignee,
+            @RequestParam(value = "watchers", required = false) String watchers,
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "dueDate", required = false) String dueDateStr) {
+            @RequestParam(value = "dueDate", required = false) String dueDateStr,
+            Authentication authentication) {
         Map<String, Object> res = new HashMap<>();
         try {
-            WorkReport child = workReportService.createSubReport(parentId, taskTitle, assignee, status, dueDateStr);
+            WorkReport child = workReportService.createSubReport(parentId, taskTitle, assignee, watchers, status, dueDateStr);
+            if (authentication != null) {
+                child.setCreatedBy(authentication.getName());
+                workReportService.saveReport(child);
+            }
             res.put("status", "success");
             res.put("id", child.getId());
             res.put("report", child);
