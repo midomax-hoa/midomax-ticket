@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="100%" height="100%">
+    <g fill="#E82020" filter="drop-shadow(0 2px 8px rgba(232, 32, 32, 0.35))">
+        <!-- Kamito Eagle Wing Bird Mascot on Left -->
+        <g transform="translate(4, 2) scale(0.65)">
+            <path d="M 20 80 C 15 65 5 50 0 38 C 12 48 32 68 45 88 C 28 65 10 38 5 18 C 22 35 48 60 62 85 C 45 60 22 30 18 10 C 38 28 65 55 82 82 C 95 62 110 52 128 52 C 138 52 142 55 140 62 C 132 68 122 76 118 82 C 114 74 108 65 98 60 C 92 68 85 78 75 92 Z" />
+        </g>
+        <!-- KAMITO Signature Bold Text on Right -->
+        <g transform="translate(105, 13) scale(1.05)">
+            <!-- K -->
+            <path d="M 0 0 L 0 38 L 10 38 L 10 23 L 24 38 L 36 38 L 18 19 L 34 0 L 22 0 L 10 15 L 10 0 Z" />
+            <!-- A with lightning bolt -->
+            <path d="M 38 38 L 50 0 L 62 0 L 74 38 L 64 38 L 61 27 L 51 27 L 48 38 Z M 53 20 L 58 20 L 54 11 L 59 11 L 52 3 L 56 20 Z" />
+            <!-- M -->
+            <path d="M 76 38 L 76 0 L 86 0 L 93 19 L 100 0 L 110 0 L 110 38 L 101 38 L 101 11 L 95 26 L 91 26 L 85 11 L 85 38 Z" />
+            <!-- I -->
+            <path d="M 114 0 L 123 0 L 123 38 L 114 38 Z" />
+            <!-- T -->
+            <path d="M 126 0 L 148 0 L 148 8 L 141 8 L 141 38 L 133 38 L 133 8 L 126 8 Z" />
+            <!-- O -->
+            <path d="M 163 0 C 174 0 181 8 181 19 C 181 30 174 38 163 38 C 152 38 145 30 145 19 C 145 8 152 0 163 0 Z M 163 8 C 157 8 154 12 154 19 C 154 26 157 30 163 30 C 172 30 172 12 163 8 Z" />
+        </g>
+    </g>
+</svg>

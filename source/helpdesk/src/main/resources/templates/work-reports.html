@@ -98,13 +98,18 @@
             gap: 5px;
             padding: 2px 8px;
             border-radius: 12px;
+            max-width: 100%;
+            white-space: nowrap;
             font-size: 11px;
             font-weight: 600;
             cursor: pointer;
         }
+        /* Ghi chú của việc bị trễ hạn: tô đỏ, bấm vào xem giải trình. */
+        .delay-note { cursor: pointer; }
+        .delay-note:hover { text-decoration: underline; }
+
         .status-pill.progress { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
         .status-pill.todo { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-        .status-pill.testing { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
         .status-pill.done { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
 
         /* AVATARS */
@@ -135,7 +140,17 @@
             border-bottom: 1px solid #f4f5f7;
         }
         .subtask-tree-row:hover { background: #fafbfc; }
-        
+
+        /* VIỆC CON TRỄ HẸN / QUÁ HẠN → ĐÁNH DẤU ĐỎ */
+        .subtask-tree-row.subtask-late {
+            background: #fef2f2 !important;
+            border-left: 4px solid #dc2626 !important;
+        }
+        .subtask-tree-row.subtask-late:hover { background: #fee2e2 !important; }
+        .subtask-tree-row.subtask-late .subtask-title,
+        .subtask-tree-row.subtask-late .subtask-assignee-name { color: #dc2626 !important; }
+        .subtask-tree-row.subtask-late .assignee-avatar { background: #dc2626 !important; color: #fff !important; }
+
         .tree-connector {
             display: inline-block; width: 15px; color: #dfe1e6; font-size: 16px; margin-right: 5px;
         }
@@ -179,13 +194,14 @@
         .status-dot { width: 6px; height: 6px; border-radius: 50%; }
         .badge-PROGRESS { background-color: #f3e8ff; color: #7e22ce; } .badge-PROGRESS .status-dot { background-color: #a855f7; }
         .badge-PLANNING { background-color: #f1f5f9; color: #475569; } .badge-PLANNING .status-dot { background-color: #64748b; }
-        .badge-TESTING { background-color: #fef3c7; color: #d97706; } .badge-TESTING .status-dot { background-color: #f59e0b; }
         .badge-COMPLETED { background-color: #dcfce7; color: #15803d; } .badge-COMPLETED .status-dot { background-color: #22c55e; }
         .task-count { font-size: 12px; color: #94a3b8; font-weight: 600; background: #f1f5f9; padding: 2px 8px; border-radius: 12px; }
 
         /* GRID STRUCTURE (UNIFIED HIERARCHICAL TREE TABLE) */
         .grid-table { display: flex; flex-direction: column; width: 100%; overflow-x: auto; overflow-y: hidden; }
-        .grid-row { display: grid; grid-template-columns: minmax(180px, 2fr) 130px 150px 115px 100px minmax(180px, 1.2fr) 115px 80px; align-items: center; border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease; min-width: 1150px; }
+        /* Cột TRẠNG THÁI cần đủ rộng cho pill "IN PROGRESS"/"COMPLETED" + icon khoá,
+           nếu không sẽ tràn đè lên thanh tiến độ ở cột kế bên. */
+        .grid-row { display: grid; grid-template-columns: minmax(340px, 2.5fr) 130px 140px 145px 120px minmax(170px, 1.2fr) 115px 80px; align-items: center; border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease; min-width: 1350px; }
         .grid-header { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; }
 
         .subtask-arrow-btn {
@@ -283,7 +299,7 @@
                 <button class="btn btn-primary fw-bold px-4 py-2 text-nowrap flex-shrink-0" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);" onclick="openCreateParentReportModal()">
                     <i class="fa-solid fa-plus me-2"></i>Thêm Nhiệm Vụ / Báo Cáo
                 </button>
-                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#1e3a8a'" onmouseout="this.style.color='#6b7280'"></i>
+                <i class="fa-solid fa-bell fs-5 ms-2 d-inline-block" style="color: #6b7280; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#1e3a8a'" onmouseout="this.style.color='#6b7280'"></i>
             </div>
         </div>
 
@@ -359,21 +375,25 @@
                                     <!-- PARENT ROW -->
                                     <!-- hasKids: việc này có việc con thật → tiến độ & trạng thái TỰ TÍNH, khoá sửa tay -->
                                     <div th:id="'task-row-' + ${r.id}" class="grid-row task-row px-3" style="background-color: #ffffff;"
-                                         th:with="hasKids=${childReportsMap != null && childReportsMap.get(r.id) != null && !childReportsMap.get(r.id).empty}"
-                                         th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                         th:with="hasKids=${childReportsMap != null && childReportsMap.get(r.id) != null && !childReportsMap.get(r.id).empty},
+                                                  autoProgress=${(childReportsMap != null && childReportsMap.get(r.id) != null && !childReportsMap.get(r.id).empty)
+                                                                 || (subtasksMap != null && subtasksMap.get(r.id) != null && !subtasksMap.get(r.id).empty)},
+                                                  locked=${(childReportsMap != null && childReportsMap.get(r.id) != null && !childReportsMap.get(r.id).empty)
+                                                           && !(r.createdBy != null && r.createdBy == currentUser)}"
+                                         th:data-due="${r.effectiveDueDate != null ? #temporals.format(r.effectiveDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                          th:data-delay="${r.delayReason != null ? r.delayReason : ''}">
                                         <!-- Cell 1: Task Name -->
-                                        <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="font-weight: 500; overflow: visible;">
+                                        <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="font-weight: 500; overflow: hidden;">
                                             <div class="d-flex align-items-center gap-2 w-100">
-                                                <div class="task-checkbox flex-shrink-0" th:classappend="${(r.status == 'COMPLETED' ? 'checked ' : '') + (hasKids ? 'opacity-50' : '')}"
+                                                <div class="task-checkbox flex-shrink-0" th:classappend="${(r.status == 'COMPLETED' ? 'checked ' : '') + (locked ? 'opacity-50' : '')}"
                                                      th:data-id="${r.id}"
                                                      th:data-status="${r.status != null ? r.status : 'PLANNING'}"
-                                                     th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                     th:data-due="${r.effectiveDueDate != null ? #temporals.format(r.effectiveDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                      th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
-                                                     th:data-haskids="${hasKids}"
+                                                     th:data-haskids="${locked}"
                                                      onclick="toggleTaskCompleteEl(this); event.stopPropagation();"
-                                                     th:title="${hasKids ? 'Tự động theo việc con — không sửa tay' : 'Đánh dấu hoàn thành / chưa hoàn thành'}"
-                                                     th:style="${hasKids ? 'cursor: not-allowed;' : ''}">
+                                                     th:title="${locked ? 'Tự động theo việc con — không sửa tay' : (hasKids ? 'Bạn là người tạo: được chốt kết thúc báo cáo này' : 'Đánh dấu hoàn thành / chưa hoàn thành')}"
+                                                     th:style="${locked ? 'cursor: not-allowed;' : ''}">
                                                     <i class="fa-solid fa-check"></i>
                                                 </div>
                                                 <button type="button" class="subtask-arrow-btn d-inline-flex align-items-center gap-1 flex-shrink-0"
@@ -384,6 +404,9 @@
                                                     <span style="pointer-events: none;" th:text="${(#lists.size(subtasksMap.get(r.id) ?: {})) + (#lists.size(childReportsMap.get(r.id) ?: {}))}"></span>
                                                 </button>
                                                 <span class="task-name text-truncate text-dark" style="cursor: pointer; font-size: 14px; font-weight: 600;" th:data-id="${r.id}" onclick="openTaskDetailModal(this.getAttribute('data-id'))" th:text="${r.taskTitle != null ? r.taskTitle : 'Nhiệm vụ'}">Task Title</span>
+                                                <span class="badge bg-secondary text-white ms-2 flex-shrink-0" style="font-size: 10px;" th:if="${r.createdBy != null}">
+                                                    <i class="fa-solid fa-user-check me-1"></i><span th:text="${r.createdBy}">creator</span>
+                                                </span>
                                                 <span class="badge bg-light text-secondary border ms-2 flex-shrink-0" style="font-size: 11px;" th:if="${r.startDate != null}">
                                                     <i class="fa-regular fa-clock me-1"></i><span th:text="${#temporals.format(r.startDate, 'dd/MM/yyyy HH:mm')}">14/07</span>
                                                 </span>
@@ -418,20 +441,19 @@
 
                                         <!-- Cell 4: Status (ClickUp Dropdown Pill) — khoá khi có việc con -->
                                         <div class="grid-cell dropdown">
-                                            <div class="status-pill dropdown-toggle" th:attr="data-bs-toggle=${hasKids ? null : 'dropdown'}" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false"
-                                                 th:style="${hasKids ? 'cursor: not-allowed;' : 'cursor: pointer;'}"
-                                                 th:title="${hasKids ? 'Trạng thái tự suy ra từ việc con' : ''}"
-                                                 th:classappend="${r.status == 'PROGRESS' ? 'progress' : (r.status == 'COMPLETED' ? 'done' : (r.status == 'TESTING' ? 'testing' : 'todo'))}">
+                                            <div class="status-pill dropdown-toggle" th:attr="data-bs-toggle=${locked ? null : 'dropdown'}" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false"
+                                                 th:style="${locked ? 'cursor: not-allowed;' : 'cursor: pointer;'}"
+                                                 th:title="${locked ? 'Trạng thái tự suy ra từ việc con' : (hasKids ? 'Bạn là người tạo: được tự chốt kết thúc' : '')}"
+                                                 th:classappend="${r.status == 'PROGRESS' ? 'progress' : (r.status == 'COMPLETED' ? 'done' : 'todo')}">
                                                 <i class="fa-solid fa-circle" style="font-size: 7px;"></i>
-                                                <span th:text="${r.status == 'PROGRESS' ? 'IN PROGRESS' : (r.status == 'COMPLETED' ? 'COMPLETED' : (r.status == 'TESTING' ? 'TESTING' : 'TO DO'))}">TODO</span>
-                                                <i class="fa-solid fa-lock ms-1" style="font-size: 9px; opacity: .55;" th:if="${hasKids}"></i>
+                                                <span th:text="${r.status == 'PROGRESS' ? 'IN PROGRESS' : (r.status == 'COMPLETED' ? 'COMPLETED' : 'TO DO')}">TODO</span>
+                                                <i class="fa-solid fa-lock ms-1" style="font-size: 9px; opacity: .55;" th:if="${locked}"></i>
                                             </div>
-                                            <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;" th:if="${!hasKids}">
+                                            <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;" th:if="${!locked}">
                                                 <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PLANNING" onclick="updateStatusAjaxEl(this, 'PLANNING', this); return false;"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>
                                                 <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="PROGRESS" onclick="updateStatusAjaxEl(this, 'PROGRESS', this); return false;"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>
-                                                <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="TESTING" onclick="updateStatusAjaxEl(this, 'TESTING', this); return false;"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>
                                                 <li><a class="dropdown-item py-1" href="#" th:data-id="${r.id}" data-status-val="COMPLETED"
-                                                       th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                       th:data-due="${r.effectiveDueDate != null ? #temporals.format(r.effectiveDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                        th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
                                                        onclick="updateStatusAjaxEl(this, 'COMPLETED', this); return false;"><i class="fa-solid fa-circle text-success me-2"></i>COMPLETED</a></li>
                                             </ul>
@@ -445,16 +467,30 @@
                                                          th:style="'width: ' + ${r.progressPercentage} + '%'"></div>
                                                 </div>
                                                 <span class="fw-bold text-secondary small" style="min-width: 38px;" th:text="${r.progressPercentage + '%'}">0%</span>
-                                                <i class="fa-solid fa-wand-magic-sparkles text-primary" style="font-size: 10px; opacity: .6;" th:if="${hasKids}" title="Tự tính trung bình từ việc con"></i>
+                                                <i class="fa-solid fa-wand-magic-sparkles text-primary" style="font-size: 10px; opacity: .6;" th:if="${hasKids && !r.awaitingOwnerConfirm}" title="Tự tính trung bình từ việc con"></i>
+                                                <!-- Việc con xong hết nhưng chỉ dừng ở 90%: chờ người tạo báo cáo chốt. -->
+                                                <button type="button" class="btn btn-success py-0 px-2 fw-bold flex-shrink-0"
+                                                        th:if="${autoProgress && r.awaitingOwnerConfirm && r.createdBy == currentUser}"
+                                                        style="font-size: 10px; border-radius: 6px; line-height: 18px;"
+                                                        th:data-id="${r.id}" title="Việc con đã xong hết — bấm để chốt hoàn thành 100%"
+                                                        onclick="confirmReportCompletion(this.getAttribute('data-id')); event.stopPropagation();">
+                                                    <i class="fa-solid fa-check me-1"></i>Xác nhận
+                                                </button>
+                                                <i class="fa-solid fa-hourglass-half text-warning flex-shrink-0" style="font-size: 11px;"
+                                                   th:if="${autoProgress && r.awaitingOwnerConfirm && r.createdBy != currentUser}"
+                                                   th:title="'Việc con đã xong hết, đang chờ ' + ${r.createdBy != null ? r.createdBy : 'người tạo'} + ' xác nhận hoàn thành'"></i>
                                             </div>
                                         </div>
 
                                         <!-- Cell 6: Diễn giải ghi chú & Giải trình trễ hạn -->
                                         <div class="grid-cell text-muted small d-flex align-items-center gap-1" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:title="${(r.dailyReport != null ? r.dailyReport : '') + (r.delayReason != null && !r.delayReason.isEmpty() ? ' | Giải trình trễ: ' + r.delayReason : '')}">
-                                            <span th:text="${r.dailyReport != null && !r.dailyReport.isEmpty() ? r.dailyReport : '--'}"></span>
-                                            <span class="badge bg-warning-subtle text-dark border border-warning ms-1 flex-shrink-0" style="font-size: 11px; cursor: pointer;" th:if="${r.delayReason != null && !r.delayReason.isEmpty()}" th:title="'Giải trình trễ hạn: ' + ${r.delayReason}" th:data-id="${r.id}" onclick="openTaskDetailModal(this.getAttribute('data-id')); event.stopPropagation();">
-                                                <i class="fa-solid fa-clock-rotate-left text-warning me-1"></i>Trễ
-                                            </span>
+                                            <!-- Trễ hạn đã có badge ở cột SLA, ở đây chỉ tô đỏ ghi chú để thấy
+                                                 việc này đang kéo trễ các việc khác. Bấm vào xem giải trình. -->
+                                            <span th:classappend="${r.delayReason != null && !r.delayReason.isEmpty() ? 'text-danger fw-semibold delay-note' : ''}"
+                                                  th:attr="title=${r.delayReason != null && !r.delayReason.isEmpty() ? 'Trễ hạn — bấm để xem giải trình: ' + r.delayReason : null},
+                                                           data-id=${r.id},
+                                                           onclick=${r.delayReason != null && !r.delayReason.isEmpty() ? 'openTaskDetailModal(this.getAttribute(''data-id'')); event.stopPropagation();' : null}"
+                                                  th:text="${r.dailyReport != null && !r.dailyReport.isEmpty() ? r.dailyReport : '--'}"></span>
                                         </div>
 
                                         <!-- Cell 7: SLA / Hạn định -->
@@ -465,14 +501,16 @@
                                             </span>
                                         </div>
 
-                                        <!-- Cell 8: Actions -->
-                                        <div class="grid-cell justify-content-end">
+                                        <!-- Cell 8: Actions (only for creator/admin) -->
+                                        <div class="grid-cell justify-content-end" th:if="${isAdmin || r.createdBy == currentUser}">
                                             <div class="d-flex align-items-center gap-2">
                                                 <i class="fa-solid fa-pen-to-square text-secondary text-hover-scale" style="cursor: pointer; font-size: 15px;" title="Cập nhật chi tiết"
-                                                   th:data-id="${r.id}" th:data-progress="${r.progressPercentage}" th:data-status="${r.status != null ? r.status : 'PLANNING'}" th:data-haskids="${hasKids}"
+                                                   th:data-id="${r.id}" th:data-progress="${r.progressPercentage}" th:data-status="${r.status != null ? r.status : 'PLANNING'}" th:data-haskids="${locked}"
                                                    th:data-note="${r.dailyReport != null ? r.dailyReport : ''}" th:data-title="${r.taskTitle != null ? r.taskTitle : ''}" th:data-watchers="${r.watchers != null ? r.watchers : ''}"
                                                    th:data-project="${r.projectName != null ? r.projectName : ''}" th:data-assignee="${r.assignee != null ? r.assignee : ''}" th:data-due="${r.dueDate != null ? #temporals.format(r.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                    th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
+                                                   th:data-completed="${r.completedAt != null ? #temporals.format(r.completedAt, 'yyyy-MM-dd HH:mm') : ''}"
+                                                   th:data-parent-due="${r.parentDueDate != null ? #temporals.format(r.parentDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                    onclick="openUpdateModalFromBtn(this); event.stopPropagation();"></i>
                                                 <form th:action="@{/work-reports/delete/{id}(id=${r.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa nhiệm vụ này?');">
                                                     <button type="submit" class="btn p-0 border-0 bg-transparent text-danger text-hover-scale" title="Xóa nhiệm vụ" style="line-height: 1;"><i class="fa-solid fa-trash" style="font-size: 14px;"></i></button>
@@ -485,13 +523,16 @@
                                     <div class="subtasks-container" th:id="'subtasks-' + ${r.id}">
                                         <!-- CHILD REPORTS (VIỆC CON / BƯỚC CON) -->
                                         <th:block th:if="${childReportsMap != null && childReportsMap.get(r.id) != null}" th:each="cr : ${childReportsMap.get(r.id)}">
-                                            <div th:id="'subreport-item-' + ${cr.id}" th:class="'grid-row task-row subtask-tree-row subtask-of-' + ${r.id} + ' px-3'" style="display: none; background: #fafbfc; border-left: 4px solid #93c5fd;"
-                                                 th:data-due="${cr.dueDate != null ? #temporals.format(cr.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                            <div th:id="'subreport-item-' + ${cr.id}" th:class="'grid-row task-row subtask-tree-row subtask-of-' + ${r.id} + ' px-3' + (${cr.slaStatus == 'Quá hạn' || cr.slaStatus == 'Trễ hẹn'} ? ' subtask-late' : '')" style="display: none; background: #fafbfc; border-left: 4px solid #93c5fd;"
+                                                 th:data-due="${cr.effectiveDueDate != null ? #temporals.format(cr.effectiveDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                  th:data-delay="${cr.delayReason != null ? cr.delayReason : ''}">
                                                 <!-- Cell 1: Child Title indented -->
-                                                <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="padding-left: 44px; font-weight: 500; overflow: visible;">
+                                                <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="padding-left: 44px; font-weight: 500; overflow: hidden;">
                                                     <div class="d-flex align-items-center gap-2 w-100">
-                                                        <span style="cursor: pointer; font-size: 13px; font-weight: 600; color: #1e293b;" th:data-id="${cr.id}" onclick="openTaskDetailModal(this.getAttribute('data-id'))" th:text="${cr.taskTitle != null ? cr.taskTitle : 'Việc con'}">Child Title</span>
+                                                        <i class="fa-solid fa-triangle-exclamation text-danger flex-shrink-0" style="font-size: 12px;"
+                                                           th:if="${cr.slaStatus == 'Quá hạn' || cr.slaStatus == 'Trễ hẹn'}"
+                                                           th:title="${cr.slaStatus + ' — phụ trách: ' + (cr.assignee != null ? cr.assignee : 'chưa giao')}"></i>
+                                                        <span class="subtask-title text-truncate" style="cursor: pointer; font-size: 13px; font-weight: 600; color: #1e293b;" th:data-id="${cr.id}" onclick="openTaskDetailModal(this.getAttribute('data-id'))" th:text="${cr.taskTitle != null ? cr.taskTitle : 'Việc con'}">Child Title</span>
                                                         <span class="badge bg-light text-secondary border ms-2 flex-shrink-0" style="font-size: 11px;" th:if="${cr.startDate != null}">
                                                             <i class="fa-regular fa-clock me-1"></i><span th:text="${#temporals.format(cr.startDate, 'dd/MM/yyyy HH:mm')}">Time</span>
                                                         </span>
@@ -502,7 +543,7 @@
                                                 <div class="grid-cell dropdown">
                                                     <div class="inline-edit-pill d-flex align-items-center gap-2 dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" style="cursor: pointer; padding: 4px 10px; border-radius: 16px; background: #f1f5f9; border: 1px solid #e2e8f0;">
                                                         <span class="assignee-avatar m-0" style="width: 20px; height: 20px; font-size: 10px;" th:classappend="${cr.assignee != null && !cr.assignee.isEmpty() ? 'filled' : ''}" th:text="${cr.assignee != null && !cr.assignee.isEmpty() ? #strings.substring(cr.assignee, 0, 1).toUpperCase() : '+'}">+</span>
-                                                        <span class="small fw-medium text-secondary" th:if="${cr.assignee != null && !cr.assignee.isEmpty()}" th:text="${cr.assignee}"></span>
+                                                        <span class="small fw-medium text-secondary subtask-assignee-name" th:if="${cr.assignee != null && !cr.assignee.isEmpty()}" th:text="${cr.assignee}"></span>
                                                     </div>
                                                     <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 140px;">
                                                         <li th:each="a : ${assignees}">
@@ -526,16 +567,15 @@
                                                 <!-- Cell 4: Child Status -->
                                                 <div class="grid-cell dropdown">
                                                     <div class="status-pill dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" style="cursor: pointer;"
-                                                         th:classappend="${cr.status == 'PROGRESS' ? 'progress' : (cr.status == 'COMPLETED' ? 'done' : (cr.status == 'TESTING' ? 'testing' : 'todo'))}">
+                                                         th:classappend="${cr.status == 'PROGRESS' ? 'progress' : (cr.status == 'COMPLETED' ? 'done' : 'todo')}">
                                                         <i class="fa-solid fa-circle" style="font-size: 7px;"></i>
-                                                        <span th:text="${cr.status == 'PROGRESS' ? 'IN PROGRESS' : (cr.status == 'COMPLETED' ? 'COMPLETED' : (cr.status == 'TESTING' ? 'TESTING' : 'TO DO'))}">TODO</span>
+                                                        <span th:text="${cr.status == 'PROGRESS' ? 'IN PROGRESS' : (cr.status == 'COMPLETED' ? 'COMPLETED' : 'TO DO')}">TODO</span>
                                                     </div>
                                                     <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;">
                                                         <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="PLANNING" onclick="updateStatusAjaxEl(this, 'PLANNING', this); return false;"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>
                                                         <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="PROGRESS" onclick="updateStatusAjaxEl(this, 'PROGRESS', this); return false;"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>
-                                                        <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="TESTING" onclick="updateStatusAjaxEl(this, 'TESTING', this); return false;"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>
                                                         <li><a class="dropdown-item py-1" href="#" th:data-id="${cr.id}" data-status-val="COMPLETED"
-                                                               th:data-due="${cr.dueDate != null ? #temporals.format(cr.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                               th:data-due="${cr.effectiveDueDate != null ? #temporals.format(cr.effectiveDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                                th:data-delay="${cr.delayReason != null ? cr.delayReason : ''}"
                                                                onclick="updateStatusAjaxEl(this, 'COMPLETED', this); return false;"><i class="fa-solid fa-circle text-success me-2"></i>COMPLETED</a></li>
                                                     </ul>
@@ -554,10 +594,11 @@
 
                                                 <!-- Cell 6: Child Diễn giải ghi chú & Giải trình trễ hạn -->
                                                 <div class="grid-cell text-muted small d-flex align-items-center gap-1" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:title="${(cr.dailyReport != null ? cr.dailyReport : '') + (cr.delayReason != null && !cr.delayReason.isEmpty() ? ' | Giải trình trễ: ' + cr.delayReason : '')}">
-                                                    <span th:text="${cr.dailyReport != null && !cr.dailyReport.isEmpty() ? cr.dailyReport : '--'}"></span>
-                                                    <span class="badge bg-warning-subtle text-dark border border-warning ms-1 flex-shrink-0" style="font-size: 11px; cursor: pointer;" th:if="${cr.delayReason != null && !cr.delayReason.isEmpty()}" th:title="'Giải trình trễ hạn: ' + ${cr.delayReason}" th:data-id="${cr.id}" onclick="openTaskDetailModal(this.getAttribute('data-id')); event.stopPropagation();">
-                                                        <i class="fa-solid fa-clock-rotate-left text-warning me-1"></i>Trễ
-                                                    </span>
+                                                    <span th:classappend="${cr.delayReason != null && !cr.delayReason.isEmpty() ? 'text-danger fw-semibold delay-note' : ''}"
+                                                          th:attr="title=${cr.delayReason != null && !cr.delayReason.isEmpty() ? 'Trễ hạn — bấm để xem giải trình: ' + cr.delayReason : null},
+                                                                   data-id=${cr.id},
+                                                                   onclick=${cr.delayReason != null && !cr.delayReason.isEmpty() ? 'openTaskDetailModal(this.getAttribute(''data-id'')); event.stopPropagation();' : null}"
+                                                          th:text="${cr.dailyReport != null && !cr.dailyReport.isEmpty() ? cr.dailyReport : '--'}"></span>
                                                 </div>
 
                                                 <!-- Cell 7: Child SLA / Hạn định -->
@@ -575,6 +616,8 @@
                                                        th:data-note="${cr.dailyReport != null ? cr.dailyReport : ''}" th:data-title="${cr.taskTitle != null ? cr.taskTitle : ''}" th:data-watchers="${cr.watchers != null ? cr.watchers : ''}"
                                                        th:data-project="${cr.projectName != null ? cr.projectName : ''}" th:data-assignee="${cr.assignee != null ? cr.assignee : ''}" th:data-due="${cr.dueDate != null ? #temporals.format(cr.dueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                        th:data-delay="${cr.delayReason != null ? cr.delayReason : ''}"
+                                                       th:data-completed="${cr.completedAt != null ? #temporals.format(cr.completedAt, 'yyyy-MM-dd HH:mm') : ''}"
+                                                       th:data-parent-due="${cr.parentDueDate != null ? #temporals.format(cr.parentDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                        onclick="openUpdateModalFromBtn(this); event.stopPropagation();"></i>
                                                     <form th:action="@{/work-reports/delete/{id}(id=${cr.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa việc con này?');">
                                                         <button type="submit" class="btn p-0 border-0 bg-transparent text-danger text-hover-scale" title="Xóa việc con" style="line-height: 1;"><i class="fa-solid fa-trash" style="font-size: 14px;"></i></button>
@@ -604,8 +647,9 @@
                                             </div>
                                         </th:block>
 
-                                        <!-- INTEGRATED QUICK ADD SUBTASK ROW -->
-                                        <div th:id="'subtask-add-row-' + ${r.id}"
+                                        <!-- INTEGRATED QUICK ADD SUBTASK ROW — khoá khi chủ báo cáo đã chốt hoàn thành -->
+                                        <div th:unless="${r.ownerConfirmed}"
+                                             th:id="'subtask-add-row-' + ${r.id}"
                                              th:class="'grid-row task-row subtask-tree-row'"
                                              th:data-parent-id="${r.id}"
                                              onclick="showSubtaskInput(this)"
@@ -702,18 +746,9 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-dark">Người Cùng Theo Dõi (Watchers)</label>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center bg-white shadow-sm" type="button" data-bs-toggle="dropdown" style="height: 38px; border-color: #dee2e6;">
-                                        <span><i class="fa-solid fa-users me-2 text-muted"></i>Chọn người theo dõi...</span>
-                                        <i class="fa-solid fa-caret-down"></i>
-                                    </button>
-                                    <ul class="dropdown-menu w-100 p-2 shadow" style="max-height: 180px; overflow-y: auto;">
-                                        <li th:each="a : ${assignees}" class="form-check m-1">
-                                            <input class="form-check-input" type="checkbox" name="watchers" th:value="${a}" th:id="'watcher-chk-' + ${a}">
-                                            <label class="form-check-label small fw-bold text-dark" th:for="'watcher-chk-' + ${a}" th:text="${a.toUpperCase()}"></label>
-                                        </li>
-                                    </ul>
-                                </div>
+                                <input type="text" name="watchers" id="createReportWatchers" class="form-control shadow-sm"
+                                       placeholder="Gõ @ để tìm và tag người theo dõi...">
+                                <small class="text-muted" style="font-size: 11px;"><i class="fa-solid fa-at me-1"></i>Gõ @ rồi chọn tên, cách nhau bằng dấu phẩy.</small>
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label fw-bold small text-dark">Tên Nhiệm Vụ / Tính Năng Chi Tiết <span class="text-danger">*</span></label>
@@ -724,7 +759,6 @@
                                 <select name="status" class="form-select shadow-sm">
                                     <option value="PLANNING" selected>Cần Làm / Kế hoạch (TO DO)</option>
                                     <option value="PROGRESS">Đang Triển Khai (IN PROGRESS)</option>
-                                    <option value="TESTING">Kiểm Thử (TESTING)</option>
                                     <option value="COMPLETED">Hoàn Thành (COMPLETED)</option>
                                 </select>
                             </div>
@@ -787,7 +821,6 @@
                                 <select name="status" id="updateStatusSelect" class="form-select shadow-sm">
                                     <option value="PLANNING">Lên Kế Hoạch (Planning)</option>
                                     <option value="PROGRESS">Đang Triển Khai (In Progress)</option>
-                                    <option value="TESTING">Kiểm Thử (Testing)</option>
                                     <option value="COMPLETED">Hoàn Thành (Completed)</option>
                                 </select>
                             </div>
@@ -844,10 +877,9 @@
                     <input type="hidden" id="inlineAssignReportId">
                     <div class="mb-3">
                         <label class="form-label fw-bold small text-dark">Người phụ trách:</label>
-                        <select id="inlineAssigneeSelect" class="form-select form-select-sm shadow-sm">
-                            <option value="">-- Chưa giao --</option>
-                            <option th:each="a : ${assignees}" th:value="${a}" th:text="${a.toUpperCase()}"></option>
-                        </select>
+                        <input type="text" id="inlineAssigneeInput" class="form-control form-control-sm shadow-sm"
+                               placeholder="Gõ @ để giao việc..." autocomplete="off">
+                        <small class="text-muted" style="font-size: 10px;"><i class="fa-solid fa-at me-1"></i>Để trống = chưa giao việc.</small>
                     </div>
                     <div class="mb-2">
                         <label class="form-label fw-bold small text-dark">Người theo dõi (Watchers):</label>
@@ -878,7 +910,6 @@
                     <input type="hidden" id="inlineStatusReportId">
                     <button class="btn btn-light border w-100 fw-bold text-start" style="color: #7e22ce; background: #f3e8ff;" onclick="saveInlineStatus('PLANNING')"><i class="fa-solid fa-lightbulb me-2"></i>Lên Kế Hoạch</button>
                     <button class="btn btn-light border w-100 fw-bold text-start" style="color: #1d4ed8; background: #dbeafe;" onclick="saveInlineStatus('PROGRESS')"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang Triển Khai</button>
-                    <button class="btn btn-light border w-100 fw-bold text-start" style="color: #b45309; background: #fef9c3;" onclick="saveInlineStatus('TESTING')"><i class="fa-solid fa-vial me-2"></i>Kiểm Thử</button>
                     <button class="btn btn-light border w-100 fw-bold text-start" style="color: #15803d; background: #dcfce7;" onclick="saveInlineStatus('COMPLETED')"><i class="fa-solid fa-check-double me-2"></i>Hoàn Thành</button>
                 </div>
             </div>
@@ -1403,6 +1434,10 @@
                 const project = btn.getAttribute('data-project') || '';
                 const assignee = btn.getAttribute('data-assignee') || '';
                 const due = btn.getAttribute('data-due') || '';
+                // Mốc hoàn thành đã ghi nhận: dùng để chấm trễ hạn thay cho giờ hiện tại.
+                window.updateModalCompletedAt = btn.getAttribute('data-completed') || '';
+                // Việc con chấm trễ theo hạn chót của việc cha, không theo hạn riêng đang nhập.
+                window.updateModalParentDue = btn.getAttribute('data-parent-due') || '';
                 const watchers = btn.getAttribute('data-watchers') || '';
                 const parentId = btn.getAttribute('data-parent-id');
                 if (parentId) {
@@ -1474,7 +1509,7 @@
             if (!groupEl) return;
 
             const isCompleted = (status === 'COMPLETED' || parseInt(progress) === 100);
-            const overdue = isTaskOverdue(dueStr);
+            const overdue = isTaskOverdue(window.updateModalParentDue || dueStr, window.updateModalCompletedAt);
 
             if (isCompleted && overdue) {
                 groupEl.classList.remove('d-none');
@@ -1504,8 +1539,8 @@
         // INLINE EDITING FUNCTIONS
         function openInlineAssignModal(id, assignee, watchers) {
             document.getElementById('inlineAssignReportId').value = id;
-            const sel = document.getElementById('inlineAssigneeSelect');
-            if (sel) sel.value = assignee || '';
+            const sel = document.getElementById('inlineAssigneeInput');
+            if (sel) sel.value = assignee && assignee !== 'null' ? assignee : '';
             const wVal = watchers && watchers !== 'null' ? watchers : '';
             document.getElementById('inlineWatchersInput').value = wVal;
             
@@ -1519,9 +1554,26 @@
             modal.show();
         }
 
+        // Gộp tên tick từ "CHỌN NHANH" với tên đang gõ tay (@mention) thay vì ghi đè.
         function updateInlineWatchersInputFromChk() {
+            const input = document.getElementById('inlineWatchersInput');
+            const checkboxValues = Array.from(document.querySelectorAll('.inline-watcher-chk')).map(c => c.value.toLowerCase());
             const checked = Array.from(document.querySelectorAll('.inline-watcher-chk:checked')).map(c => c.value);
-            document.getElementById('inlineWatchersInput').value = checked.join(',');
+            // Giữ lại tên gõ tay (không nằm trong danh sách tick), bỏ tên vừa được bỏ tick.
+            const typed = cleanMentionList(input.value).filter(n => !checkboxValues.includes(n.toLowerCase()));
+            input.value = typed.concat(checked).join(',');
+        }
+
+        /** Tách chuỗi "@tin, trung" thành ['tin','trung'] — bỏ @, khoảng trắng và tên trùng. */
+        function cleanMentionList(raw) {
+            const seen = new Set();
+            return (raw || '').split(',')
+                .map(s => s.replace(/@/g, '').trim())
+                .filter(s => {
+                    if (!s || seen.has(s.toLowerCase())) return false;
+                    seen.add(s.toLowerCase());
+                    return true;
+                });
         }
 
         function openInlineAssignModalFromEl(el) {
@@ -1533,8 +1585,14 @@
 
         function saveInlineAssign() {
             const id = document.getElementById('inlineAssignReportId').value;
-            const assignee = document.getElementById('inlineAssigneeSelect').value;
-            const watchers = document.getElementById('inlineWatchersInput').value;
+            const rawAssignee = cleanMentionList(document.getElementById('inlineAssigneeInput').value)[0] || '';
+            const known = (window.allAssigneeNames || []).find(n => n.toLowerCase() === rawAssignee.toLowerCase());
+            if (rawAssignee && !known) {
+                alert('Không tìm thấy người tên "' + rawAssignee + '". Gõ @ để chọn từ danh sách.');
+                return;
+            }
+            const assignee = known || '';
+            const watchers = cleanMentionList(document.getElementById('inlineWatchersInput').value).join(',');
             const formData = new URLSearchParams();
             formData.append('id', id);
             formData.append('assignee', assignee);
@@ -1567,30 +1625,63 @@
 
         let pendingDelayCallback = null;
 
-        function isTaskOverdue(dueDateStr) {
-            if (!dueDateStr || dueDateStr.trim() === '' || dueDateStr === 'null') return false;
-            let due;
-            try {
-                let cleanStr = dueDateStr.trim();
-                if (cleanStr.includes('T')) {
-                    due = new Date(cleanStr);
-                } else if (cleanStr.length === 10) { // yyyy-MM-dd
-                    due = new Date(cleanStr + 'T23:59:59');
-                } else if (cleanStr.includes(' ')) { // yyyy-MM-dd HH:mm
-                    due = new Date(cleanStr.replace(' ', 'T') + ':00');
+        /** Người tạo báo cáo chốt hoàn thành việc cha đang dừng ở 90% chờ xác nhận. */
+        function confirmReportCompletion(reportId) {
+            if (!reportId) return;
+            if (!confirm('Xác nhận toàn bộ việc con đã hoàn thành và chốt báo cáo này ở 100%?')) return;
+            fetch('/work-reports/api/' + reportId + '/confirm-complete', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
                 } else {
-                    due = new Date(cleanStr);
+                    alert(data.message || 'Không xác nhận được báo cáo.');
                 }
-            } catch(e) {
-                return false;
-            }
-            if (!due || isNaN(due.getTime())) return false;
-            return new Date() > due;
+            })
+            .catch(err => {
+                console.error('Lỗi xác nhận hoàn thành:', err);
+                alert('Lỗi kết nối khi xác nhận hoàn thành.');
+            });
         }
 
-        function promptDelayReasonIfNeeded(reportId, nextStatus, nextProgress, dueDateStr, existingDelayReason, callback) {
+        function parseWorkDate(value) {
+            if (!value || String(value).trim() === '' || value === 'null') return null;
+            let parsed;
+            try {
+                let cleanStr = String(value).trim();
+                if (cleanStr.includes('T')) {
+                    parsed = new Date(cleanStr);
+                } else if (cleanStr.length === 10) { // yyyy-MM-dd
+                    parsed = new Date(cleanStr + 'T23:59:59');
+                } else if (cleanStr.includes(' ')) { // yyyy-MM-dd HH:mm
+                    parsed = new Date(cleanStr.replace(' ', 'T') + (cleanStr.length <= 16 ? ':00' : ''));
+                } else {
+                    parsed = new Date(cleanStr);
+                }
+            } catch (e) {
+                return null;
+            }
+            return (parsed && !isNaN(parsed.getTime())) ? parsed : null;
+        }
+
+        /**
+         * Trễ hạn được chấm theo MỐC HOÀN THÀNH so với deadline do chủ công việc đặt,
+         * không theo giờ hiện tại. Việc đã xong đúng hạn thì mở lại về sau vẫn là đúng hạn;
+         * chỉ khi chưa có mốc hoàn thành (đang bấm xong ngay lúc này) mới lấy giờ hiện tại.
+         */
+        function isTaskOverdue(dueDateStr, completedAtStr) {
+            const due = parseWorkDate(dueDateStr);
+            if (!due) return false;
+            const doneAt = parseWorkDate(completedAtStr) || new Date();
+            return doneAt > due;
+        }
+
+        function promptDelayReasonIfNeeded(reportId, nextStatus, nextProgress, dueDateStr, existingDelayReason, callback, completedAtStr) {
             const isCompleted = (nextStatus === 'COMPLETED' || parseInt(nextProgress) === 100);
-            const overdue = isTaskOverdue(dueDateStr);
+            const overdue = isTaskOverdue(dueDateStr, completedAtStr);
 
             if (isCompleted && overdue) {
                 document.getElementById('delayReasonInput').value = existingDelayReason || '';
@@ -1730,8 +1821,8 @@
                 
                 const badge = document.getElementById('detailStatusBadge');
                 if (badge) {
-                    badge.className = 'status-badge m-0 ' + (r.status === 'PLANNING' ? 'status-planning' : (r.status === 'PROGRESS' ? 'status-progress' : (r.status == 'TESTING' ? 'status-testing' : 'status-completed')));
-                    badge.innerHTML = '<i class="fa-solid ' + (r.status === 'PLANNING' ? 'fa-lightbulb' : (r.status === 'PROGRESS' ? 'fa-spinner fa-spin' : (r.status == 'TESTING' ? 'fa-vial' : 'fa-check'))) + '"></i> ' + (r.status === 'PLANNING' ? 'TO DO' : (r.status === 'PROGRESS' ? 'IN PROGRESS' : (r.status === 'TESTING' ? 'TESTING' : 'DONE')));
+                    badge.className = 'status-badge m-0 ' + (r.status === 'PLANNING' ? 'status-planning' : (r.status === 'PROGRESS' ? 'status-progress' : 'status-completed'));
+                    badge.innerHTML = '<i class="fa-solid ' + (r.status === 'PLANNING' ? 'fa-lightbulb' : (r.status === 'PROGRESS' ? 'fa-spinner fa-spin' : 'fa-check')) + '"></i> ' + (r.status === 'PLANNING' ? 'TO DO' : (r.status === 'PROGRESS' ? 'IN PROGRESS' : 'DONE'));
                 }
 
                 // Render Subtasks and Child Reports
@@ -2021,15 +2112,15 @@
                     const delayVal = delayInput ? delayInput.value.trim() : '';
 
                     const isCompleted = (status === 'COMPLETED' || parseInt(progress) === 100);
-                    const overdue = isTaskOverdue(dueStr);
+                    const overdue = isTaskOverdue(window.updateModalParentDue || dueStr, window.updateModalCompletedAt);
 
                     if (isCompleted && overdue && !delayVal) {
                         e.preventDefault();
                         const id = document.getElementById('updateReportId') ? document.getElementById('updateReportId').value : '';
-                        promptDelayReasonIfNeeded(id, status, progress, dueStr, delayVal, function(reason) {
+                        promptDelayReasonIfNeeded(id, status, progress, window.updateModalParentDue || dueStr, delayVal, function(reason) {
                             if (delayInput) delayInput.value = reason;
                             updateForm.submit();
-                        });
+                        }, window.updateModalCompletedAt);
                     }
                 });
             }
@@ -2075,27 +2166,39 @@
             }
             
             if (typeof Tribute !== 'undefined') {
+                const mentionMenuItem = function (item) {
+                    return '<div class="mention-item" style="padding: 5px 10px; display: flex; align-items: center; gap: 10px;"><div class="mention-avatar" style="width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px;">' + item.original.value.substring(0, 1).toUpperCase() + '</div><span class="fw-bold small text-dark">@' + item.original.value + '</span></div>';
+                };
+
+                // Dùng cho ô văn bản tự do (bình luận, ghi chú): chèn "@ten ".
                 const tribute = new Tribute({
                     values: allUserNames,
-                    selectTemplate: function(item) {
-                        return '@' + item.original.value;
-                    },
-                    menuItemTemplate: function (item) {
-                        return '<div class="mention-item" style="padding: 5px 10px; display: flex; align-items: center; gap: 10px;"><div class="mention-avatar" style="width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px;">' + item.original.value.substring(0, 1).toUpperCase() + '</div><span class="fw-bold small text-dark">@' + item.original.value + '</span></div>';
-                    }
+                    selectTemplate: function(item) { return '@' + item.original.value; },
+                    menuItemTemplate: mentionMenuItem
                 });
-                
+
+                // Dùng cho ô danh sách tên: chèn "ten, " để tách đúng theo dấu phẩy khi lưu.
+                const tributeNameList = new Tribute({
+                    values: allUserNames,
+                    replaceTextSuffix: '',
+                    selectTemplate: function(item) { return item.original.value + ', '; },
+                    menuItemTemplate: mentionMenuItem
+                });
+                // Ô người nhận của dòng tạo nhanh việc con được render động nên cần dùng lại instance này.
+                window.mentionTributeNameList = tributeNameList;
+
                 const commentInput = document.getElementById('detailNewCommentText');
                 if (commentInput) tribute.attach(commentInput);
                 
                 const noteInput = document.getElementById('updateReportNote');
                 if (noteInput) tribute.attach(noteInput);
                 
-                const watchersInput = document.getElementById('inlineWatchersInput');
-                if (watchersInput) tribute.attach(watchersInput);
-                
-                const updateWatchersInput = document.getElementById('updateReportWatchers');
-                if (updateWatchersInput) tribute.attach(updateWatchersInput);
+                // Mọi ô nhập tên người (watchers / giao việc nhanh) đều bật gợi ý @mention.
+                ['inlineWatchersInput', 'updateReportWatchers', 'createReportWatchers', 'inlineAssigneeInput']
+                    .forEach(function (inputId) {
+                        const el = document.getElementById(inputId);
+                        if (el) tributeNameList.attach(el);
+                    });
             }
         });
 
@@ -2233,21 +2336,16 @@
                         '<ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px;" id="subtask-status-menu">' +
                             '<li><a class="dropdown-item py-1" href="#" data-val="PLANNING" data-color="text-secondary" data-label="TO DO"><i class="fa-solid fa-circle text-secondary me-2"></i>TO DO</a></li>' +
                             '<li><a class="dropdown-item py-1" href="#" data-val="PROGRESS" data-color="text-primary" data-label="IN PROGRESS"><i class="fa-solid fa-circle text-primary me-2"></i>IN PROGRESS</a></li>' +
-                            '<li><a class="dropdown-item py-1" href="#" data-val="TESTING" data-color="text-warning" data-label="TESTING"><i class="fa-solid fa-circle text-warning me-2"></i>TESTING</a></li>' +
                             '<li><a class="dropdown-item py-1" href="#" data-val="COMPLETED" data-color="text-success" data-label="COMPLETED"><i class="fa-solid fa-circle text-success me-2"></i>COMPLETED</a></li>' +
                         '</ul>' +
                     '</div>' +
                     
                     '<div style="width: 1px; height: 16px; background-color: #e2e8f0;"></div>' +
                     
-                    '<!-- Assignee Selector -->' +
-                    '<div class="dropdown">' +
-                        '<button type="button" class="btn btn-sm btn-light border d-flex align-items-center gap-1 dropdown-toggle" id="subtask-assignee-btn" data-bs-toggle="dropdown" data-bs-popper-config=\'{"strategy":"fixed"}\' style="font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 500; color: #475569; background: #f8fafc;" title="Chọn người phụ trách">' +
-                            '<i class="fa-regular fa-user" style="font-size: 11px;"></i>' +
-                            '<span id="subtask-assignee-text">Người nhận</span>' +
-                        '</button>' +
-                        '<ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 13px; max-height: 200px; overflow-y: auto;" id="subtask-assignee-menu">' +
-                        '</ul>' +
+                    '<!-- Assignee: gõ @ten, chọn được nhiều người -->' +
+                    '<div class="d-flex align-items-center gap-1">' +
+                        '<i class="fa-regular fa-user text-muted" style="font-size: 11px;"></i>' +
+                        '<input type="text" class="form-control form-control-sm" id="subtask-assignee-input" autocomplete="off" placeholder="Gõ @ten để chọn người nhận" title="Gõ @ để chọn, được nhiều người — người đầu tiên là phụ trách chính" style="font-size: 11px; padding: 3px 8px; border-radius: 6px; border: 1px solid #dee2e6; width: 210px; background: #f8fafc;">' +
                     '</div>' +
                     
                     '<!-- Due Date Selector -->' +
@@ -2273,6 +2371,7 @@
         let cancelBtn = container.querySelector('.btn-cancel-subtask');
         inputField.focus();
 
+
         // Initialize flatpickr
         if (typeof flatpickr !== 'undefined') {
             flatpickr(container.querySelector('#subtask-due-picker'), {
@@ -2283,20 +2382,13 @@
             });
         }
 
-        // Load assignees
-        let assigneeMenu = container.querySelector('#subtask-assignee-menu');
         let assignees = window.allAssigneeNames || [];
-        let assigneeHtml = '<li><a class="dropdown-item py-1 text-muted" href="#" data-val=""><i class="fa-regular fa-circle-xmark me-2"></i>Không giao ai</a></li>';
-        assignees.forEach(name => {
-            assigneeHtml += '<li><a class="dropdown-item py-1 d-flex align-items-center gap-2" href="#" data-val="' + name + '">' +
-                '<span class="assignee-avatar m-0 filled" style="width: 20px; height: 20px; font-size: 10px; margin-right: 0;">' + name.substring(0, 1).toUpperCase() + '</span>' +
-                '<span>' + name + '</span>' +
-            '</a></li>';
-        });
-        assigneeMenu.innerHTML = assigneeHtml;
+        let assigneeInput = container.querySelector('#subtask-assignee-input');
+        if (assigneeInput && window.mentionTributeNameList) {
+            window.mentionTributeNameList.attach(assigneeInput);
+        }
 
         let selectedStatus = 'PLANNING';
-        let selectedAssignee = '';
 
         // Status click events
         container.querySelectorAll('#subtask-status-menu a').forEach(item => {
@@ -2314,23 +2406,21 @@
             });
         });
 
-        // Assignee click events
-        container.querySelectorAll('#subtask-assignee-menu a').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                selectedAssignee = this.getAttribute('data-val');
-                let text = container.querySelector('#subtask-assignee-text');
-                
-                if (selectedAssignee) {
-                    text.innerText = selectedAssignee;
-                } else {
-                    text.innerText = 'Người nhận';
-                }
-            });
-        });
-
         function saveSubtaskNow() {
             let taskName = inputField.value.trim();
+
+            // Ô người nhận cho gõ nhiều tên: người đầu tiên là phụ trách chính,
+            // các tên còn lại lưu vào watchers.
+            let pickedNames = cleanMentionList(assigneeInput ? assigneeInput.value : '');
+            let unknown = pickedNames.filter(n => !assignees.some(a => a.toLowerCase() === n.toLowerCase()));
+            if (unknown.length > 0) {
+                alert('Không tìm thấy người tên "' + unknown[0] + '". Gõ @ để chọn từ danh sách.');
+                if (assigneeInput) assigneeInput.focus();
+                return;
+            }
+            let selectedAssignee = pickedNames[0] || '';
+            let selectedWatchers = pickedNames.slice(1).join(',');
+
             if (!taskName) {
                 inputField.focus();
                 return;
@@ -2345,6 +2435,7 @@
             formData.append('parentId', parentId);
             formData.append('taskTitle', taskName);
             if (selectedAssignee) formData.append('assignee', selectedAssignee);
+            if (selectedWatchers) formData.append('watchers', selectedWatchers);
             if (selectedStatus) formData.append('status', selectedStatus);
             if (dueDateVal) formData.append('dueDate', dueDateVal);
 
@@ -2375,7 +2466,10 @@
         }
 
         saveBtn.addEventListener('click', saveSubtaskNow);
-        inputField.addEventListener('keydown', function(e) {
+        function handleQuickSubtaskKeys(e) {
+            // Đang mở gợi ý @mention thì Enter/Escape dành cho menu đó, không lưu/hủy.
+            const tribute = window.mentionTributeNameList;
+            if (tribute && tribute.isActive) return;
             if (e.key === 'Enter' || e.keyCode === 13) {
                 e.preventDefault();
                 saveSubtaskNow();
@@ -2383,8 +2477,11 @@
                 e.preventDefault();
                 cancelBtn.click();
             }
-        });
+        }
+        inputField.addEventListener('keydown', handleQuickSubtaskKeys);
+        if (assigneeInput) assigneeInput.addEventListener('keydown', handleQuickSubtaskKeys);
         cancelBtn.addEventListener('click', function() {
+            if (assigneeInput && window.mentionTributeNameList) window.mentionTributeNameList.detach(assigneeInput);
             let row = inputField.closest('.temp-input-row');
             if (row) row.remove();
             if (quickAddRow) quickAddRow.style.display = 'grid';

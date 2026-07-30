@@ -199,9 +199,19 @@ public class TicketServiceImpl implements TicketService {
         String oldStatus = ticket.getStatus();
         String oldAssignee = ticket.getAssignee();
 
-        // Khi vé đã hoàn thành (RESOLVED), khóa tuyệt đối không cho phép chỉnh sửa nữa
+        // Khi vé đã hoàn thành (RESOLVED), khóa không cho sửa nữa — trừ ghi chú khắc phục
+        // và ảnh xác nhận hoàn thành, vì IT thường bổ sung hai thứ này ngay sau khi đóng việc.
         if ("RESOLVED".equalsIgnoreCase(ticket.getStatus())) {
-            return ticket;
+            boolean changed = false;
+            if (updatedTicket.getFixNote() != null && !updatedTicket.getFixNote().equals(ticket.getFixNote())) {
+                ticket.setFixNote(updatedTicket.getFixNote());
+                changed = true;
+            }
+            if (updatedTicket.getCompletionImagePath() != null) {
+                ticket.setCompletionImagePath(updatedTicket.getCompletionImagePath());
+                changed = true;
+            }
+            return changed ? ticketRepository.save(ticket) : ticket;
         }
 
         ticket.setTitle(updatedTicket.getTitle());
@@ -241,6 +251,14 @@ public class TicketServiceImpl implements TicketService {
         }
         if (updatedTicket.getLocation() != null) {
             ticket.setLocation(updatedTicket.getLocation());
+        }
+        // Ảnh đính kèm & ảnh xác nhận hoàn thành: trước đây không được sao chép nên
+        // file người dùng upload ở modal chi tiết bị mất, lưu xong vẫn không thấy ảnh.
+        if (updatedTicket.getImagePath() != null) {
+            ticket.setImagePath(updatedTicket.getImagePath());
+        }
+        if (updatedTicket.getCompletionImagePath() != null) {
+            ticket.setCompletionImagePath(updatedTicket.getCompletionImagePath());
         }
         if (updatedTicket.getManagerApproval() != null) {
             ticket.setManagerApproval(updatedTicket.getManagerApproval());
@@ -387,18 +405,13 @@ public class TicketServiceImpl implements TicketService {
                     }
 
                     if (isAssigneeMatch(email, t.getAssignee())) {
-                        boolean matchDate = false;
-
-                        // Rule 3: Ticket only appears on its exact created or target date
-                        if (t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().equals(targetDate)) {
-                            matchDate = true;
-                        }
-                        if (!matchDate && t.getEstimatedCompletionTime() != null && t.getEstimatedCompletionTime().toLocalDate().equals(targetDate)) {
-                            matchDate = true;
-                        }
-                        if (!matchDate && t.getSlaDeadline() != null && t.getSlaDeadline().toLocalDate().equals(targetDate)) {
-                            matchDate = true;
-                        }
+                        // Rule 3: Ticket chiếm lịch trong CẢ khoảng từ ngày bắt đầu đến ngày
+                        // dự kiến hoàn thành, không chỉ đúng 2 ngày đầu/cuối. Trước đây chỉ so
+                        // bằng từng mốc nên việc kéo dài 26 -> 28 bị trống lịch ngày 27.
+                        java.time.LocalDate rangeStart = earliestDate(t.getCreatedAt(), t.getSlaDeadline());
+                        java.time.LocalDate rangeEnd = latestDate(t.getCreatedAt(), t.getSlaDeadline(), t.getEstimatedCompletionTime());
+                        boolean matchDate = rangeStart != null && rangeEnd != null
+                                && !targetDate.isBefore(rangeStart) && !targetDate.isAfter(rangeEnd);
 
                         // Rule 2: Overdue tickets in-progress/open display on Today's date
                         if (!matchDate && targetDate.equals(today)) {
@@ -432,6 +445,28 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return scheduleList;
+    }
+
+    /** Ngày sớm nhất trong các mốc thời gian (bỏ qua null), null nếu không có mốc nào. */
+    private java.time.LocalDate earliestDate(java.time.LocalDateTime... times) {
+        java.time.LocalDate result = null;
+        for (java.time.LocalDateTime time : times) {
+            if (time == null) continue;
+            java.time.LocalDate date = time.toLocalDate();
+            if (result == null || date.isBefore(result)) result = date;
+        }
+        return result;
+    }
+
+    /** Ngày muộn nhất trong các mốc thời gian (bỏ qua null), null nếu không có mốc nào. */
+    private java.time.LocalDate latestDate(java.time.LocalDateTime... times) {
+        java.time.LocalDate result = null;
+        for (java.time.LocalDateTime time : times) {
+            if (time == null) continue;
+            java.time.LocalDate date = time.toLocalDate();
+            if (result == null || date.isAfter(result)) result = date;
+        }
+        return result;
     }
 
     @Override

@@ -7,6 +7,15 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,7 +33,31 @@ public class WorkReportServiceImpl implements WorkReportService {
 
     @Override
     public List<WorkReport> getAllReports() {
-        return workReportRepository.findAllByOrderByUpdatedAtDesc();
+        List<WorkReport> reports = workReportRepository.findAllByOrderByUpdatedAtDesc();
+        Map<Long, WorkReport> byId = new HashMap<>();
+        for (WorkReport r : reports) {
+            byId.put(r.getId(), r);
+        }
+        for (WorkReport r : reports) {
+            r.setParentDueDate(inheritedDueDate(r, byId::get));
+        }
+        return reports;
+    }
+
+    /**
+     * Hạn chót do chủ công việc đặt ở nhánh cha gần nhất. Leo lên tới khi gặp việc cha có hạn;
+     * việc gốc (không có cha) trả null để dùng hạn của chính nó.
+     */
+    private LocalDateTime inheritedDueDate(WorkReport report, java.util.function.LongFunction<WorkReport> lookup) {
+        WorkReport current = report;
+        int guard = 0;
+        while (current != null && current.getParentId() != null && current.getParentId() > 0 && guard++ < 50) {
+            WorkReport parent = lookup.apply(current.getParentId());
+            if (parent == null) return null;
+            if (parent.getDueDate() != null) return parent.getDueDate();
+            current = parent;
+        }
+        return null;
     }
 
     @Override
@@ -60,7 +93,11 @@ public class WorkReportServiceImpl implements WorkReportService {
 
     @Override
     public WorkReport getReportById(Long id) {
-        return workReportRepository.findById(id).orElse(null);
+        WorkReport report = workReportRepository.findById(id).orElse(null);
+        if (report != null) {
+            report.setParentDueDate(inheritedDueDate(report, pid -> workReportRepository.findById(pid).orElse(null)));
+        }
+        return report;
     }
 
     @Override
@@ -110,6 +147,23 @@ public class WorkReportServiceImpl implements WorkReportService {
         }
     }
 
+    /**
+     * Chủ báo cáo có toàn quyền tự kết thúc / mở lại việc cha dù việc con chưa xong hết.
+     * Đánh dấu lại cờ xác nhận để recalculateParentProgress không ghi đè quyết định đó.
+     */
+    /** Báo cáo đã được chủ chốt hoàn thành thì khoá lại, không thêm việc con / sub-task nữa. */
+    private void assertNotClosed(WorkReport parent) {
+        if (parent != null && parent.getOwnerConfirmed()) {
+            throw new IllegalStateException("Báo cáo đã được chủ báo cáo chốt hoàn thành nên không thêm việc con được nữa.");
+        }
+    }
+
+    private void syncOwnerConfirm(WorkReport report) {
+        boolean done = "COMPLETED".equalsIgnoreCase(report.getStatus())
+                || (report.getProgressPercentage() != null && report.getProgressPercentage() == 100);
+        report.setOwnerConfirmed(done);
+    }
+
     @Override
     public WorkReport updateProgressAndReport(Long id, Integer progress, String status, String dailyReport, String watchers, String delayReason) {
         WorkReport existing = getReportById(id);
@@ -135,6 +189,7 @@ public class WorkReportServiceImpl implements WorkReportService {
             if (delayReason != null && !delayReason.trim().isEmpty()) {
                 existing.setDelayReason(delayReason.trim());
             }
+            syncOwnerConfirm(existing);
             existing.setUpdatedAt(LocalDateTime.now());
             WorkReport saved = workReportRepository.save(existing);
             if (saved.getParentId() != null && saved.getParentId() > 0) {
@@ -152,6 +207,7 @@ public class WorkReportServiceImpl implements WorkReportService {
 
     @Override
     public WorkSubTask addSubTask(Long workReportId, String title, String assignee) {
+        assertNotClosed(getReportById(workReportId));
         WorkSubTask st = new WorkSubTask();
         st.setWorkReportId(workReportId);
         st.setTitle(title);
@@ -215,6 +271,15 @@ public class WorkReportServiceImpl implements WorkReportService {
 
             WorkReport parent = workReportRepository.findById(workReportId).orElse(null);
             if (parent != null) {
+                // Chủ báo cáo đã chốt kết thúc thì giữ nguyên 100%, không tính lại theo việc con
+                // (chủ có quyền đóng sớm; muốn mở lại thì tự đổi trạng thái ở modal cập nhật).
+                if (parent.getOwnerConfirmed()) {
+                    newProgress = 100;
+                } else if (newProgress == 100) {
+                    // Việc con xong hết chưa chắc việc cha đã xong: dừng ở 90% chờ chủ xác nhận.
+                    newProgress = WorkReport.AWAITING_CONFIRM_PROGRESS;
+                }
+
                 parent.setProgressPercentage(newProgress);
                 if (newProgress == 100) {
                     parent.setStatus("COMPLETED");
@@ -235,6 +300,27 @@ public class WorkReportServiceImpl implements WorkReportService {
                 }
             }
         }
+    }
+
+    @Override
+    public WorkReport confirmCompletion(Long id, String username) {
+        WorkReport report = getReportById(id);
+        if (report == null) {
+            throw new IllegalArgumentException("Không tìm thấy báo cáo #" + id);
+        }
+        String owner = report.getCreatedBy();
+        if (owner == null || owner.trim().isEmpty() || username == null || !username.equalsIgnoreCase(owner.trim())) {
+            throw new IllegalStateException("Chỉ người tạo báo cáo mới được xác nhận hoàn thành.");
+        }
+        report.setOwnerConfirmed(true);
+        report.setProgressPercentage(100);
+        report.setStatus("COMPLETED");
+        report.setUpdatedAt(LocalDateTime.now());
+        WorkReport saved = workReportRepository.save(report);
+        if (saved.getParentId() != null && saved.getParentId() > 0) {
+            recalculateParentProgress(saved.getParentId());
+        }
+        return saved;
     }
 
     @Override
@@ -283,6 +369,7 @@ public class WorkReportServiceImpl implements WorkReportService {
                 }
             }
         }
+        syncOwnerConfirm(existing);
         existing.setUpdatedAt(LocalDateTime.now());
         WorkReport saved = workReportRepository.save(existing);
         if (saved.getParentId() != null && saved.getParentId() > 0) {
@@ -293,16 +380,27 @@ public class WorkReportServiceImpl implements WorkReportService {
 
     @Override
     public List<WorkReport> getChildReports(Long parentId) {
-        return workReportRepository.findByParentIdOrderByCreatedAtAsc(parentId);
+        List<WorkReport> children = workReportRepository.findByParentIdOrderByCreatedAtAsc(parentId);
+        WorkReport parent = getReportById(parentId);
+        LocalDateTime inherited = parent != null
+                ? (parent.getDueDate() != null ? parent.getDueDate() : parent.getEffectiveDueDate())
+                : null;
+        children.forEach(c -> c.setParentDueDate(inherited));
+        return children;
     }
 
     @Override
-    public WorkReport createSubReport(Long parentId, String taskTitle, String assignee, String status, String dueDateStr) {
+    public WorkReport createSubReport(Long parentId, String taskTitle, String assignee, String watchers, String status, String dueDateStr) {
         WorkReport parent = getReportById(parentId);
+        assertNotClosed(parent);
         WorkReport child = new WorkReport();
         child.setParentId(parentId);
         child.setTaskTitle(taskTitle != null ? taskTitle.trim() : "Việc con mới");
         child.setAssignee((assignee != null && !assignee.trim().isEmpty()) ? assignee.trim() : (parent != null ? parent.getAssignee() : "tin"));
+        // Chọn nhiều người: người đầu là phụ trách chính, các tên còn lại thành watchers.
+        if (watchers != null && !watchers.trim().isEmpty()) {
+            child.setWatchers(watchers);
+        }
         child.setProjectName(parent != null ? parent.getProjectName() : "Dự án chung");
         child.setStatus((status != null && !status.trim().isEmpty()) ? status.trim() : (parent != null && parent.getStatus() != null ? parent.getStatus() : "PLANNING"));
         child.setProgressPercentage(0);
@@ -377,6 +475,7 @@ public class WorkReportServiceImpl implements WorkReportService {
                     }
                 }
             }
+            syncOwnerConfirm(existing);
             existing.setUpdatedAt(LocalDateTime.now());
             WorkReport saved = workReportRepository.save(existing);
             if (saved.getParentId() != null && saved.getParentId() > 0) {
@@ -385,5 +484,86 @@ public class WorkReportServiceImpl implements WorkReportService {
             return saved;
         }
         return null;
+    }
+
+    @Override
+    public List<WorkReport> getVisibleReports(String currentUsername) {
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<WorkReport> allReports = getAllReports();
+        // Watchers là chuỗi "tinnt,admin" nên phải so từng tên, không dùng contains
+        // (tránh "user" khớp lẫn vào "user2"). Bỏ qua hoa/thường vì tên tag do người gõ.
+        Pattern watcherPattern = Pattern.compile(
+                ".*\\b" + Pattern.quote(currentUsername) + "\\b.*", Pattern.CASE_INSENSITIVE);
+
+        Set<Long> directIds = new LinkedHashSet<>();
+        Map<Long, WorkReport> byId = new HashMap<>();
+        Map<Long, List<WorkReport>> childrenOf = new HashMap<>();
+        for (WorkReport r : allReports) {
+            byId.put(r.getId(), r);
+            if (r.getParentId() != null && r.getParentId() > 0) {
+                childrenOf.computeIfAbsent(r.getParentId(), k -> new ArrayList<>()).add(r);
+            }
+            boolean mine = (r.getCreatedBy() != null && currentUsername.equalsIgnoreCase(r.getCreatedBy()))
+                    || currentUsername.equalsIgnoreCase(r.getAssignee())
+                    || (r.getWatchers() != null && watcherPattern.matcher(r.getWatchers()).matches());
+            if (!mine) {
+                List<WorkSubTask> subtasks = workSubTaskRepository.findByWorkReportIdOrderByIdAsc(r.getId());
+                mine = subtasks.stream().anyMatch(st -> currentUsername.equalsIgnoreCase(st.getAssignee()));
+            }
+            if (mine) {
+                directIds.add(r.getId());
+            }
+        }
+
+        // Việc con được giao/tag cho mình chỉ hiển thị khi nhánh cha của nó cũng nằm trong danh
+        // sách (giao diện render theo cây, con không có cha sẽ bị rơi mất). Ngược lại, thấy việc
+        // cha thì thấy luôn các việc con của nó — giống cách Admin/IT đang xem.
+        Set<Long> visibleIds = new LinkedHashSet<>(directIds);
+        for (Long id : directIds) {
+            WorkReport cur = byId.get(id);
+            int guard = 0;
+            while (cur != null && cur.getParentId() != null && cur.getParentId() > 0 && guard++ < 50) {
+                visibleIds.add(cur.getParentId());
+                cur = byId.get(cur.getParentId());
+            }
+        }
+        Deque<Long> queue = new ArrayDeque<>(directIds);
+        while (!queue.isEmpty()) {
+            for (WorkReport child : childrenOf.getOrDefault(queue.poll(), Collections.emptyList())) {
+                if (visibleIds.add(child.getId())) {
+                    queue.add(child.getId());
+                }
+            }
+        }
+
+        return allReports.stream()
+            .filter(r -> visibleIds.contains(r.getId()))
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<WorkReport> getVisibleReportsFiltered(String currentUsername, String assignee, String projectName, String status) {
+        List<WorkReport> visible = getVisibleReports(currentUsername);
+
+        if (assignee != null && !assignee.isEmpty() && !assignee.equals("ALL")) {
+            visible = visible.stream()
+                .filter(r -> assignee.equalsIgnoreCase(r.getAssignee()))
+                .collect(Collectors.toList());
+        }
+        if (projectName != null && !projectName.isEmpty() && !projectName.equals("ALL")) {
+            visible = visible.stream()
+                .filter(r -> projectName.equalsIgnoreCase(r.getProjectName()))
+                .collect(Collectors.toList());
+        }
+        if (status != null && !status.isEmpty() && !status.equals("ALL")) {
+            visible = visible.stream()
+                .filter(r -> status.equalsIgnoreCase(r.getStatus()))
+                .collect(Collectors.toList());
+        }
+
+        return visible;
     }
 }

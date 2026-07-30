@@ -42,7 +42,11 @@ public class SecurityConfig {
                 // Công Cụ Dụng Cụ: Admin, Manager, và trong IT chỉ nhóm helpdesk.
                 .requestMatchers("/assets/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER", "GROUP_HELPDESK")
                 .requestMatchers("/expenses/**", "/employees/**").hasAnyRole("ADMIN", "MANAGER")
-                .requestMatchers("/work-reports/**").hasAnyRole("ADMIN", "IT", "MANAGER")
+                // Báo cáo công việc: tất cả user authenticated có thể truy cập.
+                // Visibility filtering được xử lý ở service layer:
+                // - Admin/IT/Manager xem tất cả báo cáo
+                // - User bình thường chỉ xem báo cáo của họ (tạo, gán, watcher, hoặc có sub-task)
+                .requestMatchers("/work-reports/**").authenticated()
                 // Sửa/phân công/xoá ticket: chỉ ADMIN/IT/MANAGER. ROLE_USER chỉ được
                 // tạo (/ticket/create) và xem ticket của mình. Phạm vi chi tiết cho IT
                 // (chỉ ticket trong nhóm) do TicketController tự kiểm tra thêm.

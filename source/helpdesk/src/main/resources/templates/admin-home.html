@@ -213,7 +213,14 @@
             .main-content {
                 margin-left: 0 !important;
                 width: 100% !important;
-                padding: 15px !important;
+                max-width: 100vw !important;
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                padding: 10px 12px 0 12px !important;
+                box-sizing: border-box !important;
             }
 
             .topbar {
@@ -281,7 +288,7 @@
             </div>
 
             <div class="d-flex align-items-center gap-3">
-                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer;"></i>
+                <i class="fa-solid fa-bell fs-5 ms-2 d-inline-block" style="color: #6b7280; cursor: pointer;"></i>
             </div>
         </div>
 

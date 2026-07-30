@@ -797,11 +797,22 @@
                                         <label class="form-label fw-bold text-muted small">Nội dung yêu cầu (chỉ đọc)</label>
                                         <input type="text" id="detail-title" name="title" class="form-control bg-light" value="" readonly style="border-radius: 8px;">
                                     </div>
-                                    <div class="col-md-12" id="detail-image-container" style="display: none;">
-                                        <label class="form-label fw-bold text-muted small">Hình ảnh đính kèm</label>
-                                        <div class="mt-2 text-center border rounded p-2 bg-light">
-                                            <a href="#" id="detail-image-link" target="_blank" title="Nhấn để xem ảnh phóng to">
-                                                <img id="detail-image-preview" src="" alt="Hình ảnh đính kèm" class="img-fluid rounded shadow-sm" style="max-height: 200px; object-fit: contain;">
+                                    <!-- Hai ảnh của ticket: ảnh lỗi do người gửi đính kèm và ảnh xác nhận
+                                         hoàn thành do IT tải lên. Hiển thị dạng nút nhỏ, bấm mở tab mới. -->
+                                    <div class="col-md-12" id="detail-images-row" style="display: none;">
+                                        <label class="form-label fw-bold text-muted small d-block mb-1">Hình ảnh</label>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a href="#" id="detail-image-link" target="_blank" rel="noopener"
+                                               class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2 fw-semibold"
+                                               style="border-radius: 8px; font-size: 12px;">
+                                                <img id="detail-image-preview" src="" alt="" class="rounded" style="width: 24px; height: 24px; object-fit: cover; display: none;">
+                                                <span><i class="fa-solid fa-triangle-exclamation me-1"></i>Ảnh lỗi (người gửi)</span>
+                                            </a>
+                                            <a href="#" id="detail-completion-image-link" target="_blank" rel="noopener"
+                                               class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-2 fw-semibold"
+                                               style="border-radius: 8px; font-size: 12px;">
+                                                <img id="detail-completion-image-preview" src="" alt="" class="rounded" style="width: 24px; height: 24px; object-fit: cover; display: none;">
+                                                <span><i class="fa-solid fa-circle-check me-1"></i>Ảnh hoàn thành (IT)</span>
                                             </a>
                                         </div>
                                     </div>
@@ -837,6 +848,14 @@
                                         <select name="assignee" id="detail-assignee" class="form-select shadow-sm" style="border-radius: 8px;">
                                             <option value="">-- Chưa có --</option>
                                         </select>
+                                    </div>
+                                    <!-- Hạn cam kết do người yêu cầu chốt lúc tạo ticket — chỉ đọc,
+                                         IT/Admin không được dời. -->
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small text-dark">
+                                            <i class="fa-solid fa-lock me-1 text-secondary"></i>Hạn hẹn xử lý (không đổi được)
+                                        </label>
+                                        <input type="text" id="detail-slaDeadline" class="form-control bg-light text-dark fw-semibold" value="--" readonly style="border-radius: 8px;">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold small text-dark">Thời gian dự kiến hoàn thành</label>
@@ -878,17 +897,6 @@
                                                 <input type="file" name="completionImageFile" id="detail-completionImageFile" class="form-control shadow-sm bg-white" accept="image/*" style="border-radius: 8px; border-color: #86efac; font-size: 13px; font-weight: 500; color: #166534;">
                                             </div>
 
-                                            <!-- Preview completed image -->
-                                            <div id="detail-completion-image-container" class="mt-3" style="display: none;">
-                                                <label class="form-label fw-bold d-flex align-items-center mb-1 text-success" style="font-size: 13px;">
-                                                    <i class="fa-solid fa-image me-1"></i> Ảnh hoàn thành công việc:
-                                                </label>
-                                                <div class="text-center border rounded p-2 bg-white shadow-sm" style="border-color: #86efac;">
-                                                    <a href="#" id="detail-completion-image-link" target="_blank" title="Nhấn để phóng to">
-                                                        <img id="detail-completion-image-preview" src="" alt="Ảnh hoàn thành" class="img-fluid rounded shadow-sm" style="max-height: 200px; object-fit: contain;">
-                                                    </a>
-                                                </div>
-                                            </div>
 
                                             <small class="text-muted d-block mt-2" style="font-size: 11.5px; color: #15803d !important;"><i class="fa-solid fa-circle-info me-1 text-success"></i>Ghi chú này giúp người yêu cầu (reporter) và quản lý nắm rõ chính xác giải pháp kỹ thuật đã áp dụng.</small>
                                         </div>
@@ -1811,6 +1819,11 @@
                         }
                     }
 
+                    const slaEl = document.getElementById('detail-slaDeadline');
+                    if (slaEl) {
+                        slaEl.value = ticket.slaDeadlineStr ? ticket.slaDeadlineStr : '--';
+                    }
+
                     const completedEl = document.getElementById('detail-completedAt');
                     if (completedEl) {
                         if (!fpCompletedDetail) {
@@ -1832,38 +1845,36 @@
                         }
                     }
 
-                    const imgContainer = document.getElementById('detail-image-container');
-                    const imgPreview = document.getElementById('detail-image-preview');
-                    const imgLink = document.getElementById('detail-image-link');
-                    
-                    if (imgContainer && imgPreview && imgLink) {
-                        if (ticket.imagePath) {
-                            imgPreview.src = ticket.imagePath;
-                            imgLink.href = ticket.imagePath;
-                            imgContainer.style.display = 'block';
-                        } else {
-                            imgPreview.src = '';
-                            imgLink.href = '#';
-                            imgContainer.style.display = 'none';
-                        }
+                    // Hai nút ảnh: ảnh lỗi của người gửi và ảnh hoàn thành của IT.
+                    // Nút luôn hiển thị. Có ảnh thì kèm thumbnail và mở tab mới; chưa có ảnh
+                    // thì làm mờ, bấm vào chỉ báo "chưa có ảnh" chứ không mở tab trắng.
+                    function fillImageButton(linkId, previewId, path, emptyMessage) {
+                        const link = document.getElementById(linkId);
+                        const preview = document.getElementById(previewId);
+                        if (!link || !preview) return;
+                        const hasImage = !!path;
+
+                        link.href = hasImage ? path : '#';
+                        link.style.opacity = hasImage ? '1' : '0.5';
+                        link.title = hasImage ? 'Bấm để xem ảnh' : emptyMessage;
+                        preview.src = hasImage ? path : '';
+                        preview.style.display = hasImage ? 'inline-block' : 'none';
+
+                        link.onclick = function (event) {
+                            if (!link.getAttribute('href') || link.getAttribute('href') === '#') {
+                                event.preventDefault();
+                                alert(emptyMessage);
+                            }
+                        };
                     }
 
-                    // Populate or hide completion image
-                    const compImgContainer = document.getElementById('detail-completion-image-container');
-                    const compImgPreview = document.getElementById('detail-completion-image-preview');
-                    const compImgLink = document.getElementById('detail-completion-image-link');
-                    
-                    if (compImgContainer && compImgPreview && compImgLink) {
-                        if (ticket.completionImagePath) {
-                            compImgPreview.src = ticket.completionImagePath;
-                            compImgLink.href = ticket.completionImagePath;
-                            compImgContainer.style.display = 'block';
-                        } else {
-                            compImgPreview.src = '';
-                            compImgLink.href = '#';
-                            compImgContainer.style.display = 'none';
-                        }
-                    }
+                    fillImageButton('detail-image-link', 'detail-image-preview', ticket.imagePath,
+                        'Người gửi không đính kèm ảnh lỗi cho ticket này.');
+                    fillImageButton('detail-completion-image-link', 'detail-completion-image-preview', ticket.completionImagePath,
+                        'Chưa có ảnh xác nhận hoàn thành. IT tải lên khi chuyển ticket sang trạng thái Resolved.');
+
+                    const imagesRow = document.getElementById('detail-images-row');
+                    if (imagesRow) imagesRow.style.display = 'block';
 
                     // Reset completion image file input
                     const compFileInput = document.getElementById('detail-completionImageFile');
@@ -2235,12 +2246,16 @@
         function toggleFixNoteContainer(statusVal) {
             const fixNoteContainer = document.getElementById('detail-fixNote-container');
             const completedContainer = document.getElementById('detail-completedAt-container');
-            const isResolved = statusVal && statusVal.toLowerCase() === 'resolved';
+            const status = statusVal ? statusVal.toLowerCase() : '';
+            const isResolved = status === 'resolved';
+            // CLOSED cũng phải hiện khối này (chỉ đọc) để xem lại ghi chú fix và
+            // ảnh xác nhận hoàn thành sau khi ticket đã đóng.
+            const showBox = isResolved || status === 'closed';
             if (fixNoteContainer) {
-                fixNoteContainer.style.display = isResolved ? 'block' : 'none';
+                fixNoteContainer.style.display = showBox ? 'block' : 'none';
             }
             if (completedContainer) {
-                completedContainer.style.display = isResolved ? 'block' : 'none';
+                completedContainer.style.display = showBox ? 'block' : 'none';
                 if (isResolved && fpCompletedDetail && !fpCompletedDetail.altInput.value) {
                     fpCompletedDetail.setDate(getVnNow());
                 }

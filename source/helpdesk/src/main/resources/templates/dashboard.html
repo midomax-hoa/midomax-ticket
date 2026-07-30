@@ -164,10 +164,14 @@
         /* Calendar */
         .calendar-wrapper { padding-top: 10px; }
         .calendar-days { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px; font-weight: 600; color: #9ca3af; }
-        .calendar-dates { display: flex; flex-wrap: wrap; gap: 8px 0; }
-        .calendar-dates span { width: 14.28%; text-align: center; font-size: 13px; font-weight: 600; color: #4b5563; padding: 6px 0; border-radius: 50%; cursor: pointer; transition: 0.2s; position: relative; }
+        .calendar-dates { display: flex; flex-wrap: wrap; gap: 8px 2px; }
+        .calendar-dates span { flex: 1 1 calc(14.28% - 1px); text-align: center; font-size: 13px; font-weight: 600; color: #4b5563; padding: 6px 0; border-radius: 50%; cursor: pointer; transition: 0.2s; position: relative; }
         .calendar-dates span:hover:not(.text-muted) { background: #f3f4f6; }
         .calendar-dates span.active-date { background: #3b82f6; color: white; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
+        /* Ngày có công việc: tô đậm hẳn lên cho dễ nhìn, không chỉ dựa vào chấm đỏ */
+        .calendar-dates span.has-event { font-weight: 800; color: #b91c1c; background: #fee2e2; }
+        .calendar-dates span.has-event:hover:not(.text-muted) { background: #fecaca; }
+        .calendar-dates span.active-date.has-event { color: #ffffff; background: #3b82f6; }
         .calendar-dates span.has-event::after {
             content: '';
             width: 5px;
@@ -598,7 +602,7 @@
             </div>
             
             <div class="d-flex align-items-center gap-3">
-                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #ef4444; cursor: pointer;"></i>
+                <i class="fa-solid fa-bell fs-5 ms-2 d-inline-block" style="color: #ef4444; cursor: pointer;"></i>
             </div>
         </div>
 

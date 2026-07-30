@@ -99,9 +99,9 @@
             color: #475569;
             letter-spacing: 0.5px;
         }
-        .calendar-dates { display: flex; flex-wrap: wrap; gap: 12px 0; width: 100%; }
+        .calendar-dates { display: flex; flex-wrap: wrap; gap: 12px 2px; width: 100%; }
         .calendar-dates span {
-            width: 14.28%;
+            flex: 1 1 calc(14.28% - 1px);
             text-align: center;
             font-size: 18px;
             font-weight: 600;
@@ -118,6 +118,19 @@
         }
         .calendar-dates span:hover:not(.text-muted) { background: #e2e8f0; transform: translateY(-2px); }
         .calendar-dates span.active-date { background: #2563eb; color: white; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35); }
+        /* Ngày có công việc: tô đậm hẳn lên cho dễ nhìn, không chỉ dựa vào chấm đỏ */
+        .calendar-dates span.has-event {
+            font-weight: 800;
+            color: #b91c1c;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+        }
+        .calendar-dates span.has-event:hover:not(.text-muted) { background: #fecaca; }
+        .calendar-dates span.active-date.has-event {
+            color: #ffffff;
+            background: #2563eb;
+            border-color: #2563eb;
+        }
         .calendar-dates span.has-event::after {
             content: '';
             width: 8px;

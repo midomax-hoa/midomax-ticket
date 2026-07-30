@@ -15,7 +15,7 @@
             width: var(--uib-size);
             animation: rotate calc(var(--uib-speed) * 4) linear infinite;
             cursor: pointer;
-            margin-right: 12px;
+            margin-right: 0px;
             flex-shrink: 0;
             display: inline-block;
         }
@@ -95,10 +95,18 @@
         .sidebar-header {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            height: 60px;
             margin-bottom: 30px;
-            padding-left: 25px;
+            padding: 0;
             position: relative; /* mốc toạ độ cho chim Kami bay quanh logo */
+            width: 100%;
+        }
+
+        .quantum-toggle {
+            position: absolute;
+            left: 20px;
+            z-index: 5;
         }
 
         #toggle-btn {
@@ -123,6 +131,18 @@
             transition: opacity 0.3s ease;
         }
 
+        /* brand.midomax */
+        .brand-midomax {
+            width: 100%;
+            max-width: 736px;
+            max-height: 112px;
+            height: auto;
+            object-fit: contain;
+            flex: none;
+            order: 0;
+            flex-grow: 0;
+        }
+
         .sidebar-menu {
             display: flex;
             flex-direction: column;
@@ -133,21 +153,24 @@
 
         .sidebar-menu a {
             position: relative;
-            width: 100%;
-            height: 50px;
+            width: calc(100% - 24px);
+            margin: 0 12px;
+            height: 48px;
             display: flex;
             align-items: center;
             color: #4b5563;
             font-size: 15px;
             text-decoration: none;
-            transition: 0.3s;
-            padding-left: 25px;
+            transition: all 0.2s ease;
+            padding-left: 14px;
             font-weight: 600;
+            border-radius: 14px;
         }
 
         .sidebar-menu a:hover {
             color: #1e3a8a;
-            background: #f8fafc;
+            background: #f1f5f9;
+            border-radius: 14px;
         }
 
         .sidebar-menu a span {
@@ -168,53 +191,34 @@
             flex-shrink: 0;
         }
 
-        /* The Gooey Notch Effect for Active Item */
+        /* Clean Pill Active Item Styling */
         .sidebar-menu a.active {
-            color: #1e3a8a;
-            background: #e2e8f0; /* Blends with body background */
-            border-radius: 30px 0 0 30px;
-            margin-left: 20px; /* Leaves a 20px white strip on the left */
-            padding-left: 5px; /* Adjust padding to keep icon aligned (20+5 = 25px) */
-            width: calc(100% - 20px + 2px); /* Overlap right side */
-            margin-right: -2px;
+            color: #1e3a8a !important;
+            background: #eff6ff !important;
+            border-radius: 16px !important;
+            margin: 0 12px !important;
+            padding-left: 14px !important;
+            width: calc(100% - 24px) !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 14px rgba(30, 58, 138, 0.12) !important;
+            position: relative;
             z-index: 10;
         }
 
         .sidebar-menu a.active:hover {
-            background: #e2e8f0;
+            background: #e0e7ff !important;
         }
 
-        /* Top outer curve */
-        .sidebar-menu a.active::before {
-            content: '';
-            position: absolute;
-            top: -20px;
-            right: 2px;
-            width: 20px;
-            height: 20px;
-            background: transparent;
-            border-radius: 0 0 20px 0;
-            box-shadow: 10px 10px 0 10px #e2e8f0;
-        }
-
-        /* Bottom outer curve */
+        .sidebar-menu a.active::before,
         .sidebar-menu a.active::after {
-            content: '';
-            position: absolute;
-            bottom: -20px;
-            right: 2px;
-            width: 20px;
-            height: 20px;
-            background: transparent;
-            border-radius: 0 20px 0 0;
-            box-shadow: 10px -10px 0 10px #e2e8f0;
+            display: none !important;
+            content: none !important;
         }
 
-        /* The circle inside the active notch */
         .sidebar-menu a.active .icon-wrapper {
-            background: #eff6ff; /* Original light blue active color */
-            color: #1e3a8a;
-            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.1);
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.25) !important;
         }
 
         /* Collapsed Sidebar styles */
@@ -227,9 +231,124 @@
             justify-content: center;
         }
 
+        .brand-midomax-sidebar {
+            height: 36px;
+            max-width: 170px;
+            width: auto;
+            object-fit: contain;
+            margin: 0 auto;
+            transition: opacity 0.3s ease;
+        }
+
+        /* BRAND MORPHING ANIMATION (MIDOMAX <-> KAMITO RED) */
+        .brand-morph-container {
+            display: inline-grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+            align-items: center;
+            justify-items: center;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .brand-face {
+            grid-area: 1 / 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+        }
+
+        .brand-face-midomax {
+            justify-content: center;
+            padding-left: 24px;
+            animation: brandSlowZoomMidomax 14s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .brand-face-kamito {
+            justify-content: center;
+            animation: brandSlowZoomKamito 14s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* MIDOMAX: Zoom in chậm và mờ dần vào sương */
+        @keyframes brandSlowZoomMidomax {
+            0%, 40% {
+                opacity: 1;
+                filter: blur(0px);
+                transform: scale(1);
+            }
+            48% {
+                opacity: 0;
+                filter: blur(8px);
+                transform: scale(1.14);
+                pointer-events: none;
+            }
+            92% {
+                opacity: 0;
+                filter: blur(8px);
+                transform: scale(0.88);
+                pointer-events: none;
+            }
+            98%, 100% {
+                opacity: 1;
+                filter: blur(0px);
+                transform: scale(1);
+            }
+        }
+
+        /* KAMITO RED: Zoom out chậm từ phóng to về kích thước chuẩn */
+        @keyframes brandSlowZoomKamito {
+            0%, 40% {
+                opacity: 0;
+                filter: blur(8px);
+                transform: scale(1.14);
+                pointer-events: none;
+            }
+            48% {
+                opacity: 1;
+                filter: blur(0px);
+                transform: scale(1);
+            }
+            92% {
+                opacity: 1;
+                filter: blur(0px);
+                transform: scale(1);
+            }
+            98%, 100% {
+                opacity: 0;
+                filter: blur(8px);
+                transform: scale(0.88);
+                pointer-events: none;
+            }
+        }
+
+        .brand-kamito-sidebar {
+            height: 54px;
+            max-width: 190px;
+            width: auto;
+            object-fit: contain;
+            margin: 0 auto;
+            filter: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .brand-text-kamito {
+            color: #E82020 !important;
+            font-weight: 900 !important;
+            font-size: 22px;
+            letter-spacing: 1.5px;
+            text-shadow: 0 2px 10px rgba(232, 32, 32, 0.4);
+        }
+
         .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .brand-midomax-sidebar,
+        .sidebar.collapsed .brand-kamito-sidebar,
+        .sidebar.collapsed .brand-morph-container,
         .sidebar.collapsed .sidebar-menu a span {
-            display: none;
+            display: none !important;
         }
 
         .sidebar.collapsed .sidebar-menu a {
@@ -291,9 +410,7 @@
         }
 
         .sidebar-user-role {
-            color: #64748b;
-            font-size: 12px;
-            font-weight: 500;
+            display: none !important;
         }
         
         .sidebar-logout {
@@ -506,6 +623,125 @@
                 left: 0 !important;
                 box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5) !important;
             }
+
+            .sidebar.active .mobile-bottom-nav,
+            .sidebar.show .mobile-bottom-nav,
+            body.sidebar-open .mobile-bottom-nav {
+                display: none !important;
+            }
+
+            /* GLOBAL MOBILE LAYOUT RESPONSIVENESS FIXES */
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                padding: 10px 12px 0 12px !important;
+                box-sizing: border-box !important;
+                overflow-x: hidden !important;
+            }
+
+            body {
+                overflow-x: hidden !important;
+            }
+
+            .topbar {
+                padding: 12px 15px !important;
+                flex-wrap: wrap !important;
+                gap: 10px !important;
+            }
+
+            .table-responsive, table {
+                max-width: 100% !important;
+            }
+
+            .card, .widget-card, .stat-card-modern {
+                max-width: 100% !important;
+            }
+
+            .row {
+                margin-left: -6px !important;
+                margin-right: -6px !important;
+            }
+
+            .col, [class*="col-"] {
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+        }
+
+        /* CLEAN BLACK FLOATING PILL MOBILE NAVIGATION BAR */
+        @media (max-width: 991px) {
+            .mobile-bottom-nav {
+                position: fixed;
+                bottom: 16px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: calc(100% - 32px);
+                max-width: 380px;
+                height: 64px;
+                background: #0f172a;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 40px;
+                box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+                z-index: 99999;
+                display: flex !important;
+                align-items: center;
+                justify-content: space-around;
+                padding: 0 10px;
+                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            }
+
+            .mobile-nav-link {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: #94a3b8;
+                text-decoration: none;
+                font-size: 10px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                padding: 6px 10px;
+                border-radius: 20px;
+                flex: 1;
+                text-align: center;
+            }
+
+            .mobile-nav-link i {
+                font-size: 19px;
+                margin-bottom: 3px;
+                transition: transform 0.2s ease, color 0.2s ease;
+            }
+
+            .mobile-nav-link span {
+                white-space: nowrap;
+            }
+
+            .mobile-nav-link:hover {
+                color: #e2e8f0;
+            }
+
+            .mobile-nav-link.active {
+                color: #38bdf8;
+                font-weight: 700;
+            }
+
+            .mobile-nav-link.active i {
+                transform: translateY(-2px);
+                color: #38bdf8;
+                filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.4));
+            }
+        }
+
+        @media (min-width: 992px) {
+            .mobile-bottom-nav {
+                display: none !important;
+            }
         }
 
         /* ============================================================
@@ -708,7 +944,16 @@
             <div class="quantum-toggle" id="toggle-btn">
                 <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
             </div>
-            <span class="brand-text">MIDOMAX</span>
+            <div class="brand-morph-container">
+                <div class="brand-face brand-face-midomax">
+                    <img th:src="@{/images/logo-midomax.png}" alt="MIDOMAX" class="brand-midomax-sidebar" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                    <span class="brand-text" style="display: none;">MIDOMAX</span>
+                </div>
+                <div class="brand-face brand-face-kamito">
+                    <img th:src="@{/images/kamito-logo-red.png}" alt="KAMITO" class="brand-kamito-sidebar" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                    <span class="brand-text brand-text-kamito" style="display: none;">KAMITO</span>
+                </div>
+            </div>
 
             <!-- Chim Kami hút mật: hiện & bay khi rê chuột vào logo. Xem CSS ".kami-*" phía trên. -->
             <span class="kami-bird" aria-hidden="true">
@@ -748,7 +993,7 @@
         
         <!-- Menu Items -->
         <div class="sidebar-menu">
-            <a href="/" th:classappend="${activePage == 'home'} ? 'active' : ''" title="Trang chủ">
+            <a href="/user-home" th:classappend="${activePage == 'home' or activePage == 'user-home' or activePage == 'admin-home'} ? 'active' : ''" title="Trang chủ">
                 <div class="icon-wrapper"><i class="fa-solid fa-house"></i></div>
                 <span>Trang chủ</span>
             </a>
@@ -804,7 +1049,7 @@
                 <div class="icon-wrapper"><i class="fa-solid fa-calendar-check"></i></div>
                 <span>Lịch Trình</span>
             </a>
-            <a href="/work-reports" th:classappend="${activePage == 'work-reports'} ? 'active' : ''" title="Báo Cáo Công Việc" sec:authorize="hasAnyRole('ADMIN', 'IT', 'MANAGER')">
+            <a href="/work-reports" th:classappend="${activePage == 'work-reports'} ? 'active' : ''" title="Báo Cáo Công Việc" sec:authorize="isAuthenticated()">
                 <div class="icon-wrapper"><i class="fa-solid fa-layer-group"></i></div>
                 <span>Báo Cáo Công Việc</span>
             </a>
@@ -837,7 +1082,6 @@
             </div>
             <div class="sidebar-user-info">
                 <span class="sidebar-user-name" th:text="${#authentication.name}">Username</span>
-                <span class="sidebar-user-role" th:text="${#authentication.authorities[0].authority}">Role</span>
             </div>
             <i class="fa-solid fa-right-from-bracket ms-auto" style="color: #ef4444; font-size: 16px;"></i>
         </a>
@@ -1067,6 +1311,33 @@ document.addEventListener('DOMContentLoaded', function() {
         <button class="btn btn-link btn-sm text-decoration-none fw-bold text-primary p-0" id="mark-all-read-btn" type="button"><i class="fa-solid fa-check-double me-1"></i>Đánh dấu đã đọc hết</button>
         <a href="/ticket-management" class="btn btn-link btn-sm text-decoration-none fw-semibold text-secondary p-0">Xem tất cả Ticket &rarr;</a>
     </div>
+</div>
+
+<!-- CLEAN BLACK FLOATING PILL MOBILE NAVIGATION BAR -->
+<div class="mobile-bottom-nav d-lg-none">
+    <!-- Item 1: Homepage -->
+    <a th:href="@{/user-home}" class="mobile-nav-link" th:classappend="${activePage == 'home' or activePage == 'user-home' or activePage == 'admin-home' ? 'active' : ''}">
+        <i class="fa-solid fa-house"></i>
+        <span>Trang chủ</span>
+    </a>
+
+    <!-- Item 2: Quản lý Ticket -->
+    <a th:href="@{/ticket-management}" class="mobile-nav-link" th:classappend="${activePage == 'ticket' or activePage == 'tickets' ? 'active' : ''}">
+        <i class="fa-solid fa-ticket"></i>
+        <span>Quản lý Ticket</span>
+    </a>
+
+    <!-- Item 3: Work Reports -->
+    <a th:href="@{/work-reports}" class="mobile-nav-link" th:classappend="${activePage == 'reports' or activePage == 'work-reports' ? 'active' : ''}">
+        <i class="fa-solid fa-clipboard-list"></i>
+        <span>Báo cáo</span>
+    </a>
+
+    <!-- Item 4: Dashboard -->
+    <a th:href="@{/dashboard}" class="mobile-nav-link" th:classappend="${activePage == 'dashboard' ? 'active' : ''}">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Dashboard</span>
+    </a>
 </div>
     </div>
 </body>
