@@ -51,3 +51,9 @@ source/helpdesk/restored_20h/
 # ===== He dieu hanh =====
 Thumbs.db
 .DS_Store
+
+# ===== Rac: thu muc upload lac cho o root (dung source/helpdesk/...) =====
+/src/
+
+# ===== File PDF huong dan xuat ban o root (ban chinh nam trong source/document/) =====
+/Huong_dan_su_dung_Helpdesk_Midomax.pdf

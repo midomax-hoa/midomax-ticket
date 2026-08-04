@@ -33,6 +33,9 @@ public class ExpenseController {
     private BudgetItemRepository budgetItemRepository;
 
     @Autowired
+    private InvoiceEntryRepository invoiceRepository;
+
+    @Autowired
     private ExcelService excelService;
 
     @Autowired
@@ -87,8 +90,18 @@ public class ExpenseController {
 
         List<ExpenseFund> funds = fundRepository.findAllByOrderByCreatedAtDesc();
 
+        // Hóa đơn trong Sổ Hóa Đơn đã đối chiếu về quỹ này cũng ăn vào ngân sách,
+        // nhưng chỉ tính dòng ĐÃ THANH TOÁN (xem InvoiceEntry.isDeductible).
+        // Tổng quỹ trừ MỌI hóa đơn PAID của quỹ, kể cả dòng chưa đối chiếu tới hạng mục —
+        // tiền đã chi thật thì phải ăn vào quỹ ngay; đối chiếu hạng mục chỉ để xem chi tiết.
+        List<InvoiceEntry> fundInvoices = invoiceRepository.findByFundId(current.getId());
+        long invoiceSpent = fundInvoices.stream()
+                .filter(i -> InvoiceEntry.STATUS_PAID.equalsIgnoreCase(i.getPaymentStatus()))
+                .mapToLong(InvoiceEntry::getAmount)
+                .sum();
+
         long allocated = current.getAllocatedAmount();
-        long spent = expenseRepository.sumAmountByFundId(current.getId());
+        long spent = expenseRepository.sumAmountByFundId(current.getId()) + invoiceSpent;
         long remaining = allocated - spent;
 
         // Phần trăm đã chi (0..100), làm tròn để hiển thị thanh tiến trình
@@ -110,6 +123,10 @@ public class ExpenseController {
             long itemSpent = allExpenses.stream()
                     .filter(e -> item.getId().equals(e.getBudgetItemId()))
                     .mapToLong(ToolExpense::getAmount)
+                    .sum()
+                    + fundInvoices.stream()
+                    .filter(i -> i.isDeductible() && item.getId().equals(i.getBudgetItemId()))
+                    .mapToLong(InvoiceEntry::getAmount)
                     .sum();
             item.setSpentAmount(itemSpent);
             budgetItemNameMap.put(item.getId(), item.getItemName() + " (" + item.getSubCategory() + ")");

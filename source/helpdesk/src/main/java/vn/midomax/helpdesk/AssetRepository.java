@@ -16,6 +16,9 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
 
     boolean existsByInventoryCode(String inventoryCode);
 
+    /** Dùng khi nhập Excel: mã đã có thì cập nhật thay vì tạo bản ghi trùng. */
+    java.util.Optional<Asset> findByInventoryCode(String inventoryCode);
+
     long countByCategoryId(Long categoryId);
 
     long countByStatus(String status);
@@ -33,7 +36,8 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
             + " LOWER(a.model) LIKE LOWER(CONCAT('%', :keyword, '%')) OR "
             + " LOWER(a.serialNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR "
             + " LOWER(a.manufacturer) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
-            + "ORDER BY a.createdAt DESC")
+            // Cũ trước, mới sau: tài sản vừa tạo nằm cuối danh sách cho dễ theo dõi
+            + "ORDER BY a.createdAt ASC, a.id ASC")
     List<Asset> search(@Param("categoryId") Long categoryId,
                        @Param("status") String status,
                        @Param("keyword") String keyword);

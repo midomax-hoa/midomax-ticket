@@ -173,10 +173,42 @@
 
         <!-- BẢNG -->
         <div class="panel">
+            <!-- THANH THAO TÁC HÀNG LOẠT -->
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <form id="batchDeleteForm" th:action="@{/expenses/invoices/delete-batch}" method="post" class="d-inline"
+                          onsubmit="return confirmBatchDelete();">
+                        <button type="submit" id="btnBatchDelete" class="btn btn-outline-danger btn-sm px-3" disabled>
+                            <i class="fa-solid fa-trash-can me-1"></i> Xóa mục đã chọn (<span id="selectedCount">0</span>)
+                        </button>
+                    </form>
+
+                    <form th:action="@{/expenses/invoices/delete-filtered}" method="post" class="d-inline"
+                          th:if="${fSearch != null or fPeriod != null or fCategory != null or fVendor != null or fExpenseType != null or fPaymentStatus != null}"
+                          onsubmit="return confirmFilteredDelete();">
+                        <input type="hidden" name="period" th:value="${fPeriod}">
+                        <input type="hidden" name="category" th:value="${fCategory}">
+                        <input type="hidden" name="vendor" th:value="${fVendor}">
+                        <input type="hidden" name="expenseType" th:value="${fExpenseType}">
+                        <input type="hidden" name="paymentStatus" th:value="${fPaymentStatus}">
+                        <input type="hidden" name="search" th:value="${fSearch}">
+                        <button type="submit" class="btn btn-danger btn-sm px-3">
+                            <i class="fa-solid fa-filter-circle-xmark me-1"></i> Xóa tất cả <span th:text="${entryCount}">0</span> hóa đơn theo bộ lọc
+                        </button>
+                    </form>
+                </div>
+                <div class="text-muted small">
+                    Tổng số: <strong th:text="${entryCount}">0</strong> hóa đơn
+                </div>
+            </div>
+
             <div class="table-wrap">
                 <table class="ledger">
                     <thead>
                         <tr>
+                            <th style="width: 38px;" class="text-center">
+                                <input type="checkbox" id="selectAll" class="form-check-input" title="Chọn tất cả">
+                            </th>
                             <th>STT</th>
                             <th>Ngày nhập</th>
                             <th>Tháng/Kỳ</th>
@@ -187,6 +219,7 @@
                             <th>NCC/Người nhận</th>
                             <th>Mô tả chi tiết</th>
                             <th class="text-end">Số tiền (VND)</th>
+                            <th>Hạng mục ngân sách</th>
                             <th>Loại chi</th>
                             <th>TT Thanh toán</th>
                             <th>Người nhập</th>
@@ -196,7 +229,10 @@
                     </thead>
                     <tbody>
                         <tr th:each="e, it : ${entries}">
-                            <td th:text="${it.count}">1</td>
+                            <td class="text-center">
+                                <input type="checkbox" name="ids" th:value="${e.id}" form="batchDeleteForm" class="form-check-input invoice-chk" onchange="updateBatchCount()">
+                            </td>
+                            <td th:text="${pageFrom != null ? (pageFrom + it.index) : it.count}">1</td>
                             <td class="nowrap" th:text="${e.entryDateStr}"></td>
                             <td class="nowrap" th:text="${e.periodLabel}"></td>
                             <td class="nowrap" th:text="${e.transDateStr}"></td>
@@ -211,6 +247,25 @@
                                 </a>
                             </td>
                             <td class="num" th:text="${#numbers.formatInteger(e.amount, 1, 'POINT')}"></td>
+                            <!-- Đối chiếu ngân sách: đổi hạng mục là submit luôn, khỏi thêm nút lưu -->
+                            <td class="nowrap">
+                                <form th:action="@{/expenses/invoices/match}" method="post" class="d-inline">
+                                    <input type="hidden" name="id" th:value="${e.id}">
+                                    <select name="budgetItemId" class="form-select form-select-sm"
+                                            style="min-width: 210px; font-size: 12px;"
+                                            th:classappend="${e.budgetItemId == null} ? 'border-warning' : ''"
+                                            onchange="this.form.submit()">
+                                        <option value="" th:selected="${e.budgetItemId == null}">-- Chưa đối chiếu --</option>
+                                        <option th:each="bi : ${budgetItemNames}"
+                                                th:value="${bi.key}"
+                                                th:text="${bi.value}"
+                                                th:selected="${bi.key == e.budgetItemId}"></option>
+                                    </select>
+                                </form>
+                                <span th:if="${e.budgetItemId != null and e.paymentStatus != 'PAID'}"
+                                      class="badge-soft b-unpaid d-inline-block mt-1" style="font-size:11px;"
+                                      title="Chỉ trừ ngân sách khi chuyển sang Đã thanh toán">Chưa trừ quỹ</span>
+                            </td>
                             <td>
                                 <span class="badge-soft" th:classappend="${e.expenseType == 'RECURRING'} ? 'b-recurring' : 'b-once'"
                                       th:text="${e.expenseTypeLabel}"></span>
@@ -246,7 +301,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(entries)}">
-                            <td colspan="15">
+                            <td colspan="17">
                                 <div class="empty">
                                     <i class="fa-regular fa-folder-open fs-2 d-block mb-2"></i>
                                     Chưa có hóa đơn nào. Bấm <strong>Nhập từ Excel</strong> để đưa dữ liệu cũ vào, hoặc <strong>Thêm hóa đơn</strong>.
@@ -255,6 +310,36 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- PHÂN TRANG: hiển thị 5 dòng / trang -->
+            <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2"
+                 th:if="${entryCount > 0}">
+                <small class="text-muted">
+                    Hiển thị <b th:text="${pageFrom}">1</b>–<b th:text="${pageTo}">5</b>
+                    trên <b th:text="${entryCount}">0</b> hóa đơn
+                </small>
+                <nav th:if="${totalPages > 1}">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+                            <a class="page-link"
+                               th:href="@{/expenses/invoices(period=${fPeriod}, category=${fCategory}, vendor=${fVendor}, expenseType=${fExpenseType}, paymentStatus=${fPaymentStatus}, search=${fSearch}, page=${currentPage - 1})}">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item" th:each="p : ${#numbers.sequence(1, totalPages)}"
+                            th:classappend="${p == currentPage} ? 'active'">
+                            <a class="page-link" th:text="${p}"
+                               th:href="@{/expenses/invoices(period=${fPeriod}, category=${fCategory}, vendor=${fVendor}, expenseType=${fExpenseType}, paymentStatus=${fPaymentStatus}, search=${fSearch}, page=${p})}">1</a>
+                        </li>
+                        <li class="page-item" th:classappend="${currentPage == totalPages} ? 'disabled'">
+                            <a class="page-link"
+                               th:href="@{/expenses/invoices(period=${fPeriod}, category=${fCategory}, vendor=${fVendor}, expenseType=${fExpenseType}, paymentStatus=${fPaymentStatus}, search=${fSearch}, page=${currentPage + 1})}">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -431,10 +516,23 @@
                         <label class="form-label">Chọn file .xlsx</label>
                         <input type="file" name="file" class="form-control" accept=".xlsx" required>
 
+                        <label class="form-label mt-3">Khấu trừ vào quỹ chi tiêu</label>
+                        <select name="fundId" class="form-select">
+                            <option value="">-- Không đối chiếu ngân sách --</option>
+                            <option th:each="f : ${funds}" th:value="${f.id}" th:text="${f.name}"></option>
+                        </select>
+                        <div class="form-text">
+                            Chọn quỹ thì hệ thống sẽ khớp cột <strong>Hạng mục ngân sách</strong> trong file với
+                            hạng mục của quỹ và trừ dần ngân sách.
+                        </div>
+
                         <div class="alert alert-light border mt-3 mb-0" style="font-size:13px;">
                             <div class="fw-bold mb-2" style="color:#1e3a8a;">Cách hoạt động</div>
                             <ul class="mb-0 ps-3">
                                 <li>Nhận diện cột <strong>theo tên tiêu đề</strong>, không theo thứ tự — chèn hay đổi chỗ cột vẫn nhập được.</li>
+                                <li>Thêm cột <strong>"Hạng mục ngân sách"</strong> vào file để tự khấu trừ đúng mục. Khớp không cần chính xác hoa/thường hay dấu.</li>
+                                <li>Chỉ hóa đơn <strong>Đã thanh toán</strong> mới trừ vào ngân sách; dòng chưa thanh toán vẫn nằm trong sổ.</li>
+                                <li>Dòng không khớp được hạng mục sẽ hiện <strong>"Chưa đối chiếu"</strong> để chọn tay ngay trên sổ.</li>
                                 <li>Tự tìm dòng tiêu đề, nên các dòng tổng nằm phía trên không gây lỗi.</li>
                                 <li>Hiểu cả tiêu đề tiếng Việt lẫn tiếng Anh: <em>Ngày nhập / Entry Date</em>, <em>NCC / Vendor</em>, <em>Số tiền / Amount</em>...</li>
                                 <li>Dòng đã có trong sổ sẽ được <strong>bỏ qua</strong>, nhập hai lần cũng không bị nhân đôi.</li>
@@ -499,7 +597,51 @@
                     el.value = digits ? Number(digits).toLocaleString('vi-VN') : '';
                 });
             });
+
+            // Xử lý Chọn tất cả Checkbox
+            var selectAllChk = document.getElementById('selectAll');
+            if (selectAllChk) {
+                selectAllChk.addEventListener('change', function () {
+                    var itemChks = document.querySelectorAll('.invoice-chk');
+                    itemChks.forEach(function (chk) {
+                        chk.checked = selectAllChk.checked;
+                    });
+                    updateBatchCount();
+                });
+            }
         });
+
+        function updateBatchCount() {
+            var checkedChks = document.querySelectorAll('.invoice-chk:checked');
+            var checkedCount = checkedChks.length;
+            var batchBtn = document.getElementById('btnBatchDelete');
+            var selectedCountSpan = document.getElementById('selectedCount');
+            var selectAllChk = document.getElementById('selectAll');
+
+            if (selectedCountSpan) selectedCountSpan.textContent = checkedCount;
+            if (batchBtn) {
+                batchBtn.disabled = (checkedCount === 0);
+            }
+
+            var totalChks = document.querySelectorAll('.invoice-chk').length;
+            if (selectAllChk && totalChks > 0) {
+                selectAllChk.checked = (checkedCount === totalChks);
+                selectAllChk.indeterminate = (checkedCount > 0 && checkedCount < totalChks);
+            }
+        }
+
+        function confirmBatchDelete() {
+            var checkedCount = document.querySelectorAll('.invoice-chk:checked').length;
+            if (checkedCount === 0) {
+                alert('Vui lòng chọn ít nhất 1 hóa đơn để xóa.');
+                return false;
+            }
+            return confirm('Bạn có chắc chắn muốn xóa ' + checkedCount + ' hóa đơn đã chọn? Thao tác này không thể hoàn tác!');
+        }
+
+        function confirmFilteredDelete() {
+            return confirm('XÁC NHẬN: Bạn có chắc chắn muốn XÓA TẤT CẢ các hóa đơn đang hiển thị theo bộ lọc hiện tại? Thao tác này không thể hoàn tác!');
+        }
     </script>
 </body>
 </html>

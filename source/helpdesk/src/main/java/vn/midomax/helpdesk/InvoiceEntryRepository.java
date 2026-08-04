@@ -53,4 +53,7 @@ public interface InvoiceEntryRepository extends JpaRepository<InvoiceEntry, Long
      * Dùng để cảnh báo lúc nhập (vd hai dòng Adobe "đợt 1" cùng 108.150.000đ).
      */
     List<InvoiceEntry> findByVendorAndAmountAndTransDate(String vendor, long amount, java.time.LocalDate transDate);
+
+    /** Hóa đơn đã đối chiếu về một quỹ chi tiêu — dùng để khấu trừ ngân sách. */
+    List<InvoiceEntry> findByFundId(Long fundId);
 }

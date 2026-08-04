@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js 3D Showcase - Midomax Helpdesk</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #090d16;
+            color: #ffffff;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        .overlay-card {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 28px;
+            max-width: 420px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .badge-tag {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+        .btn-control {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-control:hover {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+    </style>
+
+    <!-- Tải Three.js từ static/js local của dự án -->
+    <script th:src="@{/js/three.min.js}" src="../static/js/three.min.js"></script>
+</head>
+<body>
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <div class="overlay-card">
+        <span class="badge-tag"><i class="fa-solid fa-cube me-1"></i> WebGL 3D Powered</span>
+        <h3 class="fw-bold mb-2">Three.js Dựng Hình 3D</h3>
+        <p class="text-white-50 fs-6 mb-4">
+            Đã tích hợp thành công thư viện <code>three.min.js</code> vào dự án Midomax Helpdesk tại thư mục <code>/static/js/three.min.js</code>.
+        </p>
+        
+        <div class="d-flex gap-2">
+            <button class="btn btn-control" onclick="changeShape('torus')">
+                <i class="fa-solid fa-ring me-1"></i> Torus Knot
+            </button>
+            <button class="btn btn-control" onclick="changeShape('sphere')">
+                <i class="fa-solid fa-globe me-1"></i> Quả Cầu
+            </button>
+            <button class="btn btn-control" onclick="changeShape('box')">
+                <i class="fa-solid fa-cube me-1"></i> Khối Hộp
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 1. Khởi tạo Scene, Camera & Renderer
+        const canvas = document.getElementById('webgl-canvas');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 4.5;
+
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // 2. Tạo Vật thể (Mesh)
+        let geometry = new THREE.TorusKnotGeometry(1, 0.35, 128, 32);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x6366f1,
+            roughness: 0.15,
+            metalness: 0.85,
+            wireframe: false
+        });
+        let mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        // 3. Ánh sáng (Lighting)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const pointLight1 = new THREE.PointLight(0x38bdf8, 2.5, 100);
+        pointLight1.position.set(5, 5, 5);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0xec4899, 2.5, 100);
+        pointLight2.position.set(-5, -5, -2);
+        scene.add(pointLight2);
+
+        // 4. Tương tác Di chuột (Mouse Movement)
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+            mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+        });
+
+        // 5. Đổi hình dạng vật thể
+        function changeShape(type) {
+            scene.remove(mesh);
+            geometry.dispose();
+
+            if (type === 'torus') {
+                geometry = new THREE.TorusKnotGeometry(1, 0.35, 128, 32);
+                material.color.setHex(0x6366f1);
+            } else if (type === 'sphere') {
+                geometry = new THREE.IcosahedronGeometry(1.3, 4);
+                material.color.setHex(0x38bdf8);
+            } else if (type === 'box') {
+                geometry = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+                material.color.setHex(0xec4899);
+            }
+
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+        }
+
+        // 6. Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Xoay tự động + bám theo chuột nhẹ nhàng
+            mesh.rotation.x += 0.008;
+            mesh.rotation.y += 0.012;
+
+            mesh.rotation.x += (mouseY * 0.5 - mesh.rotation.x) * 0.05;
+            mesh.rotation.y += (mouseX * 0.5 - mesh.rotation.y) * 0.05;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 7. Responsive Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

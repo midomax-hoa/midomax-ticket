@@ -109,5 +109,10 @@ public class HomeController {
         model.addAttribute("username", username);
         return "profile";
     }
+
+    @GetMapping(value = "/three-demo", produces = "text/html;charset=UTF-8")
+    public String threeDemo() {
+        return "three-demo";
+    }
 }
 

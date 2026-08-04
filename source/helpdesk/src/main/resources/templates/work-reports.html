@@ -268,13 +268,183 @@
             transform: scale(1.05);
         }
 
+        /* ==========================================
+           RESPONSIVE MOBILE STYLES FOR WORK REPORTS
+           ========================================== */
         @media (max-width: 991px) {
-            .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 0 !important;
+                overflow-x: hidden !important;
+            }
+
+            #mobile-toggle-btn {
+                display: inline-block !important;
+            }
+
+            /* TOPBAR MOBILE LAYOUT */
+            .topbar {
+                padding: 12px 14px !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+            }
+
+            .topbar > div:first-child {
+                width: 100% !important;
+            }
+
+            .topbar h4 {
+                font-size: 16px !important;
+                line-height: 1.3 !important;
+            }
+
+            .topbar small {
+                font-size: 11px !important;
+                display: block !important;
+            }
+
+            .topbar .ms-auto {
+                margin-left: 0 !important;
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+
+            .topbar .ms-auto .btn {
+                flex: 1 1 calc(50% - 4px) !important;
+                font-size: 13px !important;
+                padding: 8px 10px !important;
+                justify-content: center !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                text-align: center !important;
+                border-radius: 10px !important;
+            }
+
+            /* VIEW TOOLBAR & FILTERS MOBILE */
+            .view-toolbar {
+                margin: 12px 12px 16px 12px !important;
+                padding: 12px !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+            }
+
+            .view-tabs {
+                width: 100% !important;
+                display: flex !important;
+                gap: 6px !important;
+            }
+
+            .view-tab {
+                flex: 1 !important;
+                justify-content: center !important;
+                padding: 8px 10px !important;
+                font-size: 12px !important;
+                text-align: center !important;
+            }
+
+            .view-actions {
+                width: 100% !important;
+            }
+
+            .view-actions form {
+                width: 100% !important;
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+
+            .view-actions form select {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex: 1 1 calc(33.333% - 6px) !important;
+                min-width: 105px !important;
+                font-size: 12px !important;
+                padding: 6px 8px !important;
+            }
+
+            /* LIST CONTAINER & GROUPS */
+            .list-view-container {
+                padding: 0 12px 30px 12px !important;
+                gap: 16px !important;
+            }
+
+            .group-header {
+                padding: 10px 12px !important;
+            }
+
+            .group-title-wrapper {
+                gap: 8px !important;
+                flex-wrap: wrap !important;
+            }
+
+            .status-badge {
+                font-size: 11px !important;
+                padding: 3px 10px !important;
+            }
+
+            /* GRID TABLE OVERFLOW SCROLLING FIX */
+            .grid-table {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                border-radius: 0 0 12px 12px !important;
+            }
+
+            .grid-row {
+                min-width: 1100px !important;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .view-actions form select {
+                flex: 1 1 100% !important;
+            }
+            .topbar .ms-auto .btn {
+                flex: 1 1 100% !important;
+            }
         }
     </style>
     
     <!-- Tribute.js CSS for @mentions -->
     <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css">
+    <style>
+        .tribute-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: auto;
+            max-height: 220px;
+            overflow-y: auto;
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+            z-index: 999999 !important;
+            font-family: inherit;
+            font-size: 13px;
+        }
+        .tribute-container ul {
+            margin: 0 !important;
+            padding: 4px 0 !important;
+            list-style: none !important;
+        }
+        .tribute-container li {
+            padding: 6px 12px !important;
+            cursor: pointer !important;
+            transition: background 0.15s ease !important;
+        }
+        .tribute-container li.highlight,
+        .tribute-container li:hover {
+            background: #eff6ff !important;
+            color: #1d4ed8 !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -296,7 +466,7 @@
                    class="btn btn-success fw-bold px-3 py-2 text-nowrap flex-shrink-0" style="border-radius: 12px; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);" title="Xuất báo cáo ra Excel">
                     <i class="fa-solid fa-file-excel me-2"></i>Xuất Excel
                 </a>
-                <button class="btn btn-primary fw-bold px-4 py-2 text-nowrap flex-shrink-0" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);" onclick="openCreateParentReportModal()">
+                <button class="btn btn-primary fw-bold px-4 py-2 text-nowrap flex-shrink-0" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);" data-bs-toggle="modal" data-bs-target="#createReportModal" onclick="openCreateParentReportModal()">
                     <i class="fa-solid fa-plus me-2"></i>Thêm Nhiệm Vụ / Báo Cáo
                 </button>
                 <i class="fa-solid fa-bell fs-5 ms-2 d-inline-block" style="color: #6b7280; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#1e3a8a'" onmouseout="this.style.color='#6b7280'"></i>
@@ -384,7 +554,7 @@
                                          th:data-delay="${r.delayReason != null ? r.delayReason : ''}">
                                         <!-- Cell 1: Task Name -->
                                         <div class="grid-cell d-flex flex-column align-items-start justify-content-center py-2" style="font-weight: 500; overflow: hidden;">
-                                            <div class="d-flex align-items-center gap-2 w-100">
+                                            <div class="d-flex align-items-center gap-2 w-100 flex-wrap">
                                                 <div class="task-checkbox flex-shrink-0" th:classappend="${(r.status == 'COMPLETED' ? 'checked ' : '') + (locked ? 'opacity-50' : '')}"
                                                      th:data-id="${r.id}"
                                                      th:data-status="${r.status != null ? r.status : 'PLANNING'}"
@@ -413,14 +583,20 @@
                                             </div>
                                         </div>
 
-                                        <!-- Cell 2: Assignee (Inline Edit Dropdown) -->
-                                        <div class="grid-cell dropdown">
-                                            <div class="inline-edit-pill d-flex align-items-center gap-2 dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" style="cursor: pointer; padding: 4px 10px; border-radius: 16px; background: #f1f5f9; border: 1px solid #e2e8f0;">
+                                        <!-- Cell 2: Assignee (Inline Edit Dropdown) — Công việc cha: Chỉ người tạo công việc mới được đổi người phụ trách -->
+                                        <div class="grid-cell dropdown" th:with="canEditParentAssignee=${(r.createdBy != null && r.createdBy == currentUser) || (currentUser == 'admin')}">
+                                            <div class="inline-edit-pill d-flex align-items-center gap-2"
+                                                 th:classappend="${canEditParentAssignee ? 'dropdown-toggle' : ''}"
+                                                 th:attr="data-bs-toggle=${canEditParentAssignee ? 'dropdown' : null}"
+                                                 data-bs-boundary="viewport" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false"
+                                                 th:style="${canEditParentAssignee ? 'cursor: pointer; padding: 4px 10px; border-radius: 16px; background: #f1f5f9; border: 1px solid #e2e8f0;' : 'cursor: not-allowed; opacity: 0.85; padding: 4px 10px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0;'}"
+                                                 th:title="${canEditParentAssignee ? 'Đổi người phụ trách' : 'Chỉ người tạo công việc mới được đổi người phụ trách'}">
                                                 <span class="assignee-avatar m-0" style="width: 22px; height: 22px; font-size: 11px;" th:classappend="${r.assignee != null && !r.assignee.isEmpty() ? 'filled' : ''}" th:text="${r.assignee != null && !r.assignee.isEmpty() ? #strings.substring(r.assignee, 0, 1).toUpperCase() : '+'}">+</span>
                                                 <span class="small fw-medium text-secondary" th:if="${r.assignee != null && !r.assignee.isEmpty()}" th:text="${r.assignee}"></span>
                                                 <span class="small text-muted" th:if="${r.assignee == null || r.assignee.isEmpty()}">Chọn người</span>
+                                                <i class="fa-solid fa-lock ms-1 text-muted" style="font-size: 9px;" th:if="${!canEditParentAssignee}"></i>
                                             </div>
-                                            <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;">
+                                            <ul class="dropdown-menu shadow-sm" style="font-size: 13px; min-width: 150px;" th:if="${canEditParentAssignee}">
                                                 <li th:each="a : ${assignees}">
                                                     <a class="dropdown-item d-flex align-items-center gap-2 py-1" href="#" th:data-report-id="${r.id}" th:data-assignee-val="${a}" onclick="updateAssigneeAjaxEl(this.getAttribute('data-report-id'), this.getAttribute('data-assignee-val'), this); return false;">
                                                         <span class="assignee-avatar m-0 filled" style="width: 20px; height: 20px; font-size: 10px;" th:text="${#strings.substring(a, 0, 1).toUpperCase()}"></span>
@@ -511,8 +687,12 @@
                                                    th:data-delay="${r.delayReason != null ? r.delayReason : ''}"
                                                    th:data-completed="${r.completedAt != null ? #temporals.format(r.completedAt, 'yyyy-MM-dd HH:mm') : ''}"
                                                    th:data-parent-due="${r.parentDueDate != null ? #temporals.format(r.parentDueDate, 'yyyy-MM-dd HH:mm') : ''}"
+                                                   th:data-created-by="${r.createdBy}"
+                                                   th:data-is-parent="true"
                                                    onclick="openUpdateModalFromBtn(this); event.stopPropagation();"></i>
-                                                <form th:action="@{/work-reports/delete/{id}(id=${r.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa nhiệm vụ này?');">
+                                                <!-- Xoá: chỉ người tạo báo cáo, người được giao việc không được xoá -->
+                                                <form th:if="${isAdmin || (r.createdBy != null && r.createdBy == currentUser)}"
+                                                      th:action="@{/work-reports/delete/{id}(id=${r.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa nhiệm vụ này?');">
                                                     <button type="submit" class="btn p-0 border-0 bg-transparent text-danger text-hover-scale" title="Xóa nhiệm vụ" style="line-height: 1;"><i class="fa-solid fa-trash" style="font-size: 14px;"></i></button>
                                                 </form>
                                             </div>
@@ -619,7 +799,8 @@
                                                        th:data-completed="${cr.completedAt != null ? #temporals.format(cr.completedAt, 'yyyy-MM-dd HH:mm') : ''}"
                                                        th:data-parent-due="${cr.parentDueDate != null ? #temporals.format(cr.parentDueDate, 'yyyy-MM-dd HH:mm') : ''}"
                                                        onclick="openUpdateModalFromBtn(this); event.stopPropagation();"></i>
-                                                    <form th:action="@{/work-reports/delete/{id}(id=${cr.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa việc con này?');">
+                                                    <form th:if="${isAdmin || (cr.createdBy != null && cr.createdBy == currentUser)}"
+                                                          th:action="@{/work-reports/delete/{id}(id=${cr.id})}" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa việc con này?');">
                                                         <button type="submit" class="btn p-0 border-0 bg-transparent text-danger text-hover-scale" title="Xóa việc con" style="line-height: 1;"><i class="fa-solid fa-trash" style="font-size: 14px;"></i></button>
                                                     </form>
                                                 </div>
@@ -650,10 +831,10 @@
                                         <!-- INTEGRATED QUICK ADD SUBTASK ROW — khoá khi chủ báo cáo đã chốt hoàn thành -->
                                         <div th:unless="${r.ownerConfirmed}"
                                              th:id="'subtask-add-row-' + ${r.id}"
-                                             th:class="'grid-row task-row subtask-tree-row'"
+                                             th:class="'grid-row task-row subtask-tree-row subtask-of-' + ${r.id}"
                                              th:data-parent-id="${r.id}"
                                              onclick="showSubtaskInput(this)"
-                                             style="display: grid; background-color: #f8fafc; padding: 10px 20px 10px 44px; cursor: pointer; border-bottom: 1px solid #f1f5f9;">
+                                             style="display: none; background-color: #f8fafc; padding: 10px 20px 10px 44px; cursor: pointer; border-bottom: 1px solid #f1f5f9;">
                                             <div class="d-flex align-items-center gap-2" style="color: #64748b; font-weight: 500; font-size: 13px;">
                                                 <i class="fa-solid fa-plus" style="font-size: 11px; width: 20px; height: 20px; border-radius: 4px; background: #e2e8f0; display: inline-flex; align-items: center; justify-content: center;"></i>
                                                 <span>Thêm nhanh việc con</span>
@@ -752,7 +933,7 @@
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label fw-bold small text-dark">Tên Nhiệm Vụ / Tính Năng Chi Tiết <span class="text-danger">*</span></label>
-                                <input type="text" name="taskTitle" class="form-control shadow-sm" placeholder="VD: Tích hợp giao diện Kanban, Code API đồng bộ Azure...">
+                                <input type="text" name="taskTitle" class="form-control shadow-sm" required placeholder="VD: Tích hợp giao diện Kanban, Code API đồng bộ Azure...">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-dark">Trạng Thái Ban Đầu</label>
@@ -1081,22 +1262,71 @@
 
     <script th:inline="javascript">
         window.allAssigneeNames = /*[[${assignees}]]*/ [];
+        document.addEventListener('DOMContentLoaded', function() {
+            let names = window.allAssigneeNames || [];
+            if (names.length === 0) names = ["tin", "admin", "user2"];
+            let mentionValues = names.map(function(n) {
+                return { key: n.toLowerCase(), value: n };
+            });
+
+            if (typeof Tribute !== 'undefined' && mentionValues.length > 0) {
+                let tribute = new Tribute({
+                    trigger: '@',
+                    values: mentionValues,
+                    selectTemplate: function (item) {
+                        return item.original.value;
+                    },
+                    menuItemTemplate: function (item) {
+                        return '<div style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;">' +
+                               '<span style="background: #3b82f6; color: white; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">' +
+                               item.original.value.charAt(0).toUpperCase() + '</span>' +
+                               '<span style="font-weight: 600; color: #1e293b;">' + item.original.value + '</span>' +
+                               '</div>';
+                    }
+                });
+
+                window.mentionTributeNameList = tribute;
+
+                ['createReportWatchers', 'updateReportWatchers', 'subtask-assignee-input', 'taskDetailCommentInput'].forEach(function(id) {
+                    let el = document.getElementById(id);
+                    if (el) tribute.attach(el);
+                });
+            }
+        });
     </script>
     <script>
-        // INIT FLATPICKR
-        flatpickr("#reportDueDate, #updateDueDateInput", {
-            enableTime: true,
-            time_24hr: true,
-            locale: "vn",
-            dateFormat: "Y-m-d H:i",
-            altInput: true,
-            altFormat: "H:i d/m/Y"
-        });
+        // INIT FLATPICKR — wrapped in try-catch to prevent crashing the entire script block
+        // if CDN fails to load (which would kill ALL function definitions below)
+        try {
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr("#reportDueDate", {
+                    enableTime: true,
+                    time_24hr: true,
+                    locale: "vn",
+                    dateFormat: "Y-m-d H:i",
+                    altInput: true,
+                    altFormat: "H:i d/m/Y"
+                });
+                flatpickr("#updateDueDateInput", {
+                    enableTime: true,
+                    time_24hr: true,
+                    locale: "vn",
+                    dateFormat: "Y-m-d H:i",
+                    altInput: true,
+                    altFormat: "H:i d/m/Y"
+                });
+            } else {
+                console.warn('[WorkReports] flatpickr not loaded — calendar picker unavailable');
+            }
+        } catch(e) { console.error('[WorkReports] flatpickr init error:', e); }
 
         // VIEW TOGGLE LOGIC
-        document.getElementById('mobile-toggle-btn').addEventListener('click', function() {
-            document.getElementById('main-content').classList.toggle('expanded');
-        });
+        var mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        if (mobileToggleBtn) {
+            mobileToggleBtn.addEventListener('click', function() {
+                document.getElementById('main-content').classList.toggle('expanded');
+            });
+        }
 
         // TOGGLE GROUP IN CLICKUP LIST VIEW
         function toggleGroup(groupId) {
@@ -1164,13 +1394,25 @@
                             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang lưu...';
                         }
                         const formData = new URLSearchParams(new FormData(formEl));
+                        const parentIdVal = document.getElementById('createModalParentId') ? document.getElementById('createModalParentId').value : null;
+                        if (parentIdVal) {
+                            sessionStorage.setItem('expandSubtasksOf', parentIdVal);
+                        }
                         fetch(formEl.getAttribute('action') || '/work-reports/create', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
                             body: formData.toString()
                         })
-                        .then(() => {
-                            window.location.href = '/work-reports';
+                        .then(res => {
+                            if (res.ok || res.redirected) {
+                                window.location.href = '/work-reports';
+                            } else {
+                                alert('Không thể tạo nhiệm vụ. Vui lòng kiểm tra lại dữ liệu nhập.');
+                                if (submitBtn) {
+                                    submitBtn.disabled = false;
+                                    submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Lưu Hạng Mục';
+                                }
+                            }
                         })
                         .catch(err => {
                             alert('Có lỗi xảy ra: ' + err);
@@ -1357,25 +1599,25 @@
             }
             const rows = document.querySelectorAll('.subtask-of-' + reportId);
             const icon = document.getElementById('icon-subtask-' + reportId);
-            if (!rows || rows.length === 0) return;
+            if (!rows || rows.length === 0) {
+                openCreateSubReportModal(reportId, '');
+                return;
+            }
 
-            let isHidden = false;
-            rows.forEach(r => {
-                if (r.style.display === 'none' || r.style.display === '' || window.getComputedStyle(r).display === 'none') {
-                    isHidden = true;
-                }
-            });
+            const firstRow = rows[0];
+            const isCurrentlyOpen = (icon && icon.style.transform === 'rotate(90deg)') ||
+                (firstRow && firstRow.style.display !== 'none' && window.getComputedStyle(firstRow).display !== 'none');
 
             rows.forEach(r => {
-                if (isHidden) {
-                    r.style.display = 'grid';
+                if (isCurrentlyOpen) {
+                    r.style.setProperty('display', 'none', 'important');
                 } else {
-                    r.style.display = 'none';
+                    r.style.setProperty('display', 'grid', 'important');
                 }
             });
 
             if (icon) {
-                icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+                icon.style.transform = isCurrentlyOpen ? 'rotate(0deg)' : 'rotate(90deg)';
             }
         }
 
@@ -1453,8 +1695,20 @@
                 const projectInput = document.getElementById('updateProjectNameInput');
                 if (projectInput) projectInput.value = project;
 
+                const createdBy = btn.getAttribute('data-created-by') || '';
+                const isParent = btn.getAttribute('data-is-parent') === 'true';
+                const currentUser = '[[${currentUser}]]' || '';
+                // Dùng cờ isAdmin từ controller. KHÔNG dùng #authorization.expression trong <script>:
+                // biểu thức này ném lỗi lúc render và làm HTML bị cắt cụt giữa chừng, giết toàn bộ JS phía sau.
+                const isAdmin = '[[${isAdmin}]]' === 'true';
+                const canEditAssignee = !isParent || (createdBy && createdBy.toLowerCase() === currentUser.toLowerCase()) || isAdmin;
+
                 const assigneeSel = document.getElementById('updateAssigneeSelect');
-                if (assigneeSel && assignee) assigneeSel.value = assignee;
+                if (assigneeSel) {
+                    if (assignee) assigneeSel.value = assignee;
+                    assigneeSel.disabled = !canEditAssignee;
+                    assigneeSel.title = canEditAssignee ? '' : 'Chỉ người tạo công việc mới được đổi người phụ trách';
+                }
 
                 const dueInput = document.getElementById('updateDueDateInput');
                 if (dueInput) {
@@ -2494,11 +2748,28 @@
             sessionStorage.removeItem('expandSubtasksOf');
             const rows = document.querySelectorAll('.subtask-of-' + expandId);
             rows.forEach(r => {
-                r.style.display = r.classList.contains('grid-row') ? 'grid' : 'table-row';
+                r.style.setProperty('display', 'grid', 'important');
             });
             const icon = document.getElementById('icon-subtask-' + expandId);
             if (icon) icon.style.transform = 'rotate(90deg)';
         }
+
+        // Tự động mở rộng các tác vụ có mục con để hiển thị rõ ràng ngay khi vào trang
+        document.querySelectorAll('.subtask-arrow-btn').forEach(function(btn) {
+            const countSpan = btn.querySelector('span');
+            if (countSpan) {
+                const count = parseInt(countSpan.innerText.trim()) || 0;
+                if (count > 0) {
+                    const reportId = btn.getAttribute('data-id');
+                    const rows = document.querySelectorAll('.subtask-of-' + reportId);
+                    rows.forEach(function(r) {
+                        r.style.setProperty('display', 'grid', 'important');
+                    });
+                    const icon = document.getElementById('icon-subtask-' + reportId);
+                    if (icon) icon.style.transform = 'rotate(90deg)';
+                }
+            }
+        });
     });
 
 

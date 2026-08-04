@@ -72,6 +72,21 @@ public class InvoiceEntry {
     /** Ảnh/file chứng từ đính kèm (/uploads/...). */
     private String attachmentPath;
 
+    /** Quỹ chi tiêu mà hóa đơn này thuộc về (ExpenseFund.id). */
+    @Column(name = "fund_id")
+    private Long fundId;
+
+    /** Hạng mục ngân sách bị khấu trừ (BudgetItem.id). NULL = chưa đối chiếu. */
+    @Column(name = "budget_item_id")
+    private Long budgetItemId;
+
+    /**
+     * Tên hạng mục đọc từ cột "Hạng mục ngân sách" của file Excel — chỉ dùng lúc import
+     * để dò ra budgetItemId, không lưu DB.
+     */
+    @Transient
+    private String budgetItemName;
+
     private LocalDateTime createdAt;
 
     public InvoiceEntry() {
@@ -184,4 +199,21 @@ public class InvoiceEntry {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public Long getFundId() { return fundId; }
+    public void setFundId(Long fundId) { this.fundId = fundId; }
+
+    public Long getBudgetItemId() { return budgetItemId; }
+    public void setBudgetItemId(Long budgetItemId) { this.budgetItemId = budgetItemId; }
+
+    public String getBudgetItemName() { return budgetItemName; }
+    public void setBudgetItemName(String budgetItemName) { this.budgetItemName = budgetItemName; }
+
+    /** Đã đối chiếu về hạng mục ngân sách hay chưa. */
+    @Transient
+    public boolean isMatched() { return budgetItemId != null; }
+
+    /** Chỉ hóa đơn đã thanh toán mới khấu trừ ngân sách. */
+    @Transient
+    public boolean isDeductible() { return budgetItemId != null && "PAID".equalsIgnoreCase(paymentStatus); }
 }

@@ -27,7 +27,7 @@ public class AssetHandoverService {
      * Một dòng phụ kiện kèm theo (chuột, túi, sạc...) — không có mã kiểm kê,
      * chỉ nhập lúc xuất biên bản nên không lưu xuống DB.
      */
-    public record Accessory(String name, String spec, String quantity, String condition) {
+    public record Accessory(String name, String spec, String serial, String quantity, String condition) {
     }
 
     private static final String FONT = "Times New Roman";
@@ -89,15 +89,18 @@ public class AssetHandoverService {
             blank(doc);
 
             // ===== Ngày lập =====
-            LocalDate today = LocalDate.now();
+            // Ưu tiên thời gian bàn giao đã nhập trên tài sản; chưa có thì lấy ngày lập
+            LocalDate today = first.getHandoverDate() != null
+                    ? first.getHandoverDate().toLocalDate() : LocalDate.now();
             para(doc, String.format("Hôm nay, ngày %02d tháng %02d năm %d, chúng tôi gồm:",
                             today.getDayOfMonth(), today.getMonthValue(), today.getYear()),
                     ParagraphAlignment.LEFT, 12, false, false);
 
-            // ===== Bên giao: để trống, điền tay khi in =====
+            // ===== Bên giao: lấy từ dữ liệu tài sản, thiếu thì để trống điền tay khi in =====
             para(doc, "BÊN GIAO (Bên A):", ParagraphAlignment.LEFT, 12, true, false);
-            para(doc, "Đại diện: " + BLANK, ParagraphAlignment.LEFT, 12, false, false);
-            para(doc, "Chức vụ: " + BLANK, ParagraphAlignment.LEFT, 12, false, false);
+            para(doc, "Đại diện: " + nvl(first.getHandoverBy(), BLANK), ParagraphAlignment.LEFT, 12, false, false);
+            para(doc, "Chức vụ: " + nvl(first.getHandoverByPosition(), BLANK), ParagraphAlignment.LEFT, 12, false, false);
+            para(doc, "Phòng ban: " + nvl(first.getHandoverByDepartment(), BLANK), ParagraphAlignment.LEFT, 12, false, false);
 
             // ===== Bên nhận: lấy từ tài sản đầu tiên (mọi tài sản cùng một người nhận) =====
             para(doc, "BÊN NHẬN (Bên B):", ParagraphAlignment.LEFT, 12, true, false);
@@ -140,14 +143,14 @@ public class AssetHandoverService {
                 });
             }
 
-            // Phụ kiện kèm theo: không có mã kiểm kê nên cột Serial để trống
+            // Phụ kiện kèm theo: chưa có mã kiểm kê, chỉ in serial nếu người dùng nhập
             if (accessories != null) {
                 for (Accessory acc : accessories) {
                     writeRow(table.getRow(rowIdx++), new String[]{
                             String.valueOf(stt++),
                             nvl(acc.name(), ""),
                             nvl(acc.spec(), ""),
-                            "",
+                            nvl(acc.serial(), ""),
                             nvl(acc.quantity(), "1"),
                             nvl(acc.condition(), "")
                     });
