@@ -530,7 +530,10 @@ public class WorkReportServiceImpl implements WorkReportService {
                 cur = byId.get(cur.getParentId());
             }
         }
-        Deque<Long> queue = new ArrayDeque<>(directIds);
+        // Duyệt xuống từ TOÀN BỘ visibleIds (gồm cả các việc cha vừa thêm ở vòng lặp trên),
+        // không chỉ từ directIds. Nếu chỉ đi từ directIds thì người được giao một việc con sẽ
+        // thấy việc cha nhưng mất hết các việc con khác cùng cha — trái với quy tắc ngay trên.
+        Deque<Long> queue = new ArrayDeque<>(visibleIds);
         while (!queue.isEmpty()) {
             for (WorkReport child : childrenOf.getOrDefault(queue.poll(), Collections.emptyList())) {
                 if (visibleIds.add(child.getId())) {

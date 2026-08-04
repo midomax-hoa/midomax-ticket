@@ -225,7 +225,7 @@ public class WorkReportController {
             @RequestParam(value = "projectName", required = false, defaultValue = "Dự án chung") String projectName,
             @RequestParam(value = "taskTitle", required = false, defaultValue = "Nhiệm vụ mới") String taskTitle,
             @RequestParam(value = "assignee", required = false, defaultValue = "tin") String assignee,
-            @RequestParam(value = "watchers", required = false) List<String> watchersList,
+            @RequestParam(value = "watchers", required = false) String watchersStr,
             @RequestParam(value = "status", required = false, defaultValue = "PLANNING") String status,
             @RequestParam(value = "progressPercentage", required = false, defaultValue = "0") String progressPercentageStr,
             @RequestParam(value = "dueDateStr", required = false) String dueDateStr,
@@ -266,8 +266,8 @@ public class WorkReportController {
         report.setTaskTitle(taskTitle.trim());
         report.setAssignee(assignee.trim().toLowerCase());
         report.setCreatedBy(currentHandle(authentication));
-        if (watchersList != null && !watchersList.isEmpty()) {
-            report.setWatchers(String.join(",", watchersList));
+        if (watchersStr != null && !watchersStr.trim().isEmpty()) {
+            report.setWatchers(watchersStr.trim());
         }
         report.setStatus(status.trim().toUpperCase());
         report.setProgressPercentage(progressPercentage);
@@ -279,7 +279,11 @@ public class WorkReportController {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
                 report.setDueDate(LocalDateTime.parse(dueDateStr.trim(), formatter));
             } catch (Exception e) {
-                // ignore
+                try {
+                    report.setDueDate(LocalDate.parse(dueDateStr.trim()).atTime(23, 59));
+                } catch (Exception ex) {
+                    // ignore
+                }
             }
         }
 
@@ -301,7 +305,17 @@ public class WorkReportController {
             @RequestParam(value = "dueDateStr", required = false) String dueDateStr,
             @RequestParam(value = "dailyReport", required = false) String dailyReport,
             @RequestParam(value = "delayReason", required = false) String delayReason,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            Authentication authentication) {
+        WorkReport target = workReportService.getReportById(id);
+        if (target != null && (target.getParentId() == null || target.getParentId() <= 0)) {
+            String actor = currentHandle(authentication);
+            boolean isAdmin = authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+            boolean isCreator = target.getCreatedBy() != null && target.getCreatedBy().equalsIgnoreCase(actor);
+            if (!isCreator && !isAdmin) {
+                assignee = target.getAssignee(); // Giữ nguyên người phụ trách cũ của công việc cha nếu không phải người tạo
+            }
+        }
         Integer progressPercentage = null;
         if (progressPercentageStr != null && !progressPercentageStr.trim().isEmpty()) {
             try {
@@ -324,8 +338,20 @@ public class WorkReportController {
             @RequestParam(value = "dailyReport", required = false) String dailyReport,
             @RequestParam(value = "watchers", required = false) String watchers,
             @RequestParam(value = "dueDate", required = false) String dueDateStr,
-            @RequestParam(value = "delayReason", required = false) String delayReason) {
+            @RequestParam(value = "delayReason", required = false) String delayReason,
+            Authentication authentication) {
         try {
+            if (assignee != null) {
+                WorkReport target = workReportService.getReportById(id);
+                if (target != null && (target.getParentId() == null || target.getParentId() <= 0)) {
+                    String actor = currentHandle(authentication);
+                    boolean isAdmin = authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    boolean isCreator = target.getCreatedBy() != null && target.getCreatedBy().equalsIgnoreCase(actor);
+                    if (!isCreator && !isAdmin) {
+                        assignee = null; // Không cho phép đổi người phụ trách công việc cha nếu không phải người tạo
+                    }
+                }
+            }
             Integer progress = null;
             if (progressStr != null && !progressStr.trim().isEmpty()) {
                 try {
@@ -345,8 +371,19 @@ public class WorkReportController {
     }
 
     @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
-    public String deleteReport(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
+    public String deleteReport(@PathVariable("id") Long id, RedirectAttributes redirectAttributes,
+                               Authentication authentication) {
         System.out.println(">>> [DELETE CONTROLLER] Bắt đầu xóa ID: " + id);
+        // Chỉ người tạo mới được xoá. Người được giao việc / người theo dõi thì không,
+        // kể cả khi họ tự gọi thẳng URL này.
+        WorkReport target = workReportService.getReportById(id);
+        String owner = target != null ? target.getCreatedBy() : null;
+        if (target == null || owner == null || owner.trim().isEmpty()
+                || !owner.trim().equalsIgnoreCase(currentHandle(authentication))) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Chỉ người tạo báo cáo mới được xoá hạng mục này!");
+            return "redirect:/work-reports";
+        }
         workReportService.deleteReport(id);
         System.out.println(">>> [DELETE CONTROLLER] Đã gọi Service xóa ID: " + id);
         redirectAttributes.addFlashAttribute("successMessage", "Đã xóa hạng mục báo cáo thành công!");
