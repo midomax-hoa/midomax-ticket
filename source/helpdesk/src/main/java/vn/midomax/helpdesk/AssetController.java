@@ -30,9 +30,12 @@ import java.util.Map;
 @RequestMapping("/assets")
 public class AssetController {
 
+    /** Số dòng mỗi trang của danh sách tài sản. */
+    private static final int PAGE_SIZE = 5;
+
     /** Các trạng thái sử dụng cho phép chọn. */
     static final List<String> STATUSES = List.of(
-            "Đang sử dụng", "Trong kho", "Đang sửa", "Hỏng", "Đã thanh lý");
+            "Mới", "Đang sử dụng", "Trong kho", "Đang sửa", "Hỏng", "Đã thanh lý");
 
     /** Tình trạng ghi nhận khi kiểm kê (bám theo giá trị đang dùng trong file Excel). */
     static final List<String> CONDITIONS = List.of(
@@ -46,6 +49,100 @@ public class AssetController {
 
     @Autowired
     private AssetHandoverService handoverService;
+
+    @Autowired
+    private ExcelService excelService;
+
+    /** Tải file Excel mẫu để nhập công cụ dụng cụ hàng loạt. */
+    @GetMapping("/sample-template")
+    public ResponseEntity<InputStreamResource> downloadSampleTemplate() throws IOException {
+        ByteArrayInputStream in = excelService.generateSampleAssetExcel();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=Mau_Nhap_Cong_Cu_Dung_Cu.xlsx");
+        return ResponseEntity.ok().headers(headers)
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(in));
+    }
+
+    /**
+     * Nhập công cụ dụng cụ hàng loạt từ Excel. Mã kiểm kê đã có thì cập nhật,
+     * chưa có thì tạo mới — nhập lại cùng file không sinh bản ghi trùng.
+     */
+    @PostMapping("/import")
+    public String importAssets(@RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                               Authentication authentication,
+                               RedirectAttributes redirectAttributes) {
+        if (file == null || file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Chưa chọn file Excel.");
+            return "redirect:/assets";
+        }
+
+        List<ExcelService.AssetImportRow> rows;
+        try {
+            rows = excelService.parseAssetsFromExcel(file.getInputStream());
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Không đọc được file Excel: " + e.getMessage());
+            return "redirect:/assets";
+        }
+        if (rows.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Không tìm thấy dòng nào có Mã kiểm kê. Kiểm tra lại dòng tiêu đề của file.");
+            return "redirect:/assets";
+        }
+
+        // Tra danh mục theo tên (không phân biệt hoa thường) để khỏi bắt người dùng nhớ id
+        Map<String, Long> categoryByName = new LinkedHashMap<>();
+        for (AssetCategory c : categoryRepository.findAll()) {
+            if (c.getName() != null) categoryByName.put(c.getName().trim().toLowerCase(), c.getId());
+        }
+
+        String actor = ReporterIdentity.of(authentication);
+        int created = 0, updated = 0, noCategory = 0;
+
+        for (ExcelService.AssetImportRow row : rows) {
+            Asset asset = assetRepository.findByInventoryCode(row.inventoryCode).orElse(null);
+            boolean isNew = asset == null;
+            if (isNew) {
+                asset = new Asset();
+                asset.setInventoryCode(row.inventoryCode);
+                asset.setCreatedBy(actor);
+                asset.setCreatedAt(LocalDateTime.now());
+            }
+
+            if (row.categoryName != null && !row.categoryName.isBlank()) {
+                Long categoryId = categoryByName.get(row.categoryName.trim().toLowerCase());
+                if (categoryId != null) asset.setCategoryId(categoryId);
+                else noCategory++;
+            }
+            if (row.officeLocation != null) asset.setOfficeLocation(row.officeLocation);
+            if (row.quantity != null) asset.setQuantity(row.quantity);
+            if (row.assignedToName != null) asset.setAssignedToName(row.assignedToName);
+            if (row.assignedToPosition != null) asset.setAssignedToPosition(row.assignedToPosition);
+            if (row.assignedToDepartment != null) asset.setAssignedToDepartment(row.assignedToDepartment);
+            if (row.assignedToLocation != null) asset.setAssignedToLocation(row.assignedToLocation);
+            if (row.assetType != null) asset.setAssetType(row.assetType);
+            if (row.manufacturer != null) asset.setManufacturer(row.manufacturer);
+            if (row.model != null) asset.setModel(row.model);
+            if (row.details != null) asset.setDetails(row.details);
+            if (row.serialNumber != null) asset.setSerialNumber(row.serialNumber);
+            if (row.purchaseDate != null) asset.setPurchaseDate(row.purchaseDate);
+            asset.setStatus(row.status != null && !row.status.isBlank() ? row.status.trim() : "Đang sử dụng");
+            if (row.note != null) asset.setNote(row.note);
+            asset.setUpdatedAt(LocalDateTime.now());
+
+            assetRepository.save(asset);
+            if (isNew) created++; else updated++;
+        }
+
+        StringBuilder msg = new StringBuilder("Đã nhập ").append(rows.size()).append(" dòng: ")
+                .append(created).append(" tài sản mới, ").append(updated).append(" cập nhật.");
+        if (noCategory > 0) {
+            msg.append(" Có ").append(noCategory).append(" dòng ghi danh mục không có trong hệ thống nên bỏ trống danh mục.");
+        }
+        redirectAttributes.addFlashAttribute("successMessage", msg.toString());
+        return "redirect:/assets?page=" + lastPage();
+    }
 
     @Autowired
     private AssetUsageHistoryRepository usageHistoryRepository;
@@ -80,10 +177,18 @@ public class AssetController {
     public String list(@RequestParam(value = "categoryId", required = false) Long categoryId,
                        @RequestParam(value = "status", required = false) String status,
                        @RequestParam(value = "keyword", required = false) String keyword,
+                       @RequestParam(value = "page", required = false) Integer page,
                        Model model) {
 
         List<AssetCategory> categories = categoryRepository.findAllByOrderBySortOrderAscNameAsc();
-        List<Asset> assets = assetRepository.search(categoryId, status, keyword);
+        List<Asset> allMatched = assetRepository.search(categoryId, status, keyword);
+
+        // Phân trang trong bộ nhớ: danh sách tài sản không lớn, tránh phải đổi query/JPA
+        int totalPages = Math.max(1, (int) Math.ceil(allMatched.size() / (double) PAGE_SIZE));
+        int currentPage = Math.min(Math.max(page == null ? 1 : page, 1), totalPages);
+        int from = (currentPage - 1) * PAGE_SIZE;
+        int to = Math.min(from + PAGE_SIZE, allMatched.size());
+        List<Asset> assets = allMatched.subList(from, to);
 
         // Tên danh mục theo id, để template hiển thị mà không phải query lại từng dòng
         Map<Long, AssetCategory> categoryById = new LinkedHashMap<>();
@@ -98,8 +203,18 @@ public class AssetController {
         }
 
         model.addAttribute("assets", assets);
-        model.addAttribute("assetJson", buildAssetJson(assets));
-        model.addAttribute("assetCount", assets.size());
+        // JSON cho form sửa phải phủ TOÀN BỘ kết quả, không chỉ trang hiện tại, vì
+        // các sản phẩm cùng đợt bàn giao có thể nằm ở trang khác.
+        model.addAttribute("assetJson", buildAssetJson(allMatched));
+        model.addAttribute("assetCount", allMatched.size());
+        model.addAttribute("currentPage", currentPage);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageFrom", allMatched.isEmpty() ? 0 : from + 1);
+        model.addAttribute("pageTo", to);
+        // Mảng JSON toàn bộ tài sản khớp bộ lọc, để JS gom sản phẩm cùng đợt bàn giao
+        // kể cả khi chúng nằm ở trang khác.
+        model.addAttribute("allAssetsJson",
+                "[" + String.join(",", buildAssetJson(allMatched).values()) + "]");
         model.addAttribute("totalCount", assetRepository.count());
         model.addAttribute("categories", categories);
         model.addAttribute("categoryById", categoryById);
@@ -117,10 +232,43 @@ public class AssetController {
         return "asset-management";
     }
 
+    /** Xuất danh sách công cụ dụng cụ (theo đúng bộ lọc đang chọn) ra file Excel. */
+    @GetMapping("/export")
+    public ResponseEntity<InputStreamResource> exportExcel(
+            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "keyword", required = false) String keyword) throws IOException {
+
+        List<Asset> allMatched = assetRepository.search(categoryId, status, keyword);
+        List<AssetCategory> categories = categoryRepository.findAllByOrderBySortOrderAscNameAsc();
+
+        Map<Long, String> categoryNames = new LinkedHashMap<>();
+        String categoryNameFilter = "Tất cả";
+        for (AssetCategory c : categories) {
+            categoryNames.put(c.getId(), c.getName());
+            if (categoryId != null && categoryId.equals(c.getId())) {
+                categoryNameFilter = c.getName();
+            }
+        }
+
+        ByteArrayInputStream in = excelService.exportAssetsToExcel(
+                allMatched, categoryNameFilter, status, keyword, categoryNames);
+
+        String filename = "CongCuDungCu_Midomax_" + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".xlsx";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=" + filename);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(in));
+    }
+
     /** Thêm mới hoặc cập nhật một tài sản. id rỗng -> thêm mới. */
     @PostMapping("/save")
     public String save(@RequestParam(value = "id", required = false) Long id,
-                       @RequestParam("inventoryCode") String inventoryCode,
+                       @RequestParam(value = "inventoryCode", required = false) String inventoryCode,
                        @RequestParam(value = "categoryId", required = false) Long categoryId,
                        @RequestParam(value = "officeLocation", required = false) String officeLocation,
                        @RequestParam(value = "quantity", required = false) Integer quantity,
@@ -136,14 +284,23 @@ public class AssetController {
                        @RequestParam(value = "purchaseDate", required = false) String purchaseDateRaw,
                        @RequestParam(value = "status", required = false) String status,
                        @RequestParam(value = "note", required = false) String note,
+                       @RequestParam(value = "handoverBy", required = false) String handoverBy,
+                       @RequestParam(value = "handoverByPosition", required = false) String handoverByPosition,
+                       @RequestParam(value = "handoverByDepartment", required = false) String handoverByDepartment,
+                       @RequestParam(value = "handoverDate", required = false) String handoverDateRaw,
+                       @RequestParam(value = "extraId", required = false) List<Long> extraIds,
+                       @RequestParam(value = "extraCode", required = false) List<String> extraCodes,
+                       @RequestParam(value = "extraType", required = false) List<String> extraTypes,
+                       @RequestParam(value = "extraManufacturer", required = false) List<String> extraManufacturers,
+                       @RequestParam(value = "extraModel", required = false) List<String> extraModels,
+                       @RequestParam(value = "extraSerial", required = false) List<String> extraSerials,
+                       @RequestParam(value = "extraQty", required = false) List<Integer> extraQtys,
                        Authentication authentication,
                        RedirectAttributes redirectAttributes) {
 
-        if (inventoryCode == null || inventoryCode.isBlank()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng nhập mã kiểm kê.");
-            return "redirect:/assets";
-        }
-        String code = inventoryCode.trim();
+        // Mã kiểm kê không bắt buộc: phụ kiện lẻ không dán mã thì để trống (lưu NULL).
+        // Bỏ trống cũng không "tiêu" mất số gợi ý, lần sau vẫn gợi ý đúng số kế tiếp.
+        String code = (inventoryCode == null || inventoryCode.isBlank()) ? null : inventoryCode.trim();
 
         Asset asset;
         String oldAssignedName = null;
@@ -160,8 +317,9 @@ public class AssetController {
             asset.setCreatedAt(LocalDateTime.now());
         }
 
-        // Mã kiểm kê phải là duy nhất (bỏ qua chính bản ghi đang sửa)
-        if (!code.equalsIgnoreCase(asset.getInventoryCode()) && assetRepository.existsByInventoryCode(code)) {
+        // Mã kiểm kê nếu có nhập thì phải là duy nhất (bỏ qua chính bản ghi đang sửa)
+        if (code != null && !code.equalsIgnoreCase(asset.getInventoryCode())
+                && assetRepository.existsByInventoryCode(code)) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mã kiểm kê \"" + code + "\" đã tồn tại.");
             return "redirect:/assets";
         }
@@ -188,9 +346,83 @@ public class AssetController {
         asset.setPurchaseDate(parseDate(purchaseDateRaw));
         asset.setStatus(trim(status));
         asset.setNote(trim(note));
+        asset.setHandoverBy(trim(handoverBy));
+        asset.setHandoverByPosition(trim(handoverByPosition));
+        asset.setHandoverByDepartment(trim(handoverByDepartment));
+        asset.setHandoverDate(parseDateTimeLocal(handoverDateRaw));
         asset.setUpdatedAt(LocalDateTime.now());
 
         assetRepository.save(asset);
+
+        // Bàn giao 1 lần nhiều sản phẩm: các dòng "Thêm sản phẩm" dùng chung danh mục,
+        // địa điểm, người nhận, người giao, thời gian và tình trạng với sản phẩm chính.
+        int extraSaved = 0, extraUpdated = 0;
+        if (extraCodes != null) {
+            for (int i = 0; i < extraCodes.size(); i++) {
+                String exCode = trim(extraCodes.get(i));
+                if (exCode != null && exCode.isEmpty()) exCode = null;
+                // Dòng trống hoàn toàn (không mã, không loại, không serial) thì bỏ qua;
+                // còn chỉ thiếu mã kiểm kê thì vẫn lưu vì phụ kiện lẻ không dán mã.
+                if (exCode == null
+                        && isBlankValue(valueAt(extraTypes, i))
+                        && isBlankValue(valueAt(extraManufacturers, i))
+                        && isBlankValue(valueAt(extraModels, i))
+                        && isBlankValue(valueAt(extraSerials, i))) {
+                    continue;
+                }
+
+                // Dòng có extraId là sản phẩm ĐÃ CÓ trong cùng đợt bàn giao (mở form sửa
+                // sẽ nạp sẵn) -> cập nhật; không có id thì mới là sản phẩm thêm mới.
+                Long exId = extraIds != null && i < extraIds.size() ? extraIds.get(i) : null;
+                Asset extra = (exId != null && exId > 0) ? assetRepository.findById(exId).orElse(null) : null;
+                boolean isNewExtra = (extra == null);
+
+                if (exCode != null && (isNewExtra || !exCode.equalsIgnoreCase(extra.getInventoryCode()))) {
+                    if (assetRepository.existsByInventoryCode(exCode)) {
+                        redirectAttributes.addFlashAttribute("errorMessage",
+                                "Mã kiểm kê \"" + exCode + "\" đã tồn tại — dòng này bị bỏ qua.");
+                        continue;
+                    }
+                }
+                if (isNewExtra) {
+                    extra = new Asset();
+                    extra.setCreatedBy(authentication != null ? authentication.getName() : "unknown");
+                    extra.setCreatedAt(LocalDateTime.now());
+                }
+                extra.setInventoryCode(exCode);
+                extra.setCategoryId(categoryId);
+                extra.setOfficeLocation(asset.getOfficeLocation());
+                extra.setAssignedToName(asset.getAssignedToName());
+                extra.setAssignedToPosition(asset.getAssignedToPosition());
+                extra.setAssignedToDepartment(asset.getAssignedToDepartment());
+                extra.setAssignedToLocation(asset.getAssignedToLocation());
+                extra.setAssetType(valueAt(extraTypes, i));
+                extra.setManufacturer(valueAt(extraManufacturers, i));
+                extra.setModel(valueAt(extraModels, i));
+                extra.setSerialNumber(valueAt(extraSerials, i));
+                Integer exQty = extraQtys != null && i < extraQtys.size() ? extraQtys.get(i) : null;
+                extra.setQuantity(exQty == null || exQty < 1 ? 1 : exQty);
+                extra.setStatus(asset.getStatus());
+                extra.setPurchaseDate(asset.getPurchaseDate());
+                extra.setHandoverBy(asset.getHandoverBy());
+                extra.setHandoverByPosition(asset.getHandoverByPosition());
+                extra.setHandoverByDepartment(asset.getHandoverByDepartment());
+                extra.setHandoverDate(asset.getHandoverDate());
+                extra.setNote(asset.getNote());
+                extra.setUpdatedAt(LocalDateTime.now());
+                assetRepository.save(extra);
+                if (isNewExtra) extraSaved++; else extraUpdated++;
+
+                if (isNewExtra && extra.getAssignedToName() != null && !extra.getAssignedToName().isBlank()) {
+                    usageHistoryRepository.save(new AssetUsageHistory(
+                            extra.getId(), extra.getInventoryCode(), extra.getAssignedToName(),
+                            extra.getAssignedToPosition(), extra.getAssignedToDepartment(),
+                            extra.getAssignedToLocation(), LocalDateTime.now(),
+                            "Bàn giao / Cấp phát mới tài sản",
+                            authentication != null ? authentication.getName() : "system"));
+                }
+            }
+        }
 
         // Logic tự động lưu vết Lịch Sử Người Sử Dụng / Bàn Giao
         boolean isNew = (id == null);
@@ -241,9 +473,48 @@ public class AssetController {
             }
         }
 
-        redirectAttributes.addFlashAttribute("successMessage",
-                (id != null ? "Đã cập nhật tài sản " : "Đã thêm tài sản ") + code + ".");
-        return "redirect:/assets";
+        String okMsg = (id != null ? "Đã cập nhật tài sản " : "Đã thêm tài sản ")
+                + (code != null ? code : "(chưa có mã kiểm kê)") + ".";
+        if (extraSaved > 0) okMsg += " Thêm " + extraSaved + " sản phẩm cùng đợt bàn giao.";
+        if (extraUpdated > 0) okMsg += " Cập nhật " + extraUpdated + " sản phẩm cùng đợt.";
+        redirectAttributes.addFlashAttribute("successMessage", okMsg);
+        // Danh sách xếp cũ->mới và chia 5 dòng/trang, nên tài sản vừa lưu thường nằm ở
+        // trang cuối. Nhảy thẳng tới trang chứa nó để thấy ngay kết quả.
+        return "redirect:/assets?page=" + pageOf(asset.getId());
+    }
+
+    /** Trang cuối của danh sách mặc định — nơi các tài sản vừa thêm nằm. */
+    private int lastPage() {
+        return Math.max(1, (int) Math.ceil(assetRepository.count() / (double) PAGE_SIZE));
+    }
+
+    /** Trang (1-based) chứa tài sản trong danh sách mặc định, để redirect về đúng chỗ. */
+    private int pageOf(Long assetId) {
+        if (assetId == null) return 1;
+        List<Asset> all = assetRepository.search(null, null, null);
+        for (int i = 0; i < all.size(); i++) {
+            if (assetId.equals(all.get(i).getId())) return (i / PAGE_SIZE) + 1;
+        }
+        return Math.max(1, (int) Math.ceil(all.size() / (double) PAGE_SIZE));
+    }
+
+    private static boolean isBlankValue(String v) {
+        return v == null || v.isBlank();
+    }
+
+    private static String valueAt(List<String> list, int i) {
+        return list != null && i < list.size() ? trim(list.get(i)) : null;
+    }
+
+    /** Parse chuỗi datetime-local "yyyy-MM-ddTHH:mm"; nhận cả "yyyy-MM-dd". */
+    private static LocalDateTime parseDateTimeLocal(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            String v = raw.trim();
+            return v.contains("T") ? LocalDateTime.parse(v) : LocalDate.parse(v).atStartOfDay();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Ghi nhận kết quả kiểm kê cho một tài sản. */
@@ -305,8 +576,10 @@ public class AssetController {
             @RequestParam("ids") List<Long> ids,
             @RequestParam(value = "accName", required = false) List<String> accNames,
             @RequestParam(value = "accSpec", required = false) List<String> accSpecs,
+            @RequestParam(value = "accSerial", required = false) List<String> accSerials,
             @RequestParam(value = "accQuantity", required = false) List<String> accQuantities,
-            @RequestParam(value = "accCondition", required = false) List<String> accConditions)
+            @RequestParam(value = "accCondition", required = false) List<String> accConditions,
+            @RequestParam(value = "saveAccessories", required = false, defaultValue = "false") boolean saveAccessories)
             throws IOException {
 
         if (ids == null || ids.isEmpty()) {
@@ -336,7 +609,11 @@ public class AssetController {
         }
 
         List<AssetHandoverService.Accessory> accessories =
-                buildAccessories(accNames, accSpecs, accQuantities, accConditions);
+                buildAccessories(accNames, accSpecs, accSerials, accQuantities, accConditions);
+
+        if (saveAccessories) {
+            saveAccessoriesAsAssets(assets.get(0), accessories);
+        }
 
         ByteArrayInputStream in = handoverService.buildHandoverDoc(assets, categoryById, accessories);
 
@@ -354,7 +631,89 @@ public class AssetController {
     }
 
     /** Gộp các mảng song song từ form thành danh sách phụ kiện, bỏ dòng trống. */
+    /**
+     * Chỉ LƯU các dòng phụ kiện thành tài sản, không xuất file — nút "Tải biên bản"
+     * lo phần tải. Phụ kiện kế thừa người nhận / người giao / đợt bàn giao của tài sản gốc.
+     */
+    @PostMapping("/handover/save-accessories")
+    public String saveHandoverAccessories(
+            @RequestParam("ids") List<Long> ids,
+            @RequestParam(value = "accName", required = false) List<String> accNames,
+            @RequestParam(value = "accSpec", required = false) List<String> accSpecs,
+            @RequestParam(value = "accSerial", required = false) List<String> accSerials,
+            @RequestParam(value = "accQuantity", required = false) List<String> accQuantities,
+            @RequestParam(value = "accCondition", required = false) List<String> accConditions,
+            RedirectAttributes redirectAttributes) {
+
+        Asset base = (ids == null || ids.isEmpty()) ? null
+                : assetRepository.findById(ids.get(0)).orElse(null);
+        if (base == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy tài sản gốc của biên bản.");
+            return "redirect:/assets";
+        }
+
+        List<AssetHandoverService.Accessory> accessories =
+                buildAccessories(accNames, accSpecs, accSerials, accQuantities, accConditions);
+        if (accessories.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Chưa có dòng phụ kiện nào để lưu. Bấm \"Thêm phụ kiện\" và nhập tên trước.");
+            return "redirect:/assets";
+        }
+
+        int saved = saveAccessoriesAsAssets(base, accessories);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Đã lưu " + saved + " sản phẩm vào danh sách công cụ dụng cụ (cùng đợt bàn giao với "
+                        + base.getInventoryCode() + ").");
+        return "redirect:/assets?page=" + lastPage();
+    }
+
+    /** Tạo tài sản mới từ các dòng phụ kiện, trả về số dòng đã lưu. */
+    private int saveAccessoriesAsAssets(Asset first, List<AssetHandoverService.Accessory> accessories) {
+        int saved = 0;
+        for (AssetHandoverService.Accessory acc : accessories) {
+            Asset extra = new Asset();
+            extra.setInventoryCode(nextInventoryCode());
+            extra.setCategoryId(first.getCategoryId());
+            extra.setOfficeLocation(first.getOfficeLocation());
+            // Map đúng theo form sửa tài sản: Tên -> Loại tài sản, Thông số -> Thông tin
+            // chi tiết, Serial -> Serial Number, để mở lại thấy khớp với biên bản.
+            extra.setAssetType(acc.name());
+            extra.setDetails(acc.spec());
+            extra.setSerialNumber(acc.serial());
+            try {
+                extra.setQuantity(Math.max(1, Integer.parseInt(acc.quantity().replaceAll("[^0-9]", ""))));
+            } catch (Exception e) {
+                extra.setQuantity(1);
+            }
+            extra.setStatus(acc.condition() != null && !acc.condition().isBlank() ? acc.condition() : "Mới");
+            extra.setAssignedToName(first.getAssignedToName());
+            extra.setAssignedToPosition(first.getAssignedToPosition());
+            extra.setAssignedToDepartment(first.getAssignedToDepartment());
+            extra.setAssignedToLocation(first.getAssignedToLocation());
+            extra.setHandoverBy(first.getHandoverBy());
+            extra.setHandoverByPosition(first.getHandoverByPosition());
+            extra.setHandoverByDepartment(first.getHandoverByDepartment());
+            extra.setHandoverDate(first.getHandoverDate());
+            extra.setCreatedBy(first.getHandoverBy() != null ? first.getHandoverBy() : "handover");
+            extra.setCreatedAt(LocalDateTime.now());
+            extra.setUpdatedAt(LocalDateTime.now());
+            assetRepository.save(extra);
+            saved++;
+
+            if (extra.getAssignedToName() != null && !extra.getAssignedToName().isBlank()) {
+                usageHistoryRepository.save(new AssetUsageHistory(
+                        extra.getId(), extra.getInventoryCode(), extra.getAssignedToName(),
+                        extra.getAssignedToPosition(), extra.getAssignedToDepartment(),
+                        extra.getAssignedToLocation(), LocalDateTime.now(),
+                        "Bàn giao / Cấp phát mới tài sản (lưu từ biên bản bàn giao)",
+                        extra.getCreatedBy()));
+            }
+        }
+        return saved;
+    }
+
     private List<AssetHandoverService.Accessory> buildAccessories(List<String> names, List<String> specs,
+                                                                  List<String> serials,
                                                                   List<String> quantities, List<String> conditions) {
         List<AssetHandoverService.Accessory> result = new ArrayList<>();
         if (names == null) return result;
@@ -362,7 +721,7 @@ public class AssetController {
             String name = names.get(i);
             if (name == null || name.isBlank()) continue;
             result.add(new AssetHandoverService.Accessory(
-                    name.trim(), at(specs, i), at(quantities, i), at(conditions, i)));
+                    name.trim(), at(specs, i), at(serials, i), at(quantities, i), at(conditions, i)));
         }
         return result;
     }
@@ -469,6 +828,13 @@ public class AssetController {
             m.put("purchaseDate", a.getPurchaseDateInput());
             m.put("status", a.getStatus());
             m.put("note", a.getNote());
+            m.put("handoverBy", a.getHandoverBy());
+            m.put("handoverByPosition", a.getHandoverByPosition());
+            m.put("handoverByDepartment", a.getHandoverByDepartment());
+            // input datetime-local cần dạng yyyy-MM-ddTHH:mm
+            m.put("handoverDate", a.getHandoverDate() != null
+                    ? a.getHandoverDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"))
+                    : null);
             result.put(a.getId(), toJson(m));
         }
         return result;
@@ -540,7 +906,7 @@ public class AssetController {
         return raw.replaceAll("[^a-zA-Z0-9\\-_]", "_");
     }
 
-    private String trim(String raw) {
+    private static String trim(String raw) {
         return raw == null ? null : raw.trim();
     }
 

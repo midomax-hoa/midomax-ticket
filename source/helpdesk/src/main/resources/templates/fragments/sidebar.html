@@ -624,11 +624,7 @@
                 box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5) !important;
             }
 
-            .sidebar.active .mobile-bottom-nav,
-            .sidebar.show .mobile-bottom-nav,
-            body.sidebar-open .mobile-bottom-nav {
-                display: none !important;
-            }
+
 
             /* GLOBAL MOBILE LAYOUT RESPONSIVENESS FIXES */
             .main-content {
@@ -674,75 +670,7 @@
             }
         }
 
-        /* CLEAN BLACK FLOATING PILL MOBILE NAVIGATION BAR */
-        @media (max-width: 991px) {
-            .mobile-bottom-nav {
-                position: fixed;
-                bottom: 16px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: calc(100% - 32px);
-                max-width: 380px;
-                height: 64px;
-                background: #0f172a;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 40px;
-                box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
-                z-index: 99999;
-                display: flex !important;
-                align-items: center;
-                justify-content: space-around;
-                padding: 0 10px;
-                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            }
 
-            .mobile-nav-link {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                color: #94a3b8;
-                text-decoration: none;
-                font-size: 10px;
-                font-weight: 600;
-                transition: all 0.2s ease;
-                padding: 6px 10px;
-                border-radius: 20px;
-                flex: 1;
-                text-align: center;
-            }
-
-            .mobile-nav-link i {
-                font-size: 19px;
-                margin-bottom: 3px;
-                transition: transform 0.2s ease, color 0.2s ease;
-            }
-
-            .mobile-nav-link span {
-                white-space: nowrap;
-            }
-
-            .mobile-nav-link:hover {
-                color: #e2e8f0;
-            }
-
-            .mobile-nav-link.active {
-                color: #38bdf8;
-                font-weight: 700;
-            }
-
-            .mobile-nav-link.active i {
-                transform: translateY(-2px);
-                color: #38bdf8;
-                filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.4));
-            }
-        }
-
-        @media (min-width: 992px) {
-            .mobile-bottom-nav {
-                display: none !important;
-            }
-        }
 
         /* ============================================================
            CHIM KAMI HÚT MẬT — hiệu ứng khi rê chuột vào logo MIDOMAX
@@ -1313,32 +1241,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- CLEAN BLACK FLOATING PILL MOBILE NAVIGATION BAR -->
-<div class="mobile-bottom-nav d-lg-none">
-    <!-- Item 1: Homepage -->
-    <a th:href="@{/user-home}" class="mobile-nav-link" th:classappend="${activePage == 'home' or activePage == 'user-home' or activePage == 'admin-home' ? 'active' : ''}">
-        <i class="fa-solid fa-house"></i>
-        <span>Trang chủ</span>
-    </a>
 
-    <!-- Item 2: Quản lý Ticket -->
-    <a th:href="@{/ticket-management}" class="mobile-nav-link" th:classappend="${activePage == 'ticket' or activePage == 'tickets' ? 'active' : ''}">
-        <i class="fa-solid fa-ticket"></i>
-        <span>Quản lý Ticket</span>
-    </a>
-
-    <!-- Item 3: Work Reports -->
-    <a th:href="@{/work-reports}" class="mobile-nav-link" th:classappend="${activePage == 'reports' or activePage == 'work-reports' ? 'active' : ''}">
-        <i class="fa-solid fa-clipboard-list"></i>
-        <span>Báo cáo</span>
-    </a>
-
-    <!-- Item 4: Dashboard -->
-    <a th:href="@{/dashboard}" class="mobile-nav-link" th:classappend="${activePage == 'dashboard' ? 'active' : ''}">
-        <i class="fa-solid fa-chart-pie"></i>
-        <span>Dashboard</span>
-    </a>
-</div>
     </div>
 </body>
 </html>

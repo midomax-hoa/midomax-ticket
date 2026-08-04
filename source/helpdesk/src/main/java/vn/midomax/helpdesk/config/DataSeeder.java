@@ -93,36 +93,50 @@ public class DataSeeder implements CommandLineRunner {
      * 4. Khác
      */
     private void seedAssetCategories() {
-        seedCategory("Thiết bị CNTT & Mạng", "fa-solid fa-laptop", true, 1);
-        seedCategory("Bàn ghế & Nội thất", "fa-solid fa-chair", false, 2);
-        seedCategory("Thiết bị điện & Gia dụng", "fa-solid fa-plug", false, 3);
-        seedCategory("Khác", "fa-solid fa-box", false, 99);
-
-        // Lấy ID của danh mục đích
-        Long cnttDestId = assetCategoryRepository.findByName("Thiết bị CNTT & Mạng").map(AssetCategory::getId).orElse(null);
-        Long furnitureDestId = assetCategoryRepository.findByName("Bàn ghế & Nội thất").map(AssetCategory::getId).orElse(null);
-        Long applianceDestId = assetCategoryRepository.findByName("Thiết bị điện & Gia dụng").map(AssetCategory::getId).orElse(null);
-
-        // Gộp các danh mục cũ sang danh mục mới
-        mergeCategory("Thiết bị CNTT", cnttDestId);
-        mergeCategory("Thiết bị mạng", cnttDestId);
-        mergeCategory("Điện thoại", cnttDestId);
-        mergeCategory("Camera", cnttDestId);
-        mergeCategory("Tivi", cnttDestId);
-        mergeCategory("Bàn ghế", furnitureDestId);
-        mergeCategory("Máy nước nóng", applianceDestId);
-        mergeCategory("Quạt", applianceDestId);
-    }
-
-    private void seedCategory(String name, String icon, boolean itEquipment, int sortOrder) {
-        if (!assetCategoryRepository.existsByName(name)) {
-            assetCategoryRepository.save(new AssetCategory(name, icon, itEquipment, sortOrder));
+        java.util.List<AssetCategory> existingList = assetCategoryRepository.findAll();
+        java.util.Map<String, AssetCategory> categoryMap = new java.util.HashMap<>();
+        for (AssetCategory c : existingList) {
+            if (c.getName() != null) {
+                categoryMap.put(c.getName(), c);
+            }
         }
+
+        seedCategoryIfAbsent(categoryMap, "Thiết bị CNTT & Mạng", "fa-solid fa-laptop", true, 1);
+        seedCategoryIfAbsent(categoryMap, "Bàn ghế & Nội thất", "fa-solid fa-chair", false, 2);
+        seedCategoryIfAbsent(categoryMap, "Thiết bị điện & Gia dụng", "fa-solid fa-plug", false, 3);
+        seedCategoryIfAbsent(categoryMap, "Khác", "fa-solid fa-box", false, 99);
+
+        AssetCategory cnttCat = categoryMap.get("Thiết bị CNTT & Mạng");
+        AssetCategory furnitureCat = categoryMap.get("Bàn ghế & Nội thất");
+        AssetCategory applianceCat = categoryMap.get("Thiết bị điện & Gia dụng");
+
+        Long cnttDestId = cnttCat != null ? cnttCat.getId() : null;
+        Long furnitureDestId = furnitureCat != null ? furnitureCat.getId() : null;
+        Long applianceDestId = applianceCat != null ? applianceCat.getId() : null;
+
+        mergeCategory(categoryMap, "Thiết bị CNTT", cnttDestId);
+        mergeCategory(categoryMap, "Thiết bị mạng", cnttDestId);
+        mergeCategory(categoryMap, "Điện thoại", cnttDestId);
+        mergeCategory(categoryMap, "Camera", cnttDestId);
+        mergeCategory(categoryMap, "Tivi", cnttDestId);
+        mergeCategory(categoryMap, "Bàn ghế", furnitureDestId);
+        mergeCategory(categoryMap, "Máy nước nóng", applianceDestId);
+        mergeCategory(categoryMap, "Quạt", applianceDestId);
     }
 
-    private void mergeCategory(String oldName, Long newCategoryId) {
+    private AssetCategory seedCategoryIfAbsent(java.util.Map<String, AssetCategory> categoryMap, String name, String icon, boolean itEquipment, int sortOrder) {
+        if (!categoryMap.containsKey(name)) {
+            AssetCategory cat = assetCategoryRepository.save(new AssetCategory(name, icon, itEquipment, sortOrder));
+            categoryMap.put(name, cat);
+            return cat;
+        }
+        return categoryMap.get(name);
+    }
+
+    private void mergeCategory(java.util.Map<String, AssetCategory> categoryMap, String oldName, Long newCategoryId) {
         if (newCategoryId == null) return;
-        assetCategoryRepository.findByName(oldName).ifPresent(oldCat -> {
+        AssetCategory oldCat = categoryMap.get(oldName);
+        if (oldCat != null) {
             if (oldCat.getId().equals(newCategoryId)) return;
             
             // Chuyển toàn bộ tài sản sang danh mục mới
@@ -135,10 +149,11 @@ public class DataSeeder implements CommandLineRunner {
             // Xóa danh mục cũ
             try {
                 assetCategoryRepository.delete(oldCat);
+                categoryMap.remove(oldName);
                 System.out.println("Đã gộp danh mục cũ '" + oldName + "' sang danh mục mới.");
             } catch (Exception e) {
                 System.err.println("Không thể xóa danh mục cũ '" + oldName + "': " + e.getMessage());
             }
-        });
+        }
     }
 }

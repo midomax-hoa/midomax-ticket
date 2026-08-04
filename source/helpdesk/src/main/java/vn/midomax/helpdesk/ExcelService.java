@@ -10,9 +10,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ExcelService {
@@ -410,6 +412,7 @@ public class ExcelService {
                 e.setPaymentStatus(InvoiceEntry.normalizePaymentStatus(cellString(row, cols.get("paymentStatus"))));
                 e.setEnteredBy(cellString(row, cols.get("enteredBy")));
                 e.setNotes(cellString(row, cols.get("notes")));
+                e.setBudgetItemName(cellString(row, cols.get("budgetItem")));
                 e.setPeriodKey(InvoiceEntry.periodKeyOf(e.getTransDate(), e.getEntryDate()));
 
                 if (amount <= 0) {
@@ -446,6 +449,7 @@ public class ExcelService {
      */
     private String matchInvoiceColumn(String h) {
         if (h == null || h.isEmpty()) return null;
+        if (h.contains("hạng mục") || h.contains("budget item")) return "budgetItem";
         if (h.contains("phân loại") || h.contains("sub-category") || h.contains("sub category")) return "subCategory";
         if (h.contains("danh mục") || h.contains("category")) return "category";
         if (h.contains("ngày nhập") || h.contains("entry date")) return "entryDate";
@@ -773,16 +777,23 @@ public class ExcelService {
         List<BudgetItem> items = new ArrayList<>();
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
             // Format ITD (file ngân sách năm thật): có các sheet IT_OPEX / IT_CAPEX
+            // và sheet tổng hợp chứa các đầu mục ngoài OPEX/CAPEX chi tiết.
             List<Sheet> itdSheets = new ArrayList<>();
+            Sheet summarySheet = null;
             for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
                 String name = workbook.getSheetName(s).toUpperCase();
-                if (name.contains("OPEX") || name.contains("CAPEX")) {
+                if (name.contains("TỔNG HỢP") || name.contains("TONG HOP")) {
+                    summarySheet = workbook.getSheetAt(s);
+                } else if (name.contains("OPEX") || name.contains("CAPEX")) {
                     itdSheets.add(workbook.getSheetAt(s));
                 }
             }
-            if (!itdSheets.isEmpty()) {
+            if (!itdSheets.isEmpty() || summarySheet != null) {
                 for (Sheet sheet : itdSheets) {
                     items.addAll(parseItdBudgetSheet(sheet, fundId));
+                }
+                if (summarySheet != null) {
+                    items.addAll(parseSummaryBudgetSheet(summarySheet, fundId));
                 }
                 return items;
             }
@@ -864,46 +875,238 @@ public class ExcelService {
         return items;
     }
 
-    /** Tạo file Excel mẫu để nhập ngân sách. */
+    /**
+     * Parse sheet "IT-TỔNG HỢP NGÂN SÁCH" — bảng chính, mỗi dòng là một đầu mục chi phí.
+     * Cột: A=STT, B=Nội dung, C=Loại chi phí (OPEX/CAPEX/PROJECT/NHÂN SỰ/CÔNG TÁC PHÍ),
+     * D=Ngân sách dự kiến, E=Tỷ trọng, F=Đầu mục chi phí, G=Ghi chú.
+     *
+     * Hai dòng "Chi phí gia hạn các dịch vụ" và "Chi phí đầu tư, mua sắm" có ngân sách là
+     * công thức trỏ sang IT_OPEX!/IT_CAPEX! — đó chỉ là tổng của 2 sheet chi tiết đã nhập
+     * ở trên nên phải bỏ qua, nếu không sẽ cộng trùng.
+     */
+    private List<BudgetItem> parseSummaryBudgetSheet(Sheet sheet, Long fundId) {
+        List<BudgetItem> items = new ArrayList<>();
+
+        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+
+            String itemName = getCellString(row, 1); // cột B: Nội dung
+            if (itemName == null || itemName.isBlank()) continue;
+
+            String lower = itemName.trim().toLowerCase();
+            if (lower.equals("nội dung") || lower.startsWith("tổng cộng")
+                    || lower.startsWith("tổng chi phí")) continue;
+
+            if (referencesDetailSheet(row, 3)) continue; // đã nhập chi tiết từ IT_OPEX / IT_CAPEX
+
+            String costType = getCellString(row, 2); // cột C
+            if (costType == null || costType.isBlank()) costType = "KHÁC";
+            costType = costType.trim().toUpperCase();
+
+            BudgetItem item = new BudgetItem();
+            item.setFundId(fundId);
+            item.setGroupCategory(costType);
+            item.setCostType(costType);
+            item.setSubCategory(getCellString(row, 5)); // Đầu mục chi phí
+            item.setItemName(itemName.trim());
+            item.setQuantity(1);
+            long total = getCellLong(row, 3);
+            item.setUnitPrice(total);
+            item.setAllocatedAmount(total);
+            item.setNotes(getCellString(row, 6));
+            if (total <= 0) {
+                String note = item.getNotes();
+                item.setNotes((note == null || note.isBlank())
+                        ? "Chưa có ngân sách trong file Excel" : note);
+            }
+            items.add(item);
+        }
+        return items;
+    }
+
+    /** Ô ngân sách là công thức trỏ sang sheet IT_OPEX / IT_CAPEX (tổng của sheet chi tiết). */
+    private boolean referencesDetailSheet(Row row, int col) {
+        Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null || cell.getCellType() != CellType.FORMULA) return false;
+        String formula = cell.getCellFormula().toUpperCase();
+        return formula.contains("IT_OPEX") || formula.contains("IT_CAPEX");
+    }
+
+    /**
+     * Tạo file Excel mẫu để nhập ngân sách — đúng cấu trúc mà
+     * {@link #parseBudgetItemsFromExcel} đang đọc, để năm sau chỉ việc điền số.
+     * Gồm 4 sheet: HƯỚNG DẪN, IT-TỔNG HỢP NGÂN SÁCH (bảng chính), IT_OPEX, IT_CAPEX.
+     */
     public ByteArrayInputStream generateSampleBudgetExcel() throws IOException {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Sheet sheet = workbook.createSheet("Ngân sách IT");
-            CellStyle headerStyle = workbook.createCellStyle();
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
+            CellStyle head = workbook.createCellStyle();
+            Font bold = workbook.createFont();
+            bold.setBold(true);
+            head.setFont(bold);
+            CellStyle money = workbook.createCellStyle();
+            money.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
 
-            String[] headers = {
-                "Chi phí nhóm 2", "Chi phí nhóm 3", "Nội dung (*)", "Mô tả",
-                "Đơn giá", "Đơn vị", "Số lượng", "Thành tiền", "Ghi chú"
-            };
-            Row headerRow = sheet.createRow(0);
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerStyle);
-                sheet.setColumnWidth(i, 5000);
-            }
-
-            // Dòng dữ liệu mẫu
-            Object[][] sample = {
-                {"Phần cứng", "Laptop/PC", "Laptop Dell i7 16GB", "Dành cho kỹ sư", 25000000L, "Cái", 2, 50000000L, ""},
-                {"Bản quyền", "Phần mềm", "Microsoft 365 Business", "Gói 1 năm/user", 3500000L, "User", 5, 17500000L, "Gia hạn hàng năm"},
-            };
-            for (int r = 0; r < sample.length; r++) {
-                Row row = sheet.createRow(r + 1);
-                for (int c = 0; c < sample[r].length; c++) {
-                    Cell cell = row.createCell(c);
-                    Object val = sample[r][c];
-                    if (val instanceof String)  cell.setCellValue((String) val);
-                    else if (val instanceof Long)    cell.setCellValue((double)(Long) val);
-                    else if (val instanceof Integer) cell.setCellValue((Integer) val);
-                }
-            }
+            buildGuideSheet(workbook, head);
+            buildSummaryTemplateSheet(workbook, head, money);
+            buildDetailTemplateSheet(workbook, "IT_OPEX", head, money, new String[][]{
+                    {"Gia hạn Microsoft 365", "GIA HẠN", "3500000", "User/năm", "20"},
+                    {"Gia hạn tên miền & hosting", "GIA HẠN", "5000000", "Gói/năm", "1"},
+                    {"Chi phí dự trù", "DỰ TRÙ", "50000000", "Gói", "1"},
+            });
+            buildDetailTemplateSheet(workbook, "IT_CAPEX", head, money, new String[][]{
+                    {"Laptop làm việc nhân viên", "MUA MỚI", "25000000", "Cái", "20"},
+                    {"Máy in màu", "MUA MỚI", "30000000", "Cái", "1"},
+                    {"Chi phí dự trù", "DỰ TRÙ", "50000000", "Gói", "1"},
+            });
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         }
+    }
+
+    /** Sheet hướng dẫn — tên sheet không chứa OPEX/CAPEX/TỔNG HỢP nên hệ thống bỏ qua khi import. */
+    private void buildGuideSheet(Workbook workbook, CellStyle head) {
+        Sheet sheet = workbook.createSheet("HƯỚNG DẪN");
+        sheet.setColumnWidth(0, 26000);
+        String[] lines = {
+            "HƯỚNG DẪN ĐIỀN FILE NGÂN SÁCH IT",
+            "",
+            "1. GIỮ NGUYÊN tên 3 sheet và THỨ TỰ CÁC CỘT. Chỉ điền thêm dòng, KHÔNG chèn/xoá cột —",
+            "   hệ thống đọc theo vị trí cột, chèn cột sẽ làm lệch toàn bộ số liệu mà không báo lỗi.",
+            "   Được phép đổi tên sheet miễn là vẫn chứa chữ OPEX / CAPEX / TỔNG HỢP (vd IT_OPEX 2027).",
+            "",
+            "2. Sheet IT-TỔNG HỢP NGÂN SÁCH là BẢNG CHÍNH. Mỗi dòng là một đầu mục chi phí.",
+            "   - Cột LOẠI CHI PHÍ: OPEX / CAPEX / PROJECT / NHÂN SỰ / CÔNG TÁC PHÍ… (thêm loại mới thoải mái).",
+            "   - Hai dòng đầu PHẢI để công thức =IT_OPEX!V6 và =IT_CAPEX!V6.",
+            "     Gõ số cứng vào đây sẽ bị CỘNG TRÙNG với hai sheet chi tiết.",
+            "",
+            "3. Sheet IT_OPEX / IT_CAPEX là chi tiết. Điền từ dòng 7 trở xuống.",
+            "   - Cột V (Tổng giá trị) = SUM(W:AH) tức tổng 12 tháng, cứ kéo công thức xuống.",
+            "   - Ô TỔNG ở V6 phải phủ HẾT các dòng dữ liệu. Thêm dòng mới thì nhớ sửa lại vùng SUM,",
+            "     nếu không tổng sẽ thiếu (file 2026 từng sót dòng Chi phí dự trù 50 triệu vì lý do này).",
+            "",
+            "4. Dòng tổng ở sheet chi tiết phải để đúng chữ Tổng ở cột B thì hệ thống mới bỏ qua,",
+            "   viết khác đi sẽ bị nhập thành một hạng mục và làm ngân sách bị nhân đôi.",
+            "",
+            "5. Dòng nào chưa có số thì để trống, hệ thống vẫn nhập và ghi chú Chưa có ngân sách.",
+        };
+        for (int i = 0; i < lines.length; i++) {
+            Cell cell = sheet.createRow(i).createCell(0);
+            cell.setCellValue(lines[i]);
+            if (i == 0 || (!lines[i].isEmpty() && Character.isDigit(lines[i].charAt(0)))) cell.setCellStyle(head);
+        }
+    }
+
+    /** Bảng chính: A=STT, B=Nội dung, C=Loại chi phí, D=Ngân sách, E=Tỷ trọng, F=Đầu mục, G=Ghi chú. */
+    private void buildSummaryTemplateSheet(Workbook workbook, CellStyle head, CellStyle money) {
+        Sheet sheet = workbook.createSheet("IT-TỔNG HỢP NGÂN SÁCH");
+        int[] widths = {2000, 12000, 6000, 6000, 4000, 12000, 10000};
+        for (int i = 0; i < widths.length; i++) sheet.setColumnWidth(i, widths[i]);
+
+        setText(sheet.createRow(0), 0, "TỔNG NGÂN SÁCH DỰ KIẾN CHO CNTT NĂM ....", head);
+
+        Row r1 = sheet.createRow(1);
+        setText(r1, 3, "Mục tiêu doanh thu", head);
+        r1.createCell(4).setCellStyle(money);
+        setText(r1, 5, "ĐẦU MỤC CHI PHÍ", head);
+        setText(r1, 6, "GHI CHÚ", head);
+
+        Row r2 = sheet.createRow(2);
+        String[] cols = {"STT", "NỘI DUNG", "LOẠI CHI PHÍ DỰ KIẾN", "NGÂN SÁCH DỰ KIẾN", "TỶ TRỌNG"};
+        for (int i = 0; i < cols.length; i++) setText(r2, i, cols[i], head);
+
+        // Hai dòng đầu bắt buộc là công thức trỏ sang sheet chi tiết (hệ thống bỏ qua, tránh cộng trùng)
+        String[][] rows = {
+            {"1", "Chi phí gia hạn các dịch vụ", "OPEX", "=IT_OPEX!V6", "Chi phí Công cụ dụng cụ - Chung", ""},
+            {"2", "Chi phí đầu tư, mua sắm", "CAPEX", "=IT_CAPEX!V6", "Chi phí Công cụ dụng cụ - Chung", ""},
+            {"3", "Bản quyền Office", "OPEX", "0", "Chi phí Công cụ dụng cụ - Chung", "Ghi rõ số lượng license"},
+            {"4", "Hạ tầng văn phòng mới", "CAPEX", "0", "Chi phí Công cụ dụng cụ - Chung", "Để trống nếu chưa khảo sát"},
+            {"5", "Dự án CNTT", "PROJECT", "0", "Chi phí Công cụ dụng cụ - Chung", ""},
+            {"6", "Chi phí nhân sự", "NHÂN SỰ", "0", "Tổng hợp từ bảng nhân sự", ""},
+            {"7", "Chi phí công tác phí", "CÔNG TÁC PHÍ", "0", "Chi phí công tác phí - Chung", ""},
+        };
+        int first = 3;
+        int totalRow = first + rows.length;
+        for (int i = 0; i < rows.length; i++) {
+            Row row = sheet.createRow(first + i);
+            setText(row, 0, rows[i][0], null);
+            setText(row, 1, rows[i][1], null);
+            setText(row, 2, rows[i][2], null);
+            Cell budget = row.createCell(3);
+            budget.setCellStyle(money);
+            if (rows[i][3].startsWith("=")) budget.setCellFormula(rows[i][3].substring(1));
+            else budget.setCellValue(Double.parseDouble(rows[i][3]));
+            int excelRow = first + i + 1;
+            row.createCell(4).setCellFormula("D" + excelRow + "/$D$" + (totalRow + 1) + "*100");
+            setText(row, 5, rows[i][4], null);
+            setText(row, 6, rows[i][5], null);
+        }
+
+        Row total = sheet.createRow(totalRow);
+        setText(total, 0, "TỔNG CỘNG", head);
+        Cell totalCell = total.createCell(3);
+        totalCell.setCellStyle(money);
+        totalCell.setCellFormula("SUM(D" + (first + 1) + ":D" + totalRow + ")");
+
+        Row ratio = sheet.createRow(totalRow + 1);
+        setText(ratio, 0, "TỔNG CHI PHÍ/DOANH THU (%)", head);
+        ratio.createCell(3).setCellFormula("D" + (totalRow + 1) + "/E2");
+    }
+
+    /** Sheet chi tiết: B=Hạng mục, C=Loại, D=Đơn giá, E=ĐVT, G=Tổng SL, V=Tổng tiền, W..AH=12 tháng, AI=Mô tả. */
+    private void buildDetailTemplateSheet(Workbook workbook, String name, CellStyle head, CellStyle money, String[][] samples) {
+        Sheet sheet = workbook.createSheet(name);
+        sheet.setColumnWidth(1, 14000);
+        sheet.setColumnWidth(2, 5000);
+        sheet.setColumnWidth(3, 5000);
+        sheet.setColumnWidth(21, 6000);
+        sheet.setColumnWidth(34, 10000);
+
+        setText(sheet.createRow(1), 1, "NGÂN SÁCH BỘ PHẬN CNTT — " + name, head);
+
+        Row header = sheet.createRow(3);
+        setText(header, 1, "Hạng mục", head);
+        setText(header, 2, "Loại chi phí", head);
+        setText(header, 3, "Đơn giá", head);
+        setText(header, 4, "ĐVT", head);
+        setText(header, 5, "PBCM", head);
+        setText(header, 6, "Tổng SL", head);
+        setText(header, 21, "Tổng Giá trị (VND)", head);
+        for (int m = 0; m < 12; m++) setText(header, 22 + m, "Tháng " + (m + 1), head);
+        setText(header, 34, "Mô tả", head);
+
+        int first = 6;                      // dòng dữ liệu đầu tiên (Excel dòng 7)
+        int last = first + samples.length;  // chừa sẵn 1 dòng trống để điền thêm
+
+        Row totalRow = sheet.createRow(5);
+        setText(totalRow, 1, "Tổng", head);
+        Cell totalCell = totalRow.createCell(21);
+        totalCell.setCellStyle(money);
+        totalCell.setCellFormula("SUM(V" + (first + 1) + ":V" + (last + 1) + ")");
+
+        for (int i = 0; i < samples.length; i++) {
+            Row row = sheet.createRow(first + i);
+            setText(row, 1, samples[i][0], null);
+            setText(row, 2, samples[i][1], null);
+            Cell price = row.createCell(3);
+            price.setCellStyle(money);
+            price.setCellValue(Double.parseDouble(samples[i][2]));
+            setText(row, 4, samples[i][3], null);
+            row.createCell(6).setCellValue(Double.parseDouble(samples[i][4]));
+            int excelRow = first + i + 1;
+            Cell sum = row.createCell(21);
+            sum.setCellStyle(money);
+            sum.setCellFormula("SUM(W" + excelRow + ":AH" + excelRow + ")");
+            for (int m = 0; m < 12; m++) row.createCell(22 + m).setCellStyle(money);
+        }
+        setText(sheet.createRow(last + 1), 1, "Thêm trên dòng này …", null);
+    }
+
+    private void setText(Row row, int col, String value, CellStyle style) {
+        Cell cell = row.createCell(col);
+        cell.setCellValue(value);
+        if (style != null) cell.setCellStyle(style);
     }
 
     // --- Helper ---
@@ -936,5 +1139,402 @@ public class ExcelService {
         if (type == CellType.NUMERIC) return (int) cell.getNumericCellValue();
         try { return Integer.parseInt(cell.getStringCellValue().replaceAll("[^0-9]", "")); } catch (Exception e) { return 1; }
     }
-}
 
+    /** Cột của file nhập/mẫu công cụ dụng cụ — dùng chung cho cả sinh file mẫu lẫn đọc file. */
+    private static final String[] ASSET_HEADERS = {
+        "Mã kiểm kê (*)", "Danh mục", "Địa điểm văn phòng", "Số lượng",
+        "Người sử dụng", "Chức vụ", "Bộ phận", "Địa điểm sử dụng",
+        "Loại tài sản", "Nhà sản xuất", "Model", "Thông tin chi tiết",
+        "Serial Number", "Ngày mua (dd/MM/yyyy)", "Tình trạng", "Ghi chú"
+    };
+
+    /** Tạo file Excel mẫu để nhập danh sách công cụ dụng cụ. */
+    public ByteArrayInputStream generateSampleAssetExcel() throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            CellStyle head = workbook.createCellStyle();
+            Font bold = workbook.createFont();
+            bold.setBold(true);
+            head.setFont(bold);
+
+            Sheet guide = workbook.createSheet("HƯỚNG DẪN");
+            guide.setColumnWidth(0, 26000);
+            String[] notes = {
+                "HƯỚNG DẪN NHẬP CÔNG CỤ DỤNG CỤ",
+                "",
+                "1. Điền dữ liệu vào sheet 'CÔNG CỤ DỤNG CỤ', mỗi dòng là một tài sản. Nhập bao nhiêu dòng cũng được.",
+                "2. Chỉ 'Mã kiểm kê' là bắt buộc và phải KHÔNG TRÙNG. Mã đã có trong hệ thống sẽ được CẬP NHẬT chứ không tạo mới.",
+                "3. 'Danh mục' điền đúng tên danh mục đã có (vd Laptop, Màn hình). Tên chưa có sẽ để trống danh mục.",
+                "4. 'Ngày mua' định dạng dd/MM/yyyy, vd 15/07/2026. Để trống nếu không rõ.",
+                "5. 'Tình trạng': Đang sử dụng / Trong kho / Hỏng / Thanh lý. Bỏ trống mặc định là Đang sử dụng.",
+                "6. Giữ nguyên dòng tiêu đề. Được phép đổi thứ tự cột — hệ thống dò theo tên tiêu đề.",
+            };
+            for (int i = 0; i < notes.length; i++) {
+                Cell cell = guide.createRow(i).createCell(0);
+                cell.setCellValue(notes[i]);
+                if (i == 0) cell.setCellStyle(head);
+            }
+
+            Sheet sheet = workbook.createSheet("CÔNG CỤ DỤNG CỤ");
+            Row header = sheet.createRow(0);
+            for (int i = 0; i < ASSET_HEADERS.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(ASSET_HEADERS[i]);
+                cell.setCellStyle(head);
+                sheet.setColumnWidth(i, 5200);
+            }
+
+            String[][] samples = {
+                {"IT-LAP-001", "Laptop", "VP HCM", "1", "Nguyễn Văn A", "Chuyên viên", "Kinh doanh", "Tầng 3",
+                 "Laptop", "Dell", "Latitude 5440", "i7/16GB/512GB", "SN123456", "15/07/2026", "Đang sử dụng", ""},
+                {"IT-MAN-002", "Màn hình", "VP HCM", "2", "", "", "", "Kho IT",
+                 "Màn hình", "LG", "24MK600", "24 inch IPS", "", "", "Trong kho", "Dự phòng"},
+            };
+            for (int r = 0; r < samples.length; r++) {
+                Row row = sheet.createRow(r + 1);
+                for (int c = 0; c < samples[r].length; c++) row.createCell(c).setCellValue(samples[r][c]);
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
+
+    /** Kết quả đọc file công cụ dụng cụ. */
+    public static class AssetImportRow {
+        public String inventoryCode, categoryName, officeLocation, assignedToName, assignedToPosition,
+                assignedToDepartment, assignedToLocation, assetType, manufacturer, model, details,
+                serialNumber, status, note;
+        public Integer quantity;
+        public LocalDate purchaseDate;
+    }
+
+    /**
+     * Đọc danh sách công cụ dụng cụ từ file Excel. Dò cột theo TÊN TIÊU ĐỀ nên đổi thứ tự
+     * cột vẫn nhập được; dòng không có mã kiểm kê sẽ bỏ qua.
+     */
+    public List<AssetImportRow> parseAssetsFromExcel(java.io.InputStream inputStream) throws IOException {
+        List<AssetImportRow> rows = new ArrayList<>();
+        try (Workbook workbook = new XSSFWorkbook(inputStream)) {
+            Sheet sheet = null;
+            for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
+                String name = workbook.getSheetName(s).toUpperCase();
+                if (name.contains("HƯỚNG DẪN") || name.contains("HUONG DAN")) continue;
+                sheet = workbook.getSheetAt(s);
+                break;
+            }
+            if (sheet == null) return rows;
+
+            int headerRowIdx = -1;
+            java.util.Map<String, Integer> cols = null;
+            int bestScore = 0;
+            int scanTo = Math.min(sheet.getLastRowNum(), 20);
+            for (int r = sheet.getFirstRowNum(); r <= scanTo; r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                java.util.Map<String, Integer> map = new java.util.LinkedHashMap<>();
+                for (Cell cell : row) {
+                    String key = matchAssetColumn(headerText(cell));
+                    if (key != null && !map.containsKey(key)) map.put(key, cell.getColumnIndex());
+                }
+                if (map.size() > bestScore) {
+                    bestScore = map.size();
+                    headerRowIdx = r;
+                    cols = map;
+                }
+            }
+            if (cols == null || !cols.containsKey("inventoryCode")) return rows;
+
+            for (int r = headerRowIdx + 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                String code = cellString(row, cols.get("inventoryCode"));
+                if (isBlank(code)) continue;
+
+                AssetImportRow item = new AssetImportRow();
+                item.inventoryCode = code.trim();
+                item.categoryName = cellString(row, cols.get("category"));
+                item.officeLocation = cellString(row, cols.get("officeLocation"));
+                item.assignedToName = cellString(row, cols.get("assignedToName"));
+                item.assignedToPosition = cellString(row, cols.get("assignedToPosition"));
+                item.assignedToDepartment = cellString(row, cols.get("assignedToDepartment"));
+                item.assignedToLocation = cellString(row, cols.get("assignedToLocation"));
+                item.assetType = cellString(row, cols.get("assetType"));
+                item.manufacturer = cellString(row, cols.get("manufacturer"));
+                item.model = cellString(row, cols.get("model"));
+                item.details = cellString(row, cols.get("details"));
+                item.serialNumber = cellString(row, cols.get("serialNumber"));
+                item.status = cellString(row, cols.get("status"));
+                item.note = cellString(row, cols.get("note"));
+                item.purchaseDate = cellDate(row, cols.get("purchaseDate"));
+                String qty = cellString(row, cols.get("quantity"));
+                try {
+                    item.quantity = isBlank(qty) ? 1 : Integer.parseInt(qty.replaceAll("[^0-9]", ""));
+                } catch (Exception e) {
+                    item.quantity = 1;
+                }
+                rows.add(item);
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * Xuất danh sách công cụ dụng cụ (tài sản) ra file Excel (.xlsx) trực quan, trình bày đẹp mắt.
+     */
+    public ByteArrayInputStream exportAssetsToExcel(List<Asset> assets,
+                                                    String categoryNameFilter,
+                                                    String statusFilter,
+                                                    String keywordFilter,
+                                                    Map<Long, String> categoryNames) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Danh Sách Tài Sản");
+
+            // Bật lưới ô trong Excel
+            sheet.setDisplayGridlines(true);
+
+            // ---- STYLES ----
+            // Title style: Nền xanh đen, chữ trắng in đậm, 14pt, căn giữa
+            CellStyle titleStyle = workbook.createCellStyle();
+            org.apache.poi.xssf.usermodel.XSSFColor navyColor =
+                    new org.apache.poi.xssf.usermodel.XSSFColor(new byte[]{(byte) 30, (byte) 58, (byte) 138}, null);
+            ((org.apache.poi.xssf.usermodel.XSSFCellStyle) titleStyle).setFillForegroundColor(navyColor);
+            titleStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Font titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setColor(IndexedColors.WHITE.getIndex());
+            titleFont.setFontHeightInPoints((short) 14);
+            titleStyle.setFont(titleFont);
+            titleStyle.setAlignment(HorizontalAlignment.CENTER);
+            titleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            // Subtitle / info style
+            CellStyle subTitleStyle = workbook.createCellStyle();
+            Font subTitleFont = workbook.createFont();
+            subTitleFont.setItalic(true);
+            subTitleFont.setFontHeightInPoints((short) 10);
+            subTitleFont.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
+            subTitleStyle.setFont(subTitleFont);
+            subTitleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            // Header style: Nền xanh đậm, chữ trắng, in đậm, border mỏng
+            CellStyle headerStyle = workbook.createCellStyle();
+            ((org.apache.poi.xssf.usermodel.XSSFCellStyle) headerStyle).setFillForegroundColor(navyColor);
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerFont.setFontHeightInPoints((short) 10);
+            headerStyle.setFont(headerFont);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            headerStyle.setWrapText(true);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+
+            // Data cell styles (Left, Center, Right)
+            CellStyle dataLeft = createAssetDataStyle(workbook, HorizontalAlignment.LEFT, false, null);
+            CellStyle dataCenter = createAssetDataStyle(workbook, HorizontalAlignment.CENTER, false, null);
+            CellStyle dataRight = createAssetDataStyle(workbook, HorizontalAlignment.RIGHT, false, null);
+            CellStyle dataCenterBold = createAssetDataStyle(workbook, HorizontalAlignment.CENTER, true, null);
+
+            // Alternating rows (Zebra striping - soft blue #F8FAFC)
+            org.apache.poi.xssf.usermodel.XSSFColor altColor =
+                    new org.apache.poi.xssf.usermodel.XSSFColor(new byte[]{(byte) 248, (byte) 250, (byte) 252}, null);
+            CellStyle altLeft = createAssetDataStyle(workbook, HorizontalAlignment.LEFT, false, altColor);
+            CellStyle altCenter = createAssetDataStyle(workbook, HorizontalAlignment.CENTER, false, altColor);
+            CellStyle altRight = createAssetDataStyle(workbook, HorizontalAlignment.RIGHT, false, altColor);
+            CellStyle altCenterBold = createAssetDataStyle(workbook, HorizontalAlignment.CENTER, true, altColor);
+
+            // Status Badge Cell Styles
+            CellStyle statusInUse = createAssetStatusStyle(workbook, new byte[]{(byte) 220, (byte) 252, (byte) 231}, new byte[]{(byte) 22, (byte) 101, (byte) 52}); // green
+            CellStyle statusInStock = createAssetStatusStyle(workbook, new byte[]{(byte) 254, (byte) 243, (byte) 199}, new byte[]{(byte) 146, (byte) 64, (byte) 14}); // yellow/amber
+            CellStyle statusBroken = createAssetStatusStyle(workbook, new byte[]{(byte) 254, (byte) 226, (byte) 226}, new byte[]{(byte) 153, (byte) 27, (byte) 27}); // red
+
+            // Formatter
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+            // Header columns
+            String[] headers = {
+                "STT", "Mã kiểm kê", "Danh mục", "Loại tài sản", "Nhà sản xuất", "Model",
+                "Số Serial", "Số lượng", "Người sử dụng / Bàn giao", "Chức vụ", "Bộ phận",
+                "Địa điểm / Văn phòng", "Trạng thái", "Ngày mua", "Lần kiểm kê gần nhất",
+                "Người kiểm kê", "Tình trạng kiểm kê", "Chi tiết / Cấu hình", "Ghi chú"
+            };
+
+            // ----- ROW 0: TITLE BANNER -----
+            Row titleRow = sheet.createRow(0);
+            titleRow.setHeightInPoints(34);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue("BÁO CÁO QUẢN LÝ CÔNG CỤ DỤNG CỤ & TÀI SẢN — MIDOMAX IT");
+            titleCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, headers.length - 1));
+
+            // ----- ROW 1: METADATA & FILTERS -----
+            Row infoRow = sheet.createRow(1);
+            infoRow.setHeightInPoints(20);
+            String exportTimeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            String catFilterStr = (categoryNameFilter != null && !categoryNameFilter.isBlank()) ? categoryNameFilter : "Tất cả";
+            String statFilterStr = (statusFilter != null && !statusFilter.isBlank()) ? statusFilter : "Tất cả";
+            String kwFilterStr = (keywordFilter != null && !keywordFilter.isBlank()) ? keywordFilter : "Không";
+
+            Cell infoCell = infoRow.createCell(0);
+            infoCell.setCellValue("Thời gian xuất: " + exportTimeStr + "  |  Danh mục: " + catFilterStr
+                    + "  |  Trạng thái: " + statFilterStr + "  |  Từ khóa: " + kwFilterStr);
+            infoCell.setCellStyle(subTitleStyle);
+
+            // ----- ROW 2: STATS SUMMARY -----
+            long totalQty = 0;
+            long inUseCount = 0;
+            long inStockCount = 0;
+            long brokenCount = 0;
+            for (Asset a : assets) {
+                totalQty += (a.getQuantity() != null ? a.getQuantity() : 1);
+                String st = a.getStatus() != null ? a.getStatus().trim() : "";
+                if ("Đang sử dụng".equalsIgnoreCase(st)) inUseCount++;
+                else if ("Trong kho".equalsIgnoreCase(st)) inStockCount++;
+                else if ("Hỏng".equalsIgnoreCase(st) || "Đang sửa".equalsIgnoreCase(st)) brokenCount++;
+            }
+
+            Row statRow = sheet.createRow(2);
+            statRow.setHeightInPoints(22);
+            createCell(statRow, 0, "Tổng mã tài sản: " + assets.size() + "  |  Tổng số lượng: " + totalQty
+                    + "  |  Đang sử dụng: " + inUseCount + "  |  Trong kho: " + inStockCount
+                    + "  |  Hỏng / Đang sửa: " + brokenCount, subTitleStyle);
+
+            // ----- ROW 4: TABLE HEADER -----
+            Row headerRow = sheet.createRow(4);
+            headerRow.setHeightInPoints(28);
+            for (int i = 0; i < headers.length; i++) {
+                Cell c = headerRow.createCell(i);
+                c.setCellValue(headers[i]);
+                c.setCellStyle(headerStyle);
+            }
+
+            // ----- DATA ROWS -----
+            int rowIdx = 5;
+            int stt = 1;
+            for (Asset a : assets) {
+                Row row = sheet.createRow(rowIdx++);
+                row.setHeightInPoints(20);
+                boolean isAlt = (rowIdx % 2 == 0);
+
+                CellStyle styleL = isAlt ? altLeft : dataLeft;
+                CellStyle styleC = isAlt ? altCenter : dataCenter;
+                CellStyle styleR = isAlt ? altRight : dataRight;
+                CellStyle styleCB = isAlt ? altCenterBold : dataCenterBold;
+
+                createCell(row, 0, String.valueOf(stt++), styleC);
+                createCell(row, 1, a.getInventoryCode(), styleCB);
+
+                String catName = categoryNames != null && a.getCategoryId() != null ?
+                        categoryNames.getOrDefault(a.getCategoryId(), "") : "";
+                createCell(row, 2, catName, styleL);
+                createCell(row, 3, a.getAssetType(), styleL);
+                createCell(row, 4, a.getManufacturer(), styleL);
+                createCell(row, 5, a.getModel(), styleL);
+                createCell(row, 6, a.getSerialNumber(), styleC);
+
+                Cell qtyCell = row.createCell(7);
+                qtyCell.setCellValue(a.getQuantity() != null ? a.getQuantity() : 1);
+                qtyCell.setCellStyle(styleR);
+
+                createCell(row, 8, a.getAssignedToName(), styleL);
+                createCell(row, 9, a.getAssignedToPosition(), styleL);
+                createCell(row, 10, a.getAssignedToDepartment(), styleL);
+
+                String loc = a.getAssignedToLocation();
+                if (loc == null || loc.isBlank()) loc = a.getOfficeLocation();
+                createCell(row, 11, loc, styleL);
+
+                // Trạng thái badge
+                String st = a.getStatus() != null ? a.getStatus().trim() : "";
+                CellStyle statusStyle = styleC;
+                if ("Đang sử dụng".equalsIgnoreCase(st)) statusStyle = statusInUse;
+                else if ("Trong kho".equalsIgnoreCase(st)) statusStyle = statusInStock;
+                else if ("Hỏng".equalsIgnoreCase(st) || "Đang sửa".equalsIgnoreCase(st)) statusStyle = statusBroken;
+                createCell(row, 12, st, statusStyle);
+
+                createCell(row, 13, a.getPurchaseDate() != null ? a.getPurchaseDate().format(dtf) : "", styleC);
+                createCell(row, 14, a.getLastInventoryDate() != null ? a.getLastInventoryDate().format(dtf) : "", styleC);
+                createCell(row, 15, a.getInventoryBy(), styleL);
+                createCell(row, 16, a.getInventoryCondition(), styleL);
+                createCell(row, 17, a.getDetails(), styleL);
+                createCell(row, 18, a.getNote(), styleL);
+            }
+
+            // AUTO SIZE COLUMNS WITH MIN WIDTH
+            for (int c = 0; c < headers.length; c++) {
+                sheet.autoSizeColumn(c);
+                int currentWidth = sheet.getColumnWidth(c);
+                sheet.setColumnWidth(c, Math.min(15000, Math.max(currentWidth + 1200, 3200)));
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
+
+    private CellStyle createAssetDataStyle(Workbook wb, HorizontalAlignment align, boolean bold, org.apache.poi.xssf.usermodel.XSSFColor bg) {
+        CellStyle style = wb.createCellStyle();
+        if (bg != null) {
+            ((org.apache.poi.xssf.usermodel.XSSFCellStyle) style).setFillForegroundColor(bg);
+            style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        }
+        Font font = wb.createFont();
+        font.setFontHeightInPoints((short) 10);
+        if (bold) font.setBold(true);
+        style.setFont(font);
+        style.setAlignment(align);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private CellStyle createAssetStatusStyle(Workbook wb, byte[] bgRgb, byte[] textRgb) {
+        CellStyle style = wb.createCellStyle();
+        org.apache.poi.xssf.usermodel.XSSFColor bgColor = new org.apache.poi.xssf.usermodel.XSSFColor(bgRgb, null);
+        ((org.apache.poi.xssf.usermodel.XSSFCellStyle) style).setFillForegroundColor(bgColor);
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        Font font = wb.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 9.5);
+        org.apache.poi.xssf.usermodel.XSSFColor textColor = new org.apache.poi.xssf.usermodel.XSSFColor(textRgb, null);
+        ((org.apache.poi.xssf.usermodel.XSSFFont) font).setColor(textColor);
+
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private String matchAssetColumn(String h) {
+        if (h == null || h.isEmpty()) return null;
+        if (h.contains("mã kiểm kê") || h.contains("ma kiem ke") || h.contains("inventory code")) return "inventoryCode";
+        if (h.contains("danh mục") || h.contains("category")) return "category";
+        if (h.contains("địa điểm văn phòng") || h.contains("office")) return "officeLocation";
+        if (h.contains("số lượng") || h.contains("quantity")) return "quantity";
+        if (h.contains("người sử dụng") || h.contains("họ và tên") || h.contains("người dùng")) return "assignedToName";
+        if (h.contains("chức vụ") || h.contains("position")) return "assignedToPosition";
+        if (h.contains("bộ phận") || h.contains("department")) return "assignedToDepartment";
+        if (h.contains("địa điểm sử dụng") || h.contains("location")) return "assignedToLocation";
+        if (h.contains("loại tài sản") || h.contains("asset type")) return "assetType";
+        if (h.contains("nhà sản xuất") || h.contains("manufacturer")) return "manufacturer";
+        if (h.contains("model")) return "model";
+        if (h.contains("thông tin chi tiết") || h.contains("cấu hình") || h.contains("details")) return "details";
+        if (h.contains("serial")) return "serialNumber";
+        if (h.contains("ngày mua") || h.contains("purchase")) return "purchaseDate";
+        if (h.contains("tình trạng") || h.contains("trạng thái") || h.contains("status")) return "status";
+        if (h.contains("ghi chú") || h.contains("note")) return "note";
+        return null;
+    }
+}

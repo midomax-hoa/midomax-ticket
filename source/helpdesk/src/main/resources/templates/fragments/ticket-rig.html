@@ -268,19 +268,49 @@
                         <circle cx="564" cy="384" r="15" fill="url(#chibiBlueG)" stroke="#FFFFFF" stroke-width="2" />
                     </g>
                 </g>
+
+                <!-- POPUP HOẠT HÌNH THÔNG BÁO / BONG BÓNG LỜI NÓI (SPEECH BUBBLE 3D) -->
+                <g class="robot-speech-bubble" id="robot-speech" opacity="0" style="transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 433px 120px; pointer-events: none;">
+                    <rect x="300" y="80" width="266" height="46" rx="16" fill="#0f172a" stroke="#38bdf8" stroke-width="2" filter="url(#softShadow)" />
+                    <polygon points="423,126 443,126 433,136" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
+                    <text x="433" y="108" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" id="robot-speech-text">✦ Xin chào! Tôi là Trợ Lý Midomax 🤖</text>
+                </g>
             </g>
         </svg>
     </div>
 </div>
 
 
-<!-- Nghiêng Robot 3D theo con trỏ chuột và Mắt linh hoạt nhìn theo hướng chuột -->
+<!-- Nghiêng Robot 3D theo con trỏ chuột, Mắt linh hoạt & Tương tác nhấp chuột sinh động -->
 <script th:fragment="rigScript">
     (function () {
         var scene = document.getElementById('rig-scene');
         var tilt = document.getElementById('rig-tilt');
+        var speech = document.getElementById('robot-speech');
+        var speechText = document.getElementById('robot-speech-text');
         if (!scene || !tilt) return;
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        var speechMessages = [
+            "✦ Xin chào! Chúc bạn làm việc vui vẻ! 🌟",
+            "✦ Bạn gặp sự cố IT? Hãy tạo Ticket ngay nhé! 💻",
+            "✦ Hệ thống Hỗ trợ Midomax sẵn sàng 24/7! 🤖✨",
+            "✦ I ❤ KAMITO & MIDOMAX IT SUPPORT! ⚡"
+        ];
+        var msgIdx = 0;
+        var speechTimer = null;
+
+        function showSpeech(text, duration) {
+            if (!speech || !speechText) return;
+            speechText.textContent = text || speechMessages[msgIdx % speechMessages.length];
+            speech.style.opacity = '1';
+            speech.style.transform = 'translateY(0) scale(1)';
+            clearTimeout(speechTimer);
+            speechTimer = setTimeout(function () {
+                speech.style.opacity = '0';
+                speech.style.transform = 'translateY(10px) scale(0.9)';
+            }, duration || 3500);
+        }
 
         function handlePointerMove(e) {
             var r = scene.getBoundingClientRect();
@@ -303,17 +333,19 @@
             var px = Math.max(-1, Math.min(1, dx));
             var py = Math.max(-1, Math.min(1, dy));
 
-            // Góc nghiêng 3D (Rotation Y/X) & độ nổi (TranslateZ)
-            var ry = (px * 24).toFixed(2) + 'deg';
-            var rx = (-py * 16).toFixed(2) + 'deg';
-            var tz = '22px';
+            // Góc nghiêng 3D đa trục (Rotation Y/X/Z) & chiều sâu TranslateZ
+            var ry = (px * 26).toFixed(2) + 'deg';
+            var rx = (-py * 18).toFixed(2) + 'deg';
+            var rz = (px * 3.5).toFixed(2) + 'deg';
+            var tz = '28px';
 
             // Tọa độ Mắt nhìn theo con trỏ chuột (Eye Tracking)
-            var eyeX = (px * 18).toFixed(1) + 'px';
-            var eyeY = (py * 12).toFixed(1) + 'px';
+            var eyeX = (px * 20).toFixed(1) + 'px';
+            var eyeY = (py * 14).toFixed(1) + 'px';
 
             tilt.style.setProperty('--ry', ry);
             tilt.style.setProperty('--rx', rx);
+            tilt.style.setProperty('--rz', rz);
             tilt.style.setProperty('--tz', tz);
             scene.style.setProperty('--eye-x', eyeX);
             scene.style.setProperty('--eye-y', eyeY);
@@ -323,10 +355,31 @@
             scene.classList.remove('is-hovering');
             tilt.style.setProperty('--ry', '0deg');
             tilt.style.setProperty('--rx', '0deg');
+            tilt.style.setProperty('--rz', '0deg');
             tilt.style.setProperty('--tz', '0px');
             scene.style.setProperty('--eye-x', '0px');
             scene.style.setProperty('--eye-y', '0px');
         }
+
+        // Tương tác khi click vào Robot: Robot nhảy vẫy tay & hiện lời thoại 3D
+        tilt.style.cursor = 'pointer';
+        tilt.addEventListener('click', function (e) {
+            e.stopPropagation();
+            tilt.classList.remove('robot-bounce-active');
+            void tilt.offsetWidth; // trigger reflow
+            tilt.classList.add('robot-bounce-active');
+            msgIdx++;
+            showSpeech(speechMessages[msgIdx % speechMessages.length], 4000);
+        });
+
+        // Chớp mắt tự nhiên định kỳ mỗi 4 giây
+        setInterval(function () {
+            var eyes = scene.querySelectorAll('.eye-track');
+            eyes.forEach(function (eye) {
+                eye.classList.add('robot-eye-blink');
+                setTimeout(function () { eye.classList.remove('robot-eye-blink'); }, 180);
+            });
+        }, 4200);
 
         // Tương tác rê chuột toàn màn hình & trong khu vực Robot
         window.addEventListener('pointermove', handlePointerMove);

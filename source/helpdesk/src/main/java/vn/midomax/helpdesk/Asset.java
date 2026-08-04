@@ -23,8 +23,9 @@ public class Asset {
 
     // ===== DỮ LIỆU TÀI SẢN =====
 
-    @Column(nullable = false, unique = true)
-    private String inventoryCode; // Mã kiểm kê
+    /** Mã kiểm kê — để trống được với phụ kiện lẻ không dán mã. */
+    @Column(unique = true)
+    private String inventoryCode;
 
     private Long categoryId; // Danh mục (AssetCategory)
 
@@ -128,6 +129,38 @@ public class Asset {
 
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+
+    /** Người giao thiết bị (bên A) khi bàn giao. */
+    @Column(name = "handover_by")
+    private String handoverBy;
+
+    /** Thời gian bàn giao cho người sử dụng. */
+    @Column(name = "handover_date")
+    private LocalDateTime handoverDate;
+
+    /** Chức vụ của người giao. */
+    @Column(name = "handover_by_position")
+    private String handoverByPosition;
+
+    /** Phòng ban của người giao. */
+    @Column(name = "handover_by_department")
+    private String handoverByDepartment;
+
+
+    public String getHandoverBy() { return handoverBy; }
+    public void setHandoverBy(String handoverBy) { this.handoverBy = handoverBy; }
+    public String getHandoverByPosition() { return handoverByPosition; }
+    public void setHandoverByPosition(String handoverByPosition) { this.handoverByPosition = handoverByPosition; }
+    public String getHandoverByDepartment() { return handoverByDepartment; }
+    public void setHandoverByDepartment(String handoverByDepartment) { this.handoverByDepartment = handoverByDepartment; }
+    public LocalDateTime getHandoverDate() { return handoverDate; }
+    public void setHandoverDate(LocalDateTime handoverDate) { this.handoverDate = handoverDate; }
+
+    /** Thời gian bàn giao dạng dd/MM/yyyy HH:mm để hiển thị. */
+    @jakarta.persistence.Transient
+    public String getHandoverDateStr() {
+        return handoverDate != null ? handoverDate.format(DT_FMT) : "";
+    }
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }

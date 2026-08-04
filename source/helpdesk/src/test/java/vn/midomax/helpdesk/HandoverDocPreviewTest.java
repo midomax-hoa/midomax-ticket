@@ -24,7 +24,7 @@ class HandoverDocPreviewTest {
         a.setAssignedToDepartment("CNTT");
 
         List<AssetHandoverService.Accessory> accs = List.of(
-                new AssetHandoverService.Accessory("Chuột không dây", "Logitech M331", "1", "Mới"));
+                new AssetHandoverService.Accessory("Chuột không dây", "Logitech M331", "SN-M331-01", "1", "Mới"));
 
         AssetHandoverService service = new AssetHandoverService();
         var in = service.buildHandoverDoc(List.of(a), Map.of(), accs);

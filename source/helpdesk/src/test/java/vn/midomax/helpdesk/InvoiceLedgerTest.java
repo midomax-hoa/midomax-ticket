@@ -40,6 +40,9 @@ class InvoiceLedgerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private InvoiceEntryRepository entryRepository;
+
     private static final String CATEGORY = "CAPEX — Thiết bị & Bản quyền | Hardware & Licenses";
 
     /** Dựng file Excel mô phỏng đúng bảng phiếu chi đang dùng. */
@@ -212,5 +215,31 @@ class InvoiceLedgerTest {
         mockMvc.perform(get("/expenses/invoices")
                         .with(oidcLogin().oidcUser(principal("ROLE_USER"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void phanTrangSoHoaDon5DongMoiTrang() throws Exception {
+        entryRepository.deleteAll();
+        // Tạo 7 hóa đơn
+        for (int i = 1; i <= 7; i++) {
+            InvoiceEntry e = new InvoiceEntry();
+            e.setTransDate(LocalDate.now());
+            e.setEntryDate(LocalDate.now());
+            e.setDescription("Hóa đơn test " + i);
+            e.setAmount(100000L * i);
+            e.setPeriodKey("2026-08");
+            entryRepository.save(e);
+        }
+
+        var result = mockMvc.perform(get("/expenses/invoices")
+                        .with(oidcLogin().oidcUser(principal("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        @SuppressWarnings("unchecked")
+        List<InvoiceEntry> entries = (List<InvoiceEntry>) result.getModelAndView().getModel().get("entries");
+        assertThat(entries).hasSize(5);
+        assertThat(result.getModelAndView().getModel().get("totalPages")).isEqualTo(2);
+        assertThat(result.getModelAndView().getModel().get("entryCount")).isEqualTo(7);
     }
 }

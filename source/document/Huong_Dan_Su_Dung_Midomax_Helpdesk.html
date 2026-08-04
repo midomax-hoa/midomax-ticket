@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HÆ°á»›ng Dáº«n Sá»­ Dá»¥ng â€” Midomax IT Helpdesk Portal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            color: #1e293b;
+            line-height: 1.7;
+            background: #ffffff;
+            padding: 40px 60px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* PRINT STYLES */
+        @media print {
+            body { padding: 20px 30px; font-size: 11pt; }
+            .no-print { display: none !important; }
+            h1, h2, h3 { page-break-after: avoid; }
+            table, pre, .alert-box { page-break-inside: avoid; }
+            a { color: #1e3a8a !important; text-decoration: none !important; }
+            @page { margin: 1.5cm 2cm; }
+        }
+
+        /* HEADINGS */
+        h1 {
+            font-size: 28px;
+            font-weight: 900;
+            color: #0f172a;
+            border-bottom: 3px solid #1e3a8a;
+            padding-bottom: 12px;
+            margin: 30px 0 20px;
+        }
+
+        h2 {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1e3a8a;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin: 35px 0 16px;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #334155;
+            margin: 24px 0 12px;
+        }
+
+        h4 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #475569;
+            margin: 18px 0 8px;
+        }
+
+        /* PARAGRAPHS & TEXT */
+        p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        strong { font-weight: 700; }
+        em { font-style: italic; }
+
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        /* TABLES */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin: 12px 0;
+        }
+
+        th {
+            background: #1e3a8a;
+            color: #ffffff;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        td {
+            padding: 9px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+
+        tr:nth-child(even) { background: #f8fafc; }
+        tr:hover { background: #eff6ff; }
+
+        /* LISTS */
+        ul, ol {
+            margin: 8px 0 8px 24px;
+            font-size: 14px;
+        }
+
+        li {
+            margin: 4px 0;
+            line-height: 1.6;
+        }
+
+        /* CODE */
+        code {
+            background: #f1f5f9;
+            color: #be123c;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+        }
+
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 12px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+            font-size: 13px;
+        }
+
+        /* BLOCKQUOTE */
+        blockquote {
+            border-left: 4px solid #cbd5e1;
+            padding: 8px 16px;
+            margin: 12px 0;
+            color: #475569;
+            background: #f8fafc;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+
+        /* ALERTS */
+        .alert-box {
+            margin: 14px 0;
+            font-size: 13.5px;
+            line-height: 1.6;
+        }
+
+        /* HORIZONTAL RULE */
+        hr {
+            border: none;
+            border-top: 2px solid #e2e8f0;
+            margin: 30px 0;
+        }
+
+        /* MERMAID PLACEHOLDER */
+        .mermaid-placeholder {
+            background: #f0f9ff;
+            border: 2px dashed #93c5fd;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 14px 0;
+        }
+
+        .mermaid-placeholder pre {
+            background: #e0f2fe;
+            color: #1e40af;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        /* CHECKBOX */
+        .checkbox { font-size: 16px; margin-right: 4px; }
+
+        /* PRINT BUTTON */
+        .print-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 12px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .print-bar button {
+            background: #ffffff;
+            color: #1e3a8a;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .print-bar button:hover {
+            background: #dbeafe;
+            transform: scale(1.03);
+        }
+
+        body { padding-top: 75px; }
+
+        @media print {
+            .print-bar { display: none !important; }
+            body { padding-top: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-bar no-print">
+        <span style="font-weight: 700; font-size: 15px;">&#128216; H&#432;&#7899;ng D&#7851;n S&#7917; D&#7909;ng &mdash; Midomax IT Helpdesk Portal</span>
+        <button onclick="window.print()">&#128424;&#65039; In / L&#432;u PDF (Ctrl+P)</button>
+    </div>
+<h1 id='-hướng-dẫn-sử-dụng-midomax-it-helpdesk-portal'>📘 Hướng Dẫn Sử Dụng — Midomax IT Helpdesk Portal</h1>
+<blockquote>Hệ thống quản lý nội bộ phòng IT dành cho <strong>MIDOMAX / KAMITO</strong> — quản lý ticket hỗ trợ, tài sản, tài chính, nhân sự và báo cáo công việc.</blockquote>
+<hr>
+<h2 id='-mục-lục'>📑 Mục Lục</h2>
+<ol>
+<li><a href='#1-đăng-nhập'>Đăng nhập</a></li>
+<li><a href='#2-phân-quyền-người-dùng'>Phân quyền người dùng</a></li>
+<li><a href='#3-trang-chủ'>Trang chủ</a></li>
+<li><a href='#4-dashboard'>Dashboard</a></li>
+<li><a href='#5-quản-lý-ticket'>Quản lý Ticket</a></li>
+<li><a href='#6-công-cụ-dụng-cụ-tài-sản'>Công Cụ Dụng Cụ (Tài sản)</a></li>
+<li><a href='#7-quản-lý-tài-chính'>Quản Lý Tài Chính</a></li>
+<li><a href='#8-sổ-hóa-đơn'>Sổ Hóa Đơn</a></li>
+<li><a href='#9-lịch-trình'>Lịch Trình</a></li>
+<li><a href='#10-báo-cáo-công-việc'>Báo Cáo Công Việc</a></li>
+<li><a href='#11-quản-lý-nhân-sự'>Quản Lý Nhân Sự</a></li>
+<li><a href='#12-quản-lý-user--phân-quyền'>Quản Lý User & Phân Quyền</a></li>
+<li><a href='#13-thông-báo'>Thông báo</a></li>
+<li><a href='#14-hồ-sơ-cá-nhân'>Hồ sơ cá nhân</a></li>
+</ol>
+<hr>
+<h2 id='1-đăng-nhập'>1. Đăng Nhập</h2>
+<p>Hệ thống hỗ trợ <strong>2 cách đăng nhập</strong>:</p>
+<h3 id='11-đăng-nhập-bằng-tài-khoản-hệ-thống-local'>1.1 Đăng nhập bằng tài khoản hệ thống (Local)</h3>
+<ul>
+<li>Nhập <strong>Tên đăng nhập</strong> và <strong>Mật khẩu</strong> tại form đăng nhập.</li>
+<li>Tài khoản quản trị mặc định: <code>admin</code> (mật khẩu do quản trị viên cấu hình qua biến <code>SEED_ADMIN_PASSWORD</code>).</li>
+<li>Nhấn nút <strong>"ĐĂNG NHẬP"</strong> để vào hệ thống.</li>
+</ul>
+<h3 id='12-đăng-nhập-bằng-microsoft-365'>1.2 Đăng nhập bằng Microsoft 365</h3>
+<ul>
+<li>Nhấn nút <strong>"Đăng nhập bằng Microsoft 365"</strong> bên dưới form.</li>
+<li>Hệ thống chuyển hướng đến trang xác thực của Microsoft.</li>
+<li>Đăng nhập bằng tài khoản email công ty Microsoft 365.</li>
+<li>Sau khi xác thực thành công, hệ thống tự động tạo tài khoản (nếu chưa có) và đăng nhập.</li>
+</ul>
+<h3 id='13-đăng-xuất'>1.3 Đăng xuất</h3>
+<ul>
+<li>Nhấn vào <strong>tên tài khoản</strong> ở cuối thanh sidebar bên trái → hệ thống đăng xuất và quay về trang đăng nhập.</li>
+</ul>
+<hr>
+<h2 id='2-phân-quyền-người-dùng'>2. Phân Quyền Người Dùng</h2>
+<p>Hệ thống có <strong>3 vai trò chính</strong> và <strong>các nhóm chuyên môn IT</strong>:</p>
+<div class='table-wrapper'><table>
+<tr><th>Vai trò</th><th>Mô tả</th><th>Quyền truy cập</th></tr>
+<tr><td><strong>ADMIN</strong></td><td>Quản trị viên</td><td>Toàn quyền: tất cả chức năng, phân quyền user</td></tr>
+<tr><td><strong>MANAGER</strong></td><td>Quản lý</td><td>Xem/sửa mọi ticket, tài chính, tài sản, nhân sự</td></tr>
+<tr><td><strong>IT</strong></td><td>Nhân viên IT</td><td>Xem ticket trong nhóm chuyên môn, báo cáo công việc</td></tr>
+<tr><td><strong>USER</strong></td><td>Nhân viên thường</td><td>Tạo ticket, xem ticket của mình, báo cáo công việc</td></tr>
+</table></div>
+<h3 id='nhóm-chuyên-môn-it-chỉ-áp-dụng-cho-vai-trò-it'>Nhóm chuyên môn IT (chỉ áp dụng cho vai trò IT)</h3>
+<div class='table-wrapper'><table>
+<tr><th>Nhóm</th><th>Mô tả</th><th>Danh mục ticket</th></tr>
+<tr><td><strong>SOFTWARE</strong></td><td>Phần mềm</td><td>Phần mềm</td></tr>
+<tr><td><strong>HELPDESK</strong></td><td>Helpdesk - Mạng</td><td>Helpdesk - Mạng</td></tr>
+<tr><td><strong>REPORT</strong></td><td>Báo cáo</td><td>Báo cáo</td></tr>
+</table></div>
+<div class='alert-box' style='border-left: 4px solid #0969da; background: #ddf4ff; padding: 12px 16px; border-radius: 8px; margin: 12px 0;'><strong style='color: #0969da;'>&#8505;&#65039; Lưu ý</strong><br>Nhóm HELPDESK có thêm quyền truy cập <strong>Công Cụ Dụng Cụ</strong>. Một user IT có thể thuộc nhiều nhóm.</div>
+<hr>
+<h2 id='3-trang-chủ'>3. Trang Chủ</h2>
+<p>Sau khi đăng nhập, hệ thống tự chuyển hướng đến trang chủ tương ứng:</p>
+<h3 id='31-trang-chủ-adminit-admin-home'>3.1 Trang chủ Admin/IT (<code>/admin-home</code>)</h3>
+<ul>
+<li><strong>Banner chào mừng</strong> hiển thị tên người dùng.</li>
+<li><strong>Thẻ thống kê nhanh</strong>: tổng ticket, chưa phân công, đang xử lý, quá hạn...</li>
+<li><strong>Các nút truy cập nhanh</strong> đến các chức năng chính: Dashboard, Quản lý Ticket, Công Cụ Dụng Cụ, Nhân sự.</li>
+</ul>
+<h3 id='32-trang-chủ-nhân-viên-user-home'>3.2 Trang chủ Nhân viên (<code>/user-home</code>)</h3>
+<ul>
+<li><strong>Thống kê ticket cá nhân</strong>: số ticket đang mở, đang xử lý, đã hoàn thành.</li>
+<li><strong>Banner ticket đang xử lý</strong> (nếu có): hiển thị ticket ưu tiên đang được IT xử lý.</li>
+<li><strong>Nút tạo ticket nhanh</strong> để gửi yêu cầu hỗ trợ.</li>
+</ul>
+<hr>
+<h2 id='4-dashboard'>4. Dashboard</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Dashboard</strong></p>
+<p><strong>Quyền</strong>: Tất cả user đã đăng nhập</p>
+<p>Dashboard cung cấp <strong>cái nhìn tổng quan</strong> về hoạt động hỗ trợ IT:</p>
+<h3 id='41-dành-cho-adminmanager'>4.1 Dành cho Admin/Manager</h3>
+<ul>
+<li><strong>Thống kê tổng</strong>: tổng ticket, chưa phân công, đang xử lý, quá hạn.</li>
+<li><strong>Biểu đồ phân loại</strong> theo danh mục (Phần mềm, Helpdesk-Mạng, Báo cáo).</li>
+<li><strong>Lịch làm việc IT</strong>: xem lịch biểu IT xử lý ticket theo ngày, có thể lọc theo nhân viên IT.</li>
+<li><strong>Bảng tải công việc IT</strong>: hiển thị số ticket đang xử lý của từng nhân viên IT.</li>
+</ul>
+<h3 id='42-dành-cho-it'>4.2 Dành cho IT</h3>
+<ul>
+<li>Thống kê ticket <strong>trong phạm vi nhóm</strong> chuyên môn của mình.</li>
+<li>Biểu đồ phân loại chỉ hiển thị ticket liên quan.</li>
+</ul>
+<h3 id='43-dành-cho-user-thường'>4.3 Dành cho User thường</h3>
+<ul>
+<li>Thống kê <strong>ticket cá nhân</strong> (tự tạo).</li>
+<li>Biểu đồ phân loại ticket của mình.</li>
+</ul>
+<hr>
+<h2 id='5-quản-lý-ticket'>5. Quản Lý Ticket</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Quản lý Ticket</strong></p>
+<p><strong>Quyền</strong>: Tất cả user đã đăng nhập</p>
+<h3 id='51-xem-danh-sách-ticket'>5.1 Xem danh sách Ticket</h3>
+<ul>
+<li>Danh sách ticket hiển thị theo <strong>dạng bảng</strong> với phân trang.</li>
+<li><strong>Tabs lọc nhanh</strong>: Tất cả | Mở | Đang xử lý | Đã giải quyết | Của tôi | Quá hạn.</li>
+<li><strong>Ô tìm kiếm</strong>: tìm theo tiêu đề, mô tả, người gửi.</li>
+<li><strong>Bộ lọc nâng cao</strong>: lọc theo trạng thái, mức ưu tiên, danh mục, người xử lý, khoảng thời gian.</li>
+</ul>
+<h3 id='52-tạo-ticket-mới'>5.2 Tạo Ticket mới</h3>
+<ol>
+<li>Nhấn nút <strong>"Tạo Ticket"</strong> (trên sidebar hoặc trong trang quản lý).</li>
+<li>Điền thông tin:</li>
+<li><strong>Tiêu đề</strong> <em>(bắt buộc)</em>: mô tả ngắn gọn vấn đề.</li>
+<li><strong>Mô tả</strong>: chi tiết vấn đề cần hỗ trợ.</li>
+<li><strong>Danh mục</strong> <em>(bắt buộc)</em>: Phần mềm / Helpdesk-Mạng / Báo cáo.</li>
+<li><strong>Mức ưu tiên</strong> <em>(bắt buộc)</em>: Cao (HIGH) / Trung bình (MED) / Thấp (LOW).</li>
+<li><strong>Vị trí</strong>: Hà Nội / HCM.</li>
+<li><strong>Hình ảnh đính kèm</strong> <em>(tùy chọn)</em>: ảnh chụp lỗi, màn hình.</li>
+<li>Nhấn <strong>"Gửi"</strong> để tạo ticket.</li>
+<div class='alert-box' style='border-left: 4px solid #1a7f37; background: #dafbe1; padding: 12px 16px; border-radius: 8px; margin: 12px 0;'><strong style='color: #1a7f37;'>&#128161; Mẹo</strong><br>Nên đính kèm ảnh chụp màn hình lỗi để IT xử lý nhanh hơn.</div>
+</ol>
+<h3 id='53-thông-tin-một-ticket'>5.3 Thông tin một Ticket</h3>
+<p>Mỗi ticket chứa các trường sau:</p>
+<div class='table-wrapper'><table>
+<tr><th>Trường</th><th>Mô tả</th></tr>
+<tr><td><strong>Tiêu đề</strong></td><td>Mô tả ngắn gọn vấn đề</td></tr>
+<tr><td><strong>Mô tả</strong></td><td>Chi tiết vấn đề</td></tr>
+<tr><td><strong>Danh mục</strong></td><td>Phần mềm / Helpdesk-Mạng / Báo cáo</td></tr>
+<tr><td><strong>Mức ưu tiên</strong></td><td>HIGH / MED / LOW</td></tr>
+<tr><td><strong>Trạng thái</strong></td><td>OPEN → PROGRESS → RESOLVED → CLOSED</td></tr>
+<tr><td><strong>Người gửi</strong></td><td>Tên + phòng ban người tạo</td></tr>
+<tr><td><strong>Người xử lý</strong></td><td>Nhân viên IT được giao</td></tr>
+<tr><td><strong>Vị trí</strong></td><td>Hà Nội / HCM</td></tr>
+<tr><td><strong>SLA Deadline</strong></td><td>Thời hạn xử lý</td></tr>
+<tr><td><strong>Dự kiến hoàn thành</strong></td><td>Thời gian IT ước tính hoàn thành</td></tr>
+<tr><td><strong>Hình ảnh</strong></td><td>Ảnh đính kèm mô tả lỗi + ảnh hoàn thành</td></tr>
+<tr><td><strong>Ghi chú Fix</strong></td><td>IT/Admin ghi chú những gì đã sửa</td></tr>
+<tr><td><strong>Phản hồi User</strong></td><td>Người dùng phản hồi sau khi IT hoàn thành</td></tr>
+<tr><td><strong>Phê duyệt</strong></td><td>Trạng thái phê duyệt của Manager và IT</td></tr>
+</table></div>
+<h3 id='54-vòng-đời-ticket'>5.4 Vòng đời Ticket</h3>
+<div class='mermaid-placeholder'><strong>ðŸ“Š SÆ¡ Ä‘á»“ luá»“ng:</strong><pre>graph LR
+    A["OPEN&lt;br/&gt;Mới tạo"] --&gt; B["PROGRESS&lt;br/&gt;Đang xử lý"]
+    B --&gt; C["RESOLVED&lt;br/&gt;IT hoàn thành"]
+    C --&gt; D["CLOSED&lt;br/&gt;User xác nhận&lt;br/&gt;hoặc tự đóng sau 3 ngày"]
+    C --&gt; B
+</pre></div>
+<ol>
+<li><strong>OPEN</strong>: Ticket vừa được tạo, chưa phân công.</li>
+<li><strong>PROGRESS</strong>: Đã phân công cho IT và đang xử lý.</li>
+<li><strong>RESOLVED</strong>: IT đã hoàn thành, chờ user xác nhận.</li>
+<li><strong>CLOSED</strong>: User xác nhận đã xong, hoặc hệ thống tự đóng sau 3 ngày không phản hồi.</li>
+<div class='alert-box' style='border-left: 4px solid #8250df; background: #fbefff; padding: 12px 16px; border-radius: 8px; margin: 12px 0;'><strong style='color: #8250df;'>&#10071; Quan trọng</strong><br>Ticket ở trạng thái RESOLVED sẽ <strong>tự động đóng sau 3 ngày</strong> nếu user không phản hồi (do <code>TicketAutoCloseScheduler</code> chạy tự động).</div>
+</ol>
+<h3 id='55-quản-lý-ticket-adminmanagerit'>5.5 Quản lý Ticket (Admin/Manager/IT)</h3>
+<ul>
+<li><strong>Phân công</strong>: chọn nhân viên IT để xử lý ticket (danh sách IT tự lọc theo nhóm phù hợp với danh mục).</li>
+<li><strong>Cập nhật trạng thái</strong>: chuyển OPEN → PROGRESS → RESOLVED.</li>
+<li><strong>Chỉnh sửa inline</strong>: cập nhật nhanh trạng thái, mức ưu tiên, người xử lý trực tiếp trên bảng.</li>
+<li><strong>Ghi chú fix</strong>: khi hoàn thành, ghi lại những gì đã sửa chữa.</li>
+<li><strong>Đính kèm ảnh hoàn thành</strong>: chụp ảnh kết quả sau khi sửa.</li>
+<li><strong>Xóa ticket</strong>: chỉ Admin/Manager có quyền xóa.</li>
+<li><strong>Xuất Excel</strong>: xuất danh sách ticket ra file Excel.</li>
+</ul>
+<h3 id='56-phê-duyệt-ticket'>5.6 Phê duyệt Ticket</h3>
+<ul>
+<li><strong>Manager Approval</strong>: Manager phê duyệt hoặc từ chối ticket (PENDING / APPROVED / REJECTED).</li>
+<li><strong>IT Approval</strong>: IT xác nhận tiếp nhận ticket.</li>
+</ul>
+<hr>
+<h2 id='6-công-cụ-dụng-cụ-tài-sản'>6. Công Cụ Dụng Cụ (Tài sản)</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Công Cụ Dụng Cụ</strong></p>
+<p><strong>Quyền</strong>: Admin, Manager, IT nhóm Helpdesk</p>
+<p>Quản lý toàn bộ công cụ, dụng cụ, tài sản của doanh nghiệp.</p>
+<h3 id='61-danh-sách-tài-sản'>6.1 Danh sách tài sản</h3>
+<ul>
+<li>Hiển thị theo <strong>dạng bảng</strong> với phân trang (5 dòng/trang).</li>
+<li>Thông tin: mã kiểm kê, tên, danh mục, trạng thái, vị trí sử dụng, người sử dụng.</li>
+<li>Tìm kiếm và lọc theo nhiều tiêu chí.</li>
+</ul>
+<h3 id='62-trạng-thái-tài-sản'>6.2 Trạng thái tài sản</h3>
+<div class='table-wrapper'><table>
+<tr><th>Trạng thái</th><th>Mô tả</th></tr>
+<tr><td><strong>Mới</strong></td><td>Mới mua, chưa sử dụng</td></tr>
+<tr><td><strong>Đang sử dụng</strong></td><td>Đang được nhân viên sử dụng</td></tr>
+<tr><td><strong>Trong kho</strong></td><td>Lưu kho, sẵn sàng cấp phát</td></tr>
+<tr><td><strong>Đang sửa</strong></td><td>Đang bảo trì / sửa chữa</td></tr>
+<tr><td><strong>Hỏng</strong></td><td>Đã hỏng, không sử dụng được</td></tr>
+<tr><td><strong>Đã thanh lý</strong></td><td>Đã thanh lý / loại bỏ</td></tr>
+</table></div>
+<h3 id='63-tình-trạng-kiểm-kê'>6.3 Tình trạng kiểm kê</h3>
+<div class='table-wrapper'><table>
+<tr><th>Tình trạng</th><th>Ý nghĩa</th></tr>
+<tr><td>Mới</td><td>Còn mới nguyên</td></tr>
+<tr><td>Sử dụng bình thường</td><td>Hoạt động tốt</td></tr>
+<tr><td>Cần bảo trì</td><td>Cần kiểm tra, sửa chữa</td></tr>
+<tr><td>Hỏng</td><td>Không hoạt động</td></tr>
+<tr><td>Không tìm thấy</td><td>Thất lạc khi kiểm kê</td></tr>
+</table></div>
+<h3 id='64-nhập-hàng-loạt-từ-excel'>6.4 Nhập hàng loạt từ Excel</h3>
+<ol>
+<li>Nhấn <strong>"Tải file mẫu"</strong> để tải file Excel mẫu (<code>Mau_Nhap_Cong_Cu_Dung_Cu.xlsx</code>).</li>
+<li>Điền thông tin tài sản vào file theo đúng mẫu.</li>
+<li>Nhấn <strong>"Nhập từ Excel"</strong> và chọn file đã điền.</li>
+<li>Hệ thống xử lý:</li>
+<li><strong>Mã kiểm kê đã có</strong> → cập nhật thông tin.</li>
+<li><strong>Mã kiểm kê mới</strong> → tạo bản ghi mới.</li>
+<li>Nhập lại cùng file <strong>không tạo bản ghi trùng</strong>.</li>
+</ol>
+<h3 id='65-bàn-giao-tài-sản'>6.5 Bàn giao tài sản</h3>
+<ul>
+<li>Ghi nhận lịch sử bàn giao: ai dùng, từ khi nào, trả lại khi nào.</li>
+<li>Theo dõi đầy đủ <strong>lịch sử sử dụng</strong> của từng tài sản.</li>
+</ul>
+<hr>
+<h2 id='7-quản-lý-tài-chính'>7. Quản Lý Tài Chính</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Quản Lý Tài Chính</strong> → <strong>Quỹ Chi Tiêu</strong></p>
+<p><strong>Quyền</strong>: Admin, Manager</p>
+<p>Theo dõi chi tiêu mua sắm công cụ / dụng cụ của team.</p>
+<h3 id='71-trang-tổng-quan-quỹ-expenses'>7.1 Trang tổng quan Quỹ (<code>/expenses</code>)</h3>
+<ul>
+<li><strong>Thẻ tổng hợp</strong>: tổng ngân sách, đã chi, còn lại, phần trăm sử dụng.</li>
+<li><strong>Danh sách quỹ</strong>: liệt kê tất cả quỹ chi tiêu với thông tin tóm tắt.</li>
+<li><strong>Tạo quỹ mới</strong>: đặt tên quỹ và ngân sách được cấp.</li>
+</ul>
+<h3 id='72-chi-tiết-quỹ-expensesfundid'>7.2 Chi tiết Quỹ (<code>/expenses/fund/{id}</code>)</h3>
+<ul>
+<li><strong>Ngân sách</strong>: tổng cấp, đã chi, còn lại.</li>
+<li><strong>Hạng mục ngân sách</strong> (Budget Items): phân chia ngân sách theo hạng mục.</li>
+<li><strong>Báo cáo tháng</strong>: tổng hợp chi tiêu theo từng tháng.</li>
+<li><strong>Lịch sử chi</strong>: danh sách từng khoản chi tiết.</li>
+</ul>
+<h3 id='73-thêm-khoản-chi'>7.3 Thêm khoản chi</h3>
+<ul>
+<li>Chọn quỹ → thêm khoản chi với: tên, số tiền, ngày chi, ghi chú, hóa đơn đính kèm.</li>
+</ul>
+<hr>
+<h2 id='8-sổ-hóa-đơn'>8. Sổ Hóa Đơn</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Quản Lý Tài Chính</strong> → <strong>Sổ Hóa Đơn</strong></p>
+<p><strong>Quyền</strong>: Admin, Manager</p>
+<p>Lưu trữ và quản lý hóa đơn / phiếu chi của công ty.</p>
+<h3 id='81-danh-sách-hóa-đơn'>8.1 Danh sách hóa đơn</h3>
+<ul>
+<li>Hiển thị theo bảng với phân trang (5 dòng/trang).</li>
+<li>Tìm kiếm, lọc theo ngày, hạng mục ngân sách.</li>
+</ul>
+<h3 id='82-thêm-hóa-đơn'>8.2 Thêm hóa đơn</h3>
+<ul>
+<li>Nhập thông tin: số hóa đơn, ngày, mô tả, số tiền, hạng mục ngân sách.</li>
+<li>Đính kèm file ảnh/scan hóa đơn.</li>
+</ul>
+<h3 id='83-nhập-từ-excel'>8.3 Nhập từ Excel</h3>
+<ul>
+<li>Hỗ trợ nhập hàng loạt hóa đơn từ file Excel.</li>
+<li>Hệ thống tự <strong>đối chiếu tên hạng mục</strong> với ngân sách đã khai (bỏ dấu, không phân biệt hoa thường).</li>
+</ul>
+<h3 id='84-xuất-excel'>8.4 Xuất Excel</h3>
+<ul>
+<li>Xuất toàn bộ sổ hóa đơn ra file Excel để báo cáo.</li>
+</ul>
+<hr>
+<h2 id='9-lịch-trình'>9. Lịch Trình</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Lịch Trình</strong></p>
+<p><strong>Quyền</strong>: Tất cả user đã đăng nhập</p>
+<h3 id='91-lịch-hoạt-động-it'>9.1 Lịch hoạt động IT</h3>
+<ul>
+<li>Xem <strong>lịch biểu</strong> công việc của team IT theo ngày.</li>
+<li>Hiển thị ticket đang xử lý, người phụ trách, trạng thái.</li>
+<li><strong>Tải công việc IT</strong>: bảng tổng hợp số ticket mỗi nhân viên IT đang xử lý.</li>
+</ul>
+<hr>
+<h2 id='10-báo-cáo-công-việc'>10. Báo Cáo Công Việc</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Báo Cáo Công Việc</strong></p>
+<p><strong>Quyền</strong>: Tất cả user đã đăng nhập</p>
+<p>Hệ thống quản lý task / công việc nội bộ, tương tự ClickUp mini.</p>
+<h3 id='101-xem-danh-sách-báo-cáo'>10.1 Xem danh sách báo cáo</h3>
+<ul>
+<li><strong>Chế độ xem</strong>: danh sách (List) hoặc bảng Kanban (Board).</li>
+<li><strong>Lọc</strong>: theo người phụ trách, dự án, trạng thái, khoảng thời gian.</li>
+</ul>
+<h3 id='102-phạm-vi-xem'>10.2 Phạm vi xem</h3>
+<div class='table-wrapper'><table>
+<tr><th>Vai trò</th><th>Xem được</th></tr>
+<tr><td>Admin / IT / Manager</td><td>Tất cả báo cáo</td></tr>
+<tr><td>User thường</td><td>Chỉ báo cáo mình tạo, được giao, được theo dõi, hoặc có sub-task</td></tr>
+</table></div>
+<h3 id='103-tạo-báo-cáo-công-việc'>10.3 Tạo báo cáo công việc</h3>
+<p>Điền thông tin:</p>
+<div class='table-wrapper'><table>
+<tr><th>Trường</th><th>Mô tả</th></tr>
+<tr><td><strong>Dự án</strong></td><td>Tên dự án / hạng mục lớn</td></tr>
+<tr><td><strong>Tên công việc</strong></td><td>Công việc / tính năng chi tiết</td></tr>
+<tr><td><strong>Người phụ trách</strong></td><td>Nhân viên IT/Dev được giao</td></tr>
+<tr><td><strong>Người theo dõi</strong></td><td>Danh sách watchers (cách nhau bởi dấu phẩy)</td></tr>
+<tr><td><strong>Trạng thái</strong></td><td>PLANNING → PROGRESS → COMPLETED</td></tr>
+<tr><td><strong>Tiến độ</strong></td><td>0% – 100%</td></tr>
+<tr><td><strong>Mức ưu tiên</strong></td><td>URGENT / HIGH / NORMAL / LOW</td></tr>
+<tr><td><strong>Ngày bắt đầu / Deadline</strong></td><td>Khoảng thời gian thực hiện</td></tr>
+<tr><td><strong>Thời gian ước tính</strong></td><td>VD: "4 giờ", "2 ngày"</td></tr>
+<tr><td><strong>Giờ đã làm</strong></td><td>Tổng số giờ thực tế (có bộ đếm giờ tích hợp)</td></tr>
+<tr><td><strong>Nhãn (Tags)</strong></td><td>Gắn thẻ phân loại: "Backend", "Urgent",...</td></tr>
+<tr><td><strong>Báo cáo hàng ngày</strong></td><td>Ghi chú tiến độ / nhật ký làm việc</td></tr>
+</table></div>
+<h3 id='104-công-việc-con-sub-tasks'>10.4 Công việc con (Sub-tasks)</h3>
+<ul>
+<li>Mỗi báo cáo có thể chứa nhiều <strong>việc con</strong> (sub-tasks).</li>
+<li>Tiến độ công việc cha có thể được <strong>tính tự động</strong> từ các việc con.</li>
+</ul>
+<h3 id='105-bộ-đếm-giờ-timer'>10.5 Bộ đếm giờ (Timer)</h3>
+<ul>
+<li>Nhấn <strong>"Bắt đầu đếm"</strong> để bắt đầu tính giờ làm việc.</li>
+<li>Nhấn <strong>"Dừng"</strong> để ghi nhận giờ vào tổng <code>loggedHours</code>.</li>
+<li>Hỗ trợ theo dõi năng suất làm việc.</li>
+</ul>
+<h3 id='106-bình-luận-comments'>10.6 Bình luận (Comments)</h3>
+<ul>
+<li>Mỗi báo cáo có phần <strong>bình luận</strong> để trao đổi, cập nhật tiến độ.</li>
+</ul>
+<h3 id='107-xác-nhận-hoàn-thành'>10.7 Xác nhận hoàn thành</h3>
+<ul>
+<li>Khi công việc đạt 100% hoặc trạng thái COMPLETED, hệ thống tự <strong>đóng dấu mốc hoàn thành</strong> (<code>completedAt</code>).</li>
+<li>Người tạo báo cáo có thể <strong>chốt xác nhận</strong> hoàn thành (<code>ownerConfirmed</code>).</li>
+</ul>
+<hr>
+<h2 id='11-quản-lý-nhân-sự'>11. Quản Lý Nhân Sự</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Quản Lý Nhân Sự</strong></p>
+<p><strong>Quyền</strong>: Admin, Manager</p>
+<p>Quản lý hồ sơ nhân viên toàn diện.</p>
+<h3 id='111-thông-tin-nhân-viên'>11.1 Thông tin nhân viên</h3>
+<p>Hồ sơ nhân viên bao gồm các nhóm thông tin:</p>
+<h4 id='thông-tin-chung'>Thông tin chung</h4>
+<ul>
+<li>Mã số lao động, Họ tên, Phòng ban, Bộ phận, Chức vụ</li>
+<li>Chức danh chuyên môn, Giới tính, Chi nhánh</li>
+</ul>
+<h4 id='cá-nhân-liên-hệ'>Cá nhân & Liên hệ</h4>
+<ul>
+<li>Ngày sinh, Địa chỉ (hiện tại + hộ khẩu thường trú)</li>
+<li>Trình độ học vấn, Chuyên ngành</li>
+<li>Email cá nhân + email công ty</li>
+<li>CCCD (số, ngày cấp, nơi cấp)</li>
+<li>Số điện thoại (cá nhân + công ty), Mã số thuế</li>
+</ul>
+<h4 id='hợp-đồng-bảo-hiểm'>Hợp đồng & Bảo hiểm</h4>
+<ul>
+<li>Ngày vào công ty, Ngày ký chính thức, Số HĐLĐ</li>
+<li>Tình trạng làm việc, Số năm làm việc</li>
+<li>Sổ bảo hiểm, Mức đóng, Đóng tại công ty</li>
+<li>Tài khoản ngân hàng (STK, ngân hàng, chi nhánh)</li>
+<li>Thai sản / Nghỉ phép dài hạn</li>
+<li>Ngày nghỉ việc, Lý do nghỉ</li>
+</ul>
+<h4 id='hồ-sơ-đính-kèm-checklist'>Hồ sơ đính kèm (Checklist)</h4>
+<ul>
+<li>☐ Sơ yếu lý lịch</li>
+<li>☐ CCCD</li>
+<li>☐ Giấy khám sức khỏe</li>
+<li>☐ Bằng cấp</li>
+<li>☐ Ảnh 3×4</li>
+<li>☐ CV cá nhân</li>
+<li>☐ Giấy xác nhận</li>
+<li>☐ Đơn xin việc</li>
+</ul>
+<h4 id='người-liên-hệ-khẩn-cấp'>Người liên hệ khẩn cấp</h4>
+<ul>
+<li>Họ tên, Quan hệ, Số điện thoại</li>
+</ul>
+<h4 id='thông-tin-người-thân'>Thông tin người thân</h4>
+<ul>
+<li>Họ tên, Năm sinh, Quan hệ, Nghề nghiệp, Ghi chú</li>
+</ul>
+<hr>
+<h2 id='12-quản-lý-user-phân-quyền'>12. Quản Lý User & Phân Quyền</h2>
+<p><strong>Đường dẫn</strong>: Sidebar → <strong>Quản Lý User</strong> → <strong>Phân Quyền User</strong></p>
+<p><strong>Quyền</strong>: Chỉ Admin</p>
+<h3 id='121-danh-sách-user'>12.1 Danh sách User</h3>
+<ul>
+<li>Xem tất cả user trong hệ thống: tên, email, vai trò, nguồn tài khoản (Local/M365).</li>
+</ul>
+<h3 id='122-tạo-user-local'>12.2 Tạo User Local</h3>
+<ol>
+<li>Nhấn <strong>"Tạo User mới"</strong>.</li>
+<li>Nhập: tên đăng nhập/email, họ tên, mật khẩu (≥ 6 ký tự), vai trò.</li>
+<li>Nhấn <strong>"Tạo"</strong>.</li>
+</ol>
+<h3 id='123-đồng-bộ-từ-microsoft-365'>12.3 Đồng bộ từ Microsoft 365</h3>
+<ul>
+<li>Nhấn <strong>"Đồng bộ từ Microsoft 365"</strong> để kéo danh sách user từ Azure AD.</li>
+<li>Chọn user cần thêm → hệ thống tạo tài khoản tự động với nguồn <code>M365</code>.</li>
+</ul>
+<h3 id='124-phân-quyền'>12.4 Phân quyền</h3>
+<ul>
+<li><strong>Đổi vai trò</strong>: chọn user → đổi vai trò (USER / IT / ADMIN).</li>
+<li><strong>Gán nhóm IT</strong>: với user có vai trò IT, chọn nhóm chuyên môn:</li>
+<li>☐ SOFTWARE (Phần mềm)</li>
+<li>☐ HELPDESK (Helpdesk - Mạng)</li>
+<li>☐ REPORT (Báo cáo)</li>
+<li>Một user IT có thể thuộc <strong>nhiều nhóm</strong> cùng lúc.</li>
+</ul>
+<h3 id='125-đổi-mật-khẩu'>12.5 Đổi mật khẩu</h3>
+<ul>
+<li>Chỉ áp dụng cho tài khoản <strong>Local</strong> (không áp dụng cho M365).</li>
+<li>Admin đặt mật khẩu mới cho user (≥ 6 ký tự).</li>
+<div class='alert-box' style='border-left: 4px solid #9a6700; background: #fff8c5; padding: 12px 16px; border-radius: 8px; margin: 12px 0;'><strong style='color: #9a6700;'>&#9888;&#65039; Cảnh báo</strong><br>Thay đổi vai trò sẽ có hiệu lực <strong>ngay lập tức</strong> và ảnh hưởng đến quyền truy cập của user.</div>
+</ul>
+<hr>
+<h2 id='13-thông-báo'>13. Thông Báo</h2>
+<p>Hệ thống thông báo realtime tích hợp sẵn trên mọi trang.</p>
+<h3 id='131-biểu-tượng-chuông-'>13.1 Biểu tượng chuông 🔔</h3>
+<ul>
+<li>Hiển thị trên <strong>thanh topbar</strong> của mọi trang.</li>
+<li><strong>Badge đỏ</strong> hiển thị số thông báo chưa đọc.</li>
+<li>Tự động cập nhật mỗi <strong>30 giây</strong>.</li>
+</ul>
+<h3 id='132-các-loại-thông-báo'>13.2 Các loại thông báo</h3>
+<div class='table-wrapper'><table>
+<tr><th>Loại</th><th>Mô tả</th><th>Biểu tượng</th></tr>
+<tr><td><strong>TICKET_CREATED</strong></td><td>Ticket mới được tạo</td><td>🎫</td></tr>
+<tr><td><strong>TICKET_ASSIGNED</strong></td><td>Ticket được giao cho bạn</td><td>👤</td></tr>
+<tr><td><strong>TICKET_RESOLVED</strong></td><td>Ticket đã được giải quyết</td><td>✅</td></tr>
+</table></div>
+<h3 id='133-thao-tác'>13.3 Thao tác</h3>
+<ul>
+<li><strong>Nhấn vào thông báo</strong> → đánh dấu đã đọc + chuyển đến ticket liên quan.</li>
+<li><strong>"Đánh dấu đã đọc hết"</strong> → đánh dấu tất cả đã đọc.</li>
+<li><strong>"Xem tất cả Ticket"</strong> → chuyển đến trang Quản lý Ticket.</li>
+</ul>
+<hr>
+<h2 id='14-hồ-sơ-cá-nhân'>14. Hồ Sơ Cá Nhân</h2>
+<p><strong>Đường dẫn</strong>: <code>/profile</code></p>
+<p><strong>Quyền</strong>: Tất cả user đã đăng nhập</p>
+<ul>
+<li>Xem thông tin cá nhân: tên đăng nhập / tên hiển thị.</li>
+</ul>
+<hr>
+<h2 id='-bảng-tổng-hợp-chức-năng-theo-quyền'>📌 Bảng Tổng Hợp Chức Năng Theo Quyền</h2>
+<div class='table-wrapper'><table>
+<tr><th>Chức năng</th><th>User</th><th>IT</th><th>Manager</th><th>Admin</th></tr>
+<tr><td>Trang chủ</td><td>✅ User</td><td>✅ Admin</td><td>✅ Admin</td><td>✅ Admin</td></tr>
+<tr><td>Dashboard</td><td>✅ (cá nhân)</td><td>✅ (nhóm)</td><td>✅ (toàn bộ)</td><td>✅ (toàn bộ)</td></tr>
+<tr><td>Xem ticket</td><td>✅ (của mình)</td><td>✅ (nhóm)</td><td>✅ (toàn bộ)</td><td>✅ (toàn bộ)</td></tr>
+<tr><td>Tạo ticket</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td>Sửa/phân công ticket</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td>Xóa ticket</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
+<tr><td>Công Cụ Dụng Cụ</td><td>❌</td><td>✅ (HELPDESK)</td><td>✅</td><td>✅</td></tr>
+<tr><td>Quỹ Chi Tiêu</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
+<tr><td>Sổ Hóa Đơn</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
+<tr><td>Lịch Trình</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td>Báo Cáo Công Việc</td><td>✅ (hạn chế)</td><td>✅ (toàn bộ)</td><td>✅ (toàn bộ)</td><td>✅ (toàn bộ)</td></tr>
+<tr><td>Quản Lý Nhân Sự</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
+<tr><td>Phân Quyền User</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td></tr>
+</table></div>
+<hr>
+<h2 id='-thanh-điều-hướng-sidebar'>🗂️ Thanh Điều Hướng (Sidebar)</h2>
+<p>Sidebar bên trái hiển thị các mục menu tùy theo quyền:</p>
+<pre><code class='language-'>📍 Trang chủ
+📊 Dashboard
+🎫 Quản lý Ticket
+➕ Tạo Ticket (chỉ User)
+🌐 Mạng (Admin/Manager)
+📦 Công Cụ Dụng Cụ (Admin/Manager/Helpdesk)
+💰 Quản Lý Tài Chính ▾ (Admin/Manager)
+   ├─ 💵 Quỹ Chi Tiêu
+   └─ 🧾 Sổ Hóa Đơn
+📅 Lịch Trình
+📋 Báo Cáo Công Việc
+👔 Quản Lý Nhân Sự (Admin/Manager)
+───────────────────
+⚙️ Quản Lý User ▾ (Admin)
+   └─ 🛡️ Phân Quyền User
+</code></pre>
+<ul>
+<li><strong>Thu gọn sidebar</strong>: nhấn nút ở góc trái trên để thu nhỏ sidebar (chỉ hiện icon).</li>
+<li><strong>Mobile</strong>: sidebar tự động ẩn, nhấn nút hamburger (☰) để mở.</li>
+</ul>
+<hr>
+<h2 id='-email-thông-báo'>📧 Email Thông Báo</h2>
+<p>Hệ thống tự động gửi email khi:</p>
+<ul>
+<li>Ticket mới được tạo</li>
+<li>Ticket được phân công cho IT</li>
+<li>Ticket thay đổi trạng thái</li>
+<div class='alert-box' style='border-left: 4px solid #0969da; background: #ddf4ff; padding: 12px 16px; border-radius: 8px; margin: 12px 0;'><strong style='color: #0969da;'>&#8505;&#65039; Lưu ý</strong><br>Email được gửi qua <strong>Microsoft Graph API</strong> (email công ty Microsoft 365).</div>
+</ul>
+<hr>
+<h2 id='-lưu-trữ-file-đính-kèm'>💾 Lưu Trữ File Đính Kèm</h2>
+<div class='table-wrapper'><table>
+<tr><th>Chế độ</th><th>Nơi lưu</th><th>Sử dụng khi</th></tr>
+<tr><td><code>local</code> (mặc định)</td><td>Thư mục trên máy chủ</td><td>Chạy dev/test</td></tr>
+<tr><td><code>s3</code></td><td>MinIO / Amazon S3</td><td>Production</td></tr>
+</table></div>
+<div class='alert-box' style='border-left: 4px solid #1a7f37; background: #dafbe1; padding: 12px 16px; border-radius: 8px; margin: 12px 0;'><strong style='color: #1a7f37;'>&#128161; Mẹo</strong><br>Đường dẫn lưu trong database luôn là <code>/uploads/{tên-file}</code> cho cả hai chế độ, nên có thể chuyển đổi qua lại mà không cần sửa dữ liệu cũ.</div>
+</body>
+</html>

@@ -54,11 +54,18 @@
         .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
         .empty-state i { font-size: 52px; margin-bottom: 14px; }
 
-        /* ===== MODAL SCROLL & STICKY FOOTER FIXES ===== */
-        #assetModal .modal-content { max-height: 85vh; overflow: hidden; }
-        #assetModal form { display: flex; flex-direction: column; max-height: 85vh; margin: 0; }
-        #assetModal .modal-body { overflow-y: auto; max-height: calc(85vh - 130px); padding: 25px; }
-        #assetModal .modal-footer { flex-shrink: 0; background: #ffffff; border-top: 1px solid #e5e7eb; position: sticky; bottom: 0; z-index: 1050; }
+        /* ===== MODAL SCROLL & STICKY FOOTER =====
+           Bootstrap chỉ co giãn được khi .modal-body là con trực tiếp của .modal-content,
+           mà ở đây có <form> chen vào giữa nên chuỗi flex bị đứt: phần thân không co lại,
+           footer bị đẩy khỏi khung và nút Lưu biến mất trên màn hình thấp / cửa sổ nhỏ.
+           Cho form kế thừa flex và min-height:0 để thân cuộn, footer luôn dính đáy.
+           KHÔNG dùng max-height cứng theo vh — header/footer xuống dòng là lệch ngay. */
+        .modal-dialog-scrollable .modal-content { overflow: hidden; }
+        .modal-dialog-scrollable form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; margin: 0; }
+        .modal-dialog-scrollable form > .modal-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; max-height: none; padding: 25px; }
+        .modal-dialog-scrollable form > .modal-header,
+        .modal-dialog-scrollable form > .modal-footer { flex-shrink: 0; }
+        #assetModal .modal-footer { background: #ffffff; border-top: 1px solid #e5e7eb; }
         #assetHistoryModal { z-index: 1065; }
 
         @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
@@ -82,6 +89,14 @@
                 <button class="btn btn-outline-secondary fw-semibold" data-bs-toggle="modal" data-bs-target="#categoryModal" title="Quản lý danh mục">
                     <i class="fa-solid fa-tags"></i><span class="d-none d-md-inline ms-1"> Danh mục</span>
                 </button>
+                <button class="btn btn-outline-secondary fw-semibold" data-bs-toggle="modal" data-bs-target="#importAssetModal"
+                        title="Nhập nhiều tài sản từ Excel">
+                    <i class="fa-solid fa-file-import"></i><span class="d-none d-md-inline ms-1"> Nhập Excel</span>
+                </button>
+                <a th:href="@{/assets/export(categoryId=${selectedCategoryId}, status=${selectedStatus}, keyword=${keyword})}"
+                   class="btn btn-outline-success fw-semibold" title="Xuất danh sách tài sản ra file Excel">
+                    <i class="fa-solid fa-file-excel"></i><span class="d-none d-md-inline ms-1"> Xuất Excel</span>
+                </a>
                 <button class="btn btn-primary fw-semibold shadow-sm" style="background:#1e3a8a; border:none;"
                         onclick="openAssetModal(null)" title="Thêm tài sản">
                     <i class="fa-solid fa-plus"></i><span class="d-none d-md-inline ms-1"> Thêm tài sản</span>
@@ -179,6 +194,10 @@
                     Danh sách tài sản
                     <span class="text-muted fw-normal">(<span th:text="${assetCount}">0</span> mục)</span>
                 </h6>
+                <a th:href="@{/assets/export(categoryId=${selectedCategoryId}, status=${selectedStatus}, keyword=${keyword})}"
+                   class="btn btn-sm btn-outline-success fw-semibold">
+                    <i class="fa-solid fa-file-excel me-1"></i> Xuất Excel kết quả
+                </a>
             </div>
 
             <!-- Thanh hành động khi có tài sản được tick chọn -->
@@ -216,15 +235,19 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="a, iter : ${assets}" th:with="cat=${categoryById[a.categoryId]}"
+                        <!-- Tra danh mục phải né key null: tài sản chưa gán danh mục sẽ làm map[null] nổ và cắt ngang trang -->
+                        <tr th:each="a, iter : ${assets}" th:with="cat=${a.categoryId != null ? categoryById[a.categoryId] : null}"
                             th:attr="data-json=${assetJson[a.id]}">
                             <td>
                                 <!-- Chỉ tài sản CNTT mới lập được biên bản bàn giao -->
-                                <input th:if="${cat != null and cat.itEquipment}" type="checkbox" class="row-check"
+                                <input type="checkbox" class="row-check"
                                        th:value="${a.id}" onchange="refreshSelection()">
                             </td>
-                            <td th:text="${iter.count}">1</td>
-                            <td class="code-cell" th:text="${a.inventoryCode}">MDM-0001</td>
+                            <td th:text="${pageFrom + iter.index}">1</td>
+                            <td class="code-cell">
+                                <span th:if="${a.inventoryCode != null}" th:text="${a.inventoryCode}">MDM-0001</span>
+                                <span th:if="${a.inventoryCode == null}" class="text-muted fw-normal">Chưa có mã</span>
+                            </td>
                             <td>
                                 <span th:if="${cat != null}">
                                     <i class="me-1 text-muted" th:classappend="${cat.icon} ?: 'fa-solid fa-box'"></i>
@@ -279,7 +302,8 @@
                                             th:attr="onclick=|openInventoryModal('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode)}')|">
                                         <i class="fa-solid fa-clipboard-check"></i>
                                     </button>
-                                    <button th:if="${cat != null and cat.itEquipment}" type="button"
+                                    <!-- Mọi tài sản đều lập được biên bản bàn giao, không chỉ thiết bị CNTT -->
+                                    <button type="button"
                                             class="btn btn-outline-success" title="Lập biên bản bàn giao (.docx)"
                                             onclick="openHandoverModal(this.closest('tr'))">
                                         <i class="fa-solid fa-file-word"></i>
@@ -293,6 +317,36 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- PHÂN TRANG: giữ nguyên bộ lọc đang chọn khi chuyển trang -->
+            <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2"
+                 th:if="${assetCount > 0}">
+                <small class="text-muted">
+                    Hiển thị <b th:text="${pageFrom}">1</b>–<b th:text="${pageTo}">5</b>
+                    trên <b th:text="${assetCount}">0</b> tài sản
+                </small>
+                <nav th:if="${totalPages > 1}">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+                            <a class="page-link"
+                               th:href="@{/assets(categoryId=${selectedCategoryId}, status=${selectedStatus}, keyword=${keyword}, page=${currentPage - 1})}">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item" th:each="p : ${#numbers.sequence(1, totalPages)}"
+                            th:classappend="${p == currentPage} ? 'active'">
+                            <a class="page-link" th:text="${p}"
+                               th:href="@{/assets(categoryId=${selectedCategoryId}, status=${selectedStatus}, keyword=${keyword}, page=${p})}">1</a>
+                        </li>
+                        <li class="page-item" th:classappend="${currentPage == totalPages} ? 'disabled'">
+                            <a class="page-link"
+                               th:href="@{/assets(categoryId=${selectedCategoryId}, status=${selectedStatus}, keyword=${keyword}, page=${currentPage + 1})}">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
 
             <!-- EMPTY STATE -->
@@ -322,8 +376,12 @@
                         <p class="section-divider">Dữ liệu tài sản</p>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label">Mã kiểm kê <span class="text-danger">*</span></label>
-                                <input type="text" name="inventoryCode" id="f-inventoryCode" class="form-control" required>
+                                <label class="form-label">Mã kiểm kê</label>
+                                <input type="text" name="inventoryCode" id="f-inventoryCode" class="form-control"
+                                       th:placeholder="'Gợi ý: ' + ${suggestedCode} + ' — bỏ trống nếu không dán mã'">
+                                <div class="form-text" style="font-size:11px;">
+                                    Bỏ trống vẫn lưu được. Số gợi ý không bị mất, lần sau vẫn tiếp đúng số này.
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Danh mục</label>
@@ -363,7 +421,7 @@
                                 <input type="number" name="quantity" id="f-quantity" class="form-control" min="1" value="1">
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label">Trạng thái</label>
+                                <label class="form-label">Tình trạng</label>
                                 <select name="status" id="f-status" class="form-select">
                                     <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"></option>
                                 </select>
@@ -375,6 +433,13 @@
                                           placeholder="Cấu hình, mô tả, phụ kiện kèm theo..."></textarea>
                             </div>
                         </div>
+
+                        <!-- Bàn giao 1 lần nhiều sản phẩm: mỗi dòng là 1 tài sản riêng (mã kiểm kê riêng),
+                             dùng chung danh mục / người nhận / người giao / tình trạng với sản phẩm chính -->
+                        <div id="extraProducts"></div>
+                        <button type="button" id="btnAddExtraProduct" class="btn btn-sm btn-outline-primary mt-2" onclick="addExtraProductRow()">
+                            <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm bàn giao cùng đợt
+                        </button>
 
                         <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
                             <p class="section-divider mb-0">Giao cho</p>
@@ -401,6 +466,26 @@
                                 <label class="form-label">Địa điểm</label>
                                 <input type="text" name="assignedToLocation" id="f-assignedToLocation" class="form-control"
                                        placeholder="VD: 188 Trần Quang Khải">
+                            </div>
+                            <div class="col-12 mt-4"><p class="section-divider mb-0">Người giao (Bên A)</p></div>
+                            <div class="col-md-3">
+                                <label class="form-label">Họ và tên người giao</label>
+                                <input type="text" name="handoverBy" id="f-handoverBy" class="form-control"
+                                       placeholder="VD: Nguyễn Thành Tín">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Chức vụ</label>
+                                <input type="text" name="handoverByPosition" id="f-handoverByPosition" class="form-control"
+                                       placeholder="VD: Nhân viên IT">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Phòng ban</label>
+                                <input type="text" name="handoverByDepartment" id="f-handoverByDepartment" class="form-control"
+                                       placeholder="VD: Phòng CNTT">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Thời gian bàn giao</label>
+                                <input type="datetime-local" name="handoverDate" id="f-handoverDate" class="form-control">
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Ghi chú</label>
@@ -499,16 +584,19 @@
                             </table>
                         </div>
 
-                        <!-- Phụ kiện kèm theo: chỉ in ra giấy, không lưu hệ thống -->
-                        <p class="section-divider">Phụ kiện kèm theo <span class="text-muted fw-normal text-lowercase">(không lưu vào hệ thống)</span></p>
+                        <!-- Phụ kiện kèm theo: mặc định chỉ in ra giấy; bấm "Lưu SP & tải biên bản"
+                             thì mỗi dòng được tạo thành một tài sản với mã kiểm kê tự sinh -->
+                        <p class="section-divider">Phụ kiện kèm theo
+                            <span class="text-muted fw-normal text-lowercase">(bấm "Lưu SP &amp; tải biên bản" để lưu thành tài sản)</span></p>
                         <div class="table-responsive">
                             <table class="table table-sm mb-2">
                                 <thead>
                                     <tr>
-                                        <th style="width:32%; font-size:12px; color:#6b7280;">Tên phụ kiện</th>
-                                        <th style="width:32%; font-size:12px; color:#6b7280;">Thông số kỹ thuật</th>
-                                        <th style="width:12%; font-size:12px; color:#6b7280;">SL</th>
-                                        <th style="width:20%; font-size:12px; color:#6b7280;">Hiện trạng</th>
+                                        <th style="width:26%; font-size:12px; color:#6b7280;">Tên / Loại tài sản</th>
+                                        <th style="width:26%; font-size:12px; color:#6b7280;">Thông số kỹ thuật</th>
+                                        <th style="width:20%; font-size:12px; color:#6b7280;">Serial</th>
+                                        <th style="width:9%; font-size:12px; color:#6b7280;">SL</th>
+                                        <th style="width:15%; font-size:12px; color:#6b7280;">Tình trạng</th>
                                         <th style="width:4%;"></th>
                                     </tr>
                                 </thead>
@@ -526,8 +614,53 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-success" id="ho-submit">
+                        <button type="submit" class="btn btn-success" id="ho-submit"
+                                onclick="document.getElementById('handoverForm').action='/assets/handover'">
                             <i class="fa-solid fa-download me-1"></i> Tải biên bản (.docx)
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="ho-save-submit"
+                                style="background:#1e3a8a; border:none;"
+                                title="Chỉ lưu các dòng phụ kiện thành tài sản, không tải file"
+                                onclick="document.getElementById('handoverForm').action='/assets/handover/save-accessories'">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Lưu sản phẩm
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: NHẬP CÔNG CỤ DỤNG CỤ TỪ EXCEL ===== -->
+    <div class="modal fade" id="importAssetModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px;">
+                <form th:action="@{/assets/import}" method="post" enctype="multipart/form-data">
+                    <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title"><i class="fa-solid fa-file-import me-2"></i>Nhập công cụ dụng cụ từ Excel</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="form-label">Chọn file .xlsx</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+
+                        <a th:href="@{/assets/sample-template}" class="btn btn-sm btn-outline-primary mt-3">
+                            <i class="fa-solid fa-download me-1"></i> Tải file mẫu
+                        </a>
+
+                        <div class="alert alert-light border mt-3 mb-0" style="font-size:13px;">
+                            <div class="fw-bold mb-2" style="color:#1e3a8a;">Cách hoạt động</div>
+                            <ul class="mb-0 ps-3">
+                                <li>Mỗi dòng là một tài sản, nhập bao nhiêu dòng cũng được.</li>
+                                <li>Bắt buộc cột <strong>Mã kiểm kê</strong>. Mã đã có sẽ được <strong>cập nhật</strong>, chưa có thì tạo mới — nhập lại cùng file không bị nhân đôi.</li>
+                                <li>Nhận diện cột <strong>theo tên tiêu đề</strong>, đổi thứ tự cột vẫn nhập được.</li>
+                                <li><strong>Danh mục</strong> điền đúng tên đã có trong hệ thống; tên lạ sẽ để trống danh mục và báo lại số dòng.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-file-import me-1"></i> Nhập dữ liệu
                         </button>
                     </div>
                 </form>
@@ -632,6 +765,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script th:inline="javascript">
         const SUGGESTED_CODE = /*[[${suggestedCode}]]*/ 'MDM-00001';
+        // Toàn bộ tài sản khớp bộ lọc (không chỉ trang hiện tại) — dùng để gom sản phẩm cùng đợt
+        const ALL_ASSETS = JSON.parse(/*[[${allAssetsJson}]]*/ '[]');
 
         /**
          * Mở modal thêm mới (row = null) hoặc sửa — khi sửa, dữ liệu tài sản
@@ -662,12 +797,73 @@
                 setVal('f-purchaseDate', a.purchaseDate);
                 setVal('f-status', a.status);
                 setVal('f-note', a.note);
+                setVal('f-handoverBy', a.handoverBy);
+                setVal('f-handoverByPosition', a.handoverByPosition);
+                setVal('f-handoverByDepartment', a.handoverByDepartment);
+                setVal('f-handoverDate', a.handoverDate);
             } else {
                 document.getElementById('assetModalTitle').textContent = 'Thêm tài sản';
                 setVal('f-inventoryCode', SUGGESTED_CODE);
                 setVal('f-quantity', 1);
             }
+            // Mỗi sản phẩm là một tài sản riêng, nhưng nhập chung một đợt bàn giao. Khi mở
+            // form sửa, nạp lại đúng các sản phẩm cùng đợt để nhìn thấy y như lúc nhập.
+            document.getElementById('extraProducts').innerHTML = '';
+            document.getElementById('btnAddExtraProduct').style.display = '';
+            if (row) loadBatchSiblings(assetOf(row));
             new bootstrap.Modal(document.getElementById('assetModal')).show();
+        }
+
+        /** Thêm một dòng sản phẩm bàn giao cùng đợt (mỗi dòng thành 1 tài sản riêng). */
+        /**
+         * Nạp các sản phẩm được nhập cùng đợt bàn giao với tài sản đang sửa
+         * (cùng người nhận + cùng thời gian bàn giao) thành các dòng sửa được.
+         */
+        function loadBatchSiblings(base) {
+            const receiver = (base.assignedToName || '').trim().toLowerCase();
+            if (!receiver) return;
+            ALL_ASSETS.forEach(a => {
+                if (a.id === base.id) return;
+                if ((a.assignedToName || '').trim().toLowerCase() !== receiver) return;
+                if ((a.handoverDate || '') !== (base.handoverDate || '')) return;
+                addExtraProductRow(a);
+            });
+        }
+
+        function addExtraProductRow(existing) {
+            const wrap = document.getElementById('extraProducts');
+            const div = document.createElement('div');
+            div.className = 'row g-2 align-items-end mt-1 border rounded p-2 mx-0';
+            div.style.background = existing ? '#eef2ff' : '#f8fafc';
+            div.innerHTML =
+                '<input type="hidden" name="extraId" value="' + (existing ? existing.id : '') + '">' +
+                '<div class="col-md-2"><label class="form-label small mb-1">Mã kiểm kê</label>' +
+                '<input type="text" name="extraCode" class="form-control form-control-sm" placeholder="Bỏ trống nếu không có"></div>' +
+                '<div class="col-md-2"><label class="form-label small mb-1">Loại tài sản</label>' +
+                '<input type="text" name="extraType" class="form-control form-control-sm" placeholder="Laptop, Chuột..."></div>' +
+                '<div class="col-md-2"><label class="form-label small mb-1">Nhà sản xuất</label>' +
+                '<input type="text" name="extraManufacturer" class="form-control form-control-sm"></div>' +
+                '<div class="col-md-2"><label class="form-label small mb-1">Model</label>' +
+                '<input type="text" name="extraModel" class="form-control form-control-sm"></div>' +
+                '<div class="col-md-2"><label class="form-label small mb-1">Serial</label>' +
+                '<input type="text" name="extraSerial" class="form-control form-control-sm"></div>' +
+                '<div class="col-md-1"><label class="form-label small mb-1">SL</label>' +
+                '<input type="number" name="extraQty" class="form-control form-control-sm" min="1" value="1"></div>' +
+                '<div class="col-md-1 text-end"><button type="button" class="btn btn-sm btn-outline-danger" ' +
+                'onclick="this.closest(\'.row\').remove()" title="Xóa dòng"><i class="fa-solid fa-trash"></i></button></div>';
+            wrap.appendChild(div);
+
+            const set = (n, v) => { div.querySelector('[name="' + n + '"]').value = v || ''; };
+            if (existing) {
+                set('extraCode', existing.inventoryCode);
+                set('extraType', existing.assetType);
+                set('extraManufacturer', existing.manufacturer);
+                set('extraModel', existing.model);
+                set('extraSerial', existing.serialNumber);
+                set('extraQty', existing.quantity || 1);
+            } else {
+                div.querySelector('input[name="extraCode"]').focus();
+            }
         }
 
         function openInventoryModal(id, code) {
@@ -734,7 +930,25 @@
             const rows = tr ? [tr] : checkedRows();
             if (rows.length === 0) return;
 
-            const assets = rows.map(assetOf);
+            // Bấm từ một dòng: tự gom các tài sản BÀN GIAO CÙNG ĐỢT (cùng người nhận,
+            // cùng thời gian bàn giao) — kể cả dòng đang nằm ở trang khác.
+            if (tr) {
+                const base = assetOf(tr);
+                const receiver = (base.assignedToName || '').trim().toLowerCase();
+                if (receiver) {
+                    const batch = ALL_ASSETS.filter(a =>
+                        (a.assignedToName || '').trim().toLowerCase() === receiver
+                        && (a.handoverDate || '') === (base.handoverDate || ''));
+                    if (batch.length > 0) return openHandoverModalFor(batch);
+                }
+                return openHandoverModalFor([base]);
+            }
+
+            openHandoverModalFor(rows.map(assetOf));
+        }
+
+        /** Dựng và mở modal biên bản cho danh sách tài sản đã xác định. */
+        function openHandoverModalFor(assets) {
 
             // Biên bản chỉ có một mục "Bên nhận" nên mọi tài sản phải cùng người nhận
             const names = [...new Set(assets.map(a => (a.assignedToName || '').trim()))];
@@ -792,6 +1006,7 @@
             tr.innerHTML =
                 '<td><input type="text" name="accName" class="form-control form-control-sm" placeholder="VD: Chuột"></td>'
                 + '<td><input type="text" name="accSpec" class="form-control form-control-sm" placeholder="VD: Lenovo"></td>'
+                + '<td><input type="text" name="accSerial" class="form-control form-control-sm" placeholder="Serial (nếu có)"></td>'
                 + '<td><input type="text" name="accQuantity" class="form-control form-control-sm" value="1"></td>'
                 + '<td><input type="text" name="accCondition" class="form-control form-control-sm" value="Mới"></td>'
                 + '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()">'
