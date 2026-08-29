@@ -1,0 +1,53 @@
+﻿        .quantum-toggle {
+            --uib-size: 28px;
+            --uib-color: #1e3a8a;
+            --uib-speed: 1.75s;
+            position: relative;
+            height: var(--uib-size);
+            width: var(--uib-size);
+            animation: rotate calc(var(--uib-speed) * 4) linear infinite;
+            cursor: pointer;
+            margin-right: 12px;
+            flex-shrink: 0;
+            display: inline-block;
+        }
+
+        @keyframes rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .quantum-toggle .particle { position: absolute; top: 0%; left: 0; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
+        .quantum-toggle .particle:nth-child(1) { --uib-delay: 0; transform: rotate(8deg); }
+        .quantum-toggle .particle:nth-child(2) { --uib-delay: -0.4; transform: rotate(36deg); }
+        .quantum-toggle .particle:nth-child(3) { --uib-delay: -0.9; transform: rotate(72deg); }
+        .quantum-toggle .particle:nth-child(4) { --uib-delay: -0.5; transform: rotate(90deg); }
+        .quantum-toggle .particle:nth-child(5) { --uib-delay: -0.3; transform: rotate(144deg); }
+        .quantum-toggle .particle:nth-child(6) { --uib-delay: -0.2; transform: rotate(180deg); }
+        .quantum-toggle .particle:nth-child(7) { --uib-delay: -0.6; transform: rotate(216deg); }
+        .quantum-toggle .particle:nth-child(8
+                </div>
+                <div>
+                    <h4 class="fw-bold m-0" style="color: #1e3a8a;">MIDOMAX IT PORTAL</h4>
+                    <small class="text-muted">Cổng thông tin quản trị hệ thống</small>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer;"></i>
+            </div>
+        </div>
+
+        <!-- ACTIVE TICKET BANNER REMOVED AS REQUESTED -->
+
+        <!-- WELCOME BANNER -->
+        <div class="welcome-banner">
+    <h1>Chào Admin, <span th:text="${username}">Admin</span>! 👋</h1>
+    <p>Hôm nay là một ngày tuyệt vời để tối ưu hóa hệ thống. Hiện tại không có sự cố mạng nào nghiêm trọng. Hãy bắt đầu công việc của bạn bằng cách chọn các phân hệ bên dưới.</p>
+</div>
+<div class="row mt-4 g-4" style="margin-bottom: 30px;">
+    <div class="col-md-4">
+        <div class="stat-card-home" style="transition: transform 0.3s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div class="stat-card-home-info">
+                <h5>Ticket Đang Mở</h5>
+                <h3 th:text="${openCount}">0</h3>
+            </div>
+            <div class="stat-card-home-icon icon-open">
+                <i class="fa-solid fa-envelope-open"></i>

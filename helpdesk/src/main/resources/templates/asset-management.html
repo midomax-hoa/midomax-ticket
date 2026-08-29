@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Dụng Cụ - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); border: 1px solid #e5e7eb; }
+
+        /* ===== STAT CARDS ===== */
+        .stat-card { background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; padding: 18px 20px; display: flex; align-items: center; gap: 14px; height: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .stat-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .stat-label { font-size: 12px; color: #64748b; font-weight: 500; }
+        .stat-value { font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1.1; }
+
+        /* ===== CATEGORY CHIPS ===== */
+        .cat-chip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 30px; border: 1px solid #e5e7eb; background: #fff; color: #475569; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+        .cat-chip:hover { border-color: #bfdbfe; background: #eff6ff; color: #1e3a8a; }
+        .cat-chip.active { background: #1e3a8a; border-color: #1e3a8a; color: #fff; }
+        .cat-chip .count { background: rgba(0,0,0,0.06); border-radius: 20px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+        .cat-chip.active .count { background: rgba(255,255,255,0.25); }
+
+        /* ===== WIDGET / TABLE ===== */
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 15px 12px; white-space: nowrap; }
+        .table-custom td { padding: 12px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
+        .table-custom tbody tr:hover { background-color: #f8fafc; }
+        .code-cell { font-family: 'Consolas', monospace; font-weight: 700; color: #1e3a8a; }
+
+        /* ===== FORM ===== */
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.12); }
+        .section-divider { font-weight: 700; font-size: 13px; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px; margin-top: 4px; }
+
+        /* ===== BADGE ===== */
+        .badge-st { font-weight: 600; font-size: 12px; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+        .st-inuse { background: #dcfce7; color: #15803d; }
+        .st-stock { background: #dbeafe; color: #1d4ed8; }
+        .st-repair { background: #fef9c3; color: #a16207; }
+        .st-broken { background: #fee2e2; color: #b91c1c; }
+        .st-liquidated { background: #f1f5f9; color: #475569; }
+        .badge-it { background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
+        .empty-state i { font-size: 52px; margin-bottom: 14px; }
+
+        /* ===== MODAL SCROLL & STICKY FOOTER FIXES ===== */
+        #assetModal .modal-content { max-height: 85vh; overflow: hidden; }
+        #assetModal form { display: flex; flex-direction: column; max-height: 85vh; margin: 0; }
+        #assetModal .modal-body { overflow-y: auto; max-height: calc(85vh - 130px); padding: 25px; }
+        #assetModal .modal-footer { flex-shrink: 0; background: #ffffff; border-top: 1px solid #e5e7eb; position: sticky; bottom: 0; z-index: 1050; }
+        #assetHistoryModal { z-index: 1065; }
+
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('tools')}"></div>
+
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Công Cụ Dụng Cụ</h4>
+                    <small class="text-muted">Quản lý tài sản, thiết bị và kiểm kê theo danh mục</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary fw-semibold" data-bs-toggle="modal" data-bs-target="#categoryModal" title="Quản lý danh mục">
+                    <i class="fa-solid fa-tags"></i><span class="d-none d-md-inline ms-1"> Danh mục</span>
+                </button>
+                <button class="btn btn-primary fw-semibold shadow-sm" style="background:#1e3a8a; border:none;"
+                        onclick="openAssetModal(null)" title="Thêm tài sản">
+                    <i class="fa-solid fa-plus"></i><span class="d-none d-md-inline ms-1"> Thêm tài sản</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- STATS -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#eef2ff; color:#4338ca;"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div><div class="stat-label">Tổng tài sản</div><div class="stat-value" th:text="${totalCount}">0</div></div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#ecfdf5; color:#059669;"><i class="fa-solid fa-circle-check"></i></div>
+                    <div><div class="stat-label">Đang sử dụng</div><div class="stat-value" th:text="${inUseCount}">0</div></div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fef2f2; color:#dc2626;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div><div class="stat-label">Hỏng</div><div class="stat-value" th:text="${brokenCount}">0</div></div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fffbeb; color:#d97706;"><i class="fa-solid fa-tags"></i></div>
+                    <div><div class="stat-label">Danh mục</div><div class="stat-value" th:text="${#lists.size(categories)}">0</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORY FILTER CHIPS -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a th:href="@{/assets(status=${selectedStatus}, keyword=${keyword})}" class="cat-chip"
+               th:classappend="${selectedCategoryId == null} ? 'active' : ''">
+                <i class="fa-solid fa-border-all"></i> Tất cả
+                <span class="count" th:text="${totalCount}">0</span>
+            </a>
+            <a th:each="c : ${categories}" class="cat-chip"
+               th:href="@{/assets(categoryId=${c.id}, status=${selectedStatus}, keyword=${keyword})}"
+               th:classappend="${selectedCategoryId != null and selectedCategoryId == c.id} ? 'active' : ''">
+                <i th:class="${c.icon} ?: 'fa-solid fa-box'"></i>
+                <span th:text="${c.name}">Danh mục</span>
+                <span class="count" th:text="${countByCategory[c.id]}">0</span>
+            </a>
+        </div>
+
+        <!-- FILTER BAR -->
+        <div class="widget-card mb-3" style="padding: 18px 20px;">
+            <form th:action="@{/assets}" method="get" class="row g-2 align-items-end">
+                <input type="hidden" name="categoryId" th:value="${selectedCategoryId}">
+                <div class="col-md-5">
+                    <label class="form-label">Tìm kiếm</label>
+                    <div class="input-group">
+                        <span class="input-group-text" style="background:#f8fafc; border-right:none;"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" name="keyword" class="form-control" style="border-left:none;"
+                               th:value="${keyword}" placeholder="Mã kiểm kê, người dùng, model, serial, hãng...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Trạng thái</label>
+                    <select name="status" class="form-select">
+                        <option value="">Tất cả trạng thái</option>
+                        <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
+                                th:selected="${selectedStatus != null and selectedStatus == s}"></option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1" style="background:#1e3a8a; border:none;">
+                        <i class="fa-solid fa-filter me-1"></i> Lọc
+                    </button>
+                    <a th:href="@{/assets}" class="btn btn-outline-secondary"><i class="fa-solid fa-rotate-left"></i></a>
+                </div>
+            </form>
+        </div>
+
+        <!-- TABLE -->
+        <div class="widget-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold m-0" style="color:#1e293b;">
+                    Danh sách tài sản
+                    <span class="text-muted fw-normal">(<span th:text="${assetCount}">0</span> mục)</span>
+                </h6>
+            </div>
+
+            <!-- Thanh hành động khi có tài sản được tick chọn -->
+            <div id="selection-bar" class="d-none align-items-center justify-content-between mb-3"
+                 style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px;">
+                <span style="font-size:14px; color:#1e3a8a;">
+                    Đã chọn <b id="selection-count">0</b> tài sản
+                    <span class="text-muted" id="selection-receiver"></span>
+                </span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">Bỏ chọn</button>
+                    <button type="button" class="btn btn-sm btn-success" onclick="openHandoverModal(null)">
+                        <i class="fa-solid fa-file-word me-1"></i> Lập biên bản bàn giao
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive" th:if="${assetCount > 0}">
+                <table class="table table-custom align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:34px;">
+                                <input type="checkbox" id="checkAll" title="Chọn tất cả tài sản CNTT">
+                            </th>
+                            <th>STT</th>
+                            <th>Mã kiểm kê</th>
+                            <th>Danh mục</th>
+                            <th>Giao cho</th>
+                            <th>Loại / Model</th>
+                            <th>Serial</th>
+                            <th>Địa điểm</th>
+                            <th>Trạng thái</th>
+                            <th>Kiểm kê gần nhất</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- categoryId null thì không tra map (tra map bằng khóa null làm Thymeleaf văng lỗi giữa chừng, đứt cả trang) -->
+                        <tr th:each="a, iter : ${assets}" th:with="cat=${a.categoryId != null ? categoryById[a.categoryId] : null}"
+                            th:attr="data-json=${assetJson[a.id]}">
+                            <td>
+                                <!-- Chỉ tài sản CNTT mới lập được biên bản bàn giao -->
+                                <input th:if="${cat != null and cat.itEquipment}" type="checkbox" class="row-check"
+                                       th:value="${a.id}" onchange="refreshSelection()">
+                            </td>
+                            <td th:text="${iter.count}">1</td>
+                            <td class="code-cell" th:text="${a.inventoryCode}">MDM-0001</td>
+                            <td>
+                                <span th:if="${cat != null}">
+                                    <i class="me-1 text-muted" th:classappend="${cat.icon} ?: 'fa-solid fa-box'"></i>
+                                    <span th:text="${cat.name}">Thiết bị CNTT</span>
+                                    <span th:if="${cat.itEquipment}" class="badge-it ms-1">IT</span>
+                                </span>
+                                <span th:if="${cat == null}" class="text-muted">—</span>
+                            </td>
+                            <td>
+                                <div th:if="${a.assignedToName}">
+                                    <div class="fw-semibold" th:text="${a.assignedToName}">Nguyễn Văn A</div>
+                                    <small class="text-muted" th:text="${a.assignedToDepartment}">Phòng IT</small>
+                                </div>
+                                <span th:if="${a.assignedToName == null or a.assignedToName == ''}" class="text-muted">Chưa giao</span>
+                            </td>
+                            <td>
+                                <div th:text="${a.assetType}">Laptop</div>
+                                <small class="text-muted">
+                                    <span th:text="${a.manufacturer}">Dell</span>
+                                    <span th:if="${a.model}" th:text="' · ' + ${a.model}"> · Latitude</span>
+                                </small>
+                            </td>
+                            <td><small th:text="${a.serialNumber} ?: '—'">SN123</small></td>
+                            <td><small th:text="${a.officeLocation} ?: '—'">VP Hà Nội</small></td>
+                            <td>
+                                <span th:if="${a.status}" class="badge-st"
+                                      th:classappend="${a.status == 'Đang sử dụng'} ? 'st-inuse' :
+                                                      (${a.status == 'Trong kho'} ? 'st-stock' :
+                                                      (${a.status == 'Đang sửa'} ? 'st-repair' :
+                                                      (${a.status == 'Hỏng'} ? 'st-broken' : 'st-liquidated')))"
+                                      th:text="${a.status}">Đang sử dụng</span>
+                                <span th:if="${a.status == null or a.status == ''}" class="text-muted">—</span>
+                            </td>
+                            <td>
+                                <div th:if="${a.lastInventoryDate != null}">
+                                    <div th:text="${a.lastInventoryDateStr}">01/07/2026</div>
+                                    <small class="text-muted" th:text="${a.inventoryCondition}">Tốt</small>
+                                </div>
+                                <span th:if="${a.lastInventoryDate == null}" class="text-muted">Chưa kiểm kê</span>
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary" title="Sửa"
+                                            onclick="openAssetModal(this.closest('tr'))">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info" title="Lịch sử người sử dụng"
+                                            th:attr="onclick=|showAssetHistory('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode != null ? a.inventoryCode : '')}')|">
+                                        <i class="fa-solid fa-clock-rotate-left"></i>
+                                    </button>
+                                    <button class="btn btn-outline-primary" title="Ghi nhận kiểm kê"
+                                            th:attr="onclick=|openInventoryModal('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode != null ? a.inventoryCode : '')}')|">
+                                        <i class="fa-solid fa-clipboard-check"></i>
+                                    </button>
+                                    <button th:if="${cat != null and cat.itEquipment}" type="button"
+                                            class="btn btn-outline-success" title="Lập biên bản bàn giao (.docx)"
+                                            onclick="openHandoverModal(this.closest('tr'))">
+                                        <i class="fa-solid fa-file-word"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" title="Xóa"
+                                            th:attr="onclick=|confirmDelete('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode != null ? a.inventoryCode : '')}')|">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PHÂN TRANG: 8 tài sản mỗi trang, nhớ trang đang xem sau khi sửa/xóa -->
+            <div id="asset-pager" class="d-none justify-content-between align-items-center mt-3 pt-3"
+                 style="border-top: 1px solid #f1f5f9;">
+                <span class="text-muted" style="font-size:13px;" id="asset-pager-info"></span>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary" id="asset-prev">
+                        <i class="fa-solid fa-chevron-left me-1"></i> Trước
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="asset-next">
+                        Sau <i class="fa-solid fa-chevron-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- EMPTY STATE -->
+            <div th:if="${assetCount == 0}" class="empty-state">
+                <i class="fa-solid fa-boxes-stacked d-block"></i>
+                <p class="mb-1 fw-semibold fs-5">Chưa có tài sản nào</p>
+                <p class="mb-3" th:if="${totalCount > 0}">Không có tài sản khớp bộ lọc hiện tại.</p>
+                <p class="mb-3" th:if="${totalCount == 0}">Thêm tài sản đầu tiên để bắt đầu quản lý công cụ dụng cụ.</p>
+                <button class="btn btn-primary btn-lg" style="background:#1e3a8a; border:none;" onclick="openAssetModal(null)">
+                    <i class="fa-solid fa-plus me-1"></i> Thêm tài sản
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: THÊM / SỬA TÀI SẢN ===== -->
+    <div class="modal fade" id="assetModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius: 16px;">
+                <form th:action="@{/assets/save}" method="post" id="assetForm">
+                    <input type="hidden" name="id" id="f-id">
+                    <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title" id="assetModalTitle"><i class="fa-solid fa-box me-2"></i>Thêm tài sản</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="section-divider">Dữ liệu tài sản</p>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Mã kiểm kê <span class="text-danger">*</span></label>
+                                <input type="text" name="inventoryCode" id="f-inventoryCode" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Danh mục</label>
+                                <select name="categoryId" id="f-categoryId" class="form-select">
+                                    <option value="">-- Chọn danh mục --</option>
+                                    <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Địa điểm văn phòng</label>
+                                <input type="text" name="officeLocation" id="f-officeLocation" class="form-control">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Loại tài sản</label>
+                                <input type="text" name="assetType" id="f-assetType" class="form-control" placeholder="VD: Laptop, Màn hình, Switch...">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Nhà sản xuất</label>
+                                <input type="text" name="manufacturer" id="f-manufacturer" class="form-control" placeholder="VD: Dell, HP, Cisco...">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Model</label>
+                                <input type="text" name="model" id="f-model" class="form-control">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Serial Number</label>
+                                <input type="text" name="serialNumber" id="f-serialNumber" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ngày mua</label>
+                                <input type="date" name="purchaseDate" id="f-purchaseDate" class="form-control">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Số lượng</label>
+                                <input type="number" name="quantity" id="f-quantity" class="form-control" min="1" value="1">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Trạng thái</label>
+                                <select name="status" id="f-status" class="form-select">
+                                    <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"></option>
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Thông tin chi tiết</label>
+                                <textarea name="details" id="f-details" class="form-control" rows="2"
+                                          placeholder="Cấu hình, mô tả, phụ kiện kèm theo..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- THIẾT BỊ KÈM THEO: mỗi thiết bị sẽ thành một tài sản MỚI với mã tự sinh,
+                             dùng chung danh mục / địa điểm / người nhận với tài sản đang nhập/sửa. -->
+                        <div id="extra-devices-section">
+                            <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                                <p class="section-divider mb-0">Thiết bị cấp kèm theo</p>
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3"
+                                        onclick="addExtraDevice()">
+                                    <i class="fa-solid fa-plus me-1"></i> Thêm thiết bị
+                                </button>
+                            </div>
+                            <div id="extra-devices"></div>
+                            <div class="text-muted" id="extra-devices-hint" style="font-size:12.5px;">
+                                Cấp nhiều thiết bị cho cùng một người (laptop + màn hình + chuột...)? Bấm
+                                "Thêm thiết bị" — mỗi thiết bị sẽ được lưu thành một tài sản riêng, mã kiểm kê tự sinh.
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                            <p class="section-divider mb-0">Giao cho</p>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewModalAssetHistory()">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i> Xem lịch sử bàn giao máy
+                            </button>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Họ và tên</label>
+                                <input type="text" name="assignedToName" id="f-assignedToName" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Chức vụ</label>
+                                <input type="text" name="assignedToPosition" id="f-assignedToPosition" class="form-control"
+                                       placeholder="VD: Kế toán tổng hợp">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Bộ phận / Phòng ban</label>
+                                <input type="text" name="assignedToDepartment" id="f-assignedToDepartment" class="form-control"
+                                       placeholder="VD: Tài chính - Kế toán">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Địa điểm</label>
+                                <input type="text" name="assignedToLocation" id="f-assignedToLocation" class="form-control"
+                                       placeholder="VD: 188 Trần Quang Khải">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Ghi chú</label>
+                                <textarea name="note" id="f-note" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-3 mb-0" style="font-size: 13px;">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            Tài sản thuộc danh mục CNTT sẽ có nút tải <b>biên bản bàn giao (.docx)</b> tự động điền
+                            thông tin người nhận và thiết bị.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-check me-1"></i> Lưu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: GHI NHẬN KIỂM KÊ ===== -->
+    <div class="modal fade" id="inventoryModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px;">
+                <form method="post" id="inventoryForm">
+                    <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title"><i class="fa-solid fa-clipboard-check me-2"></i>Ghi nhận kiểm kê</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3 text-muted" style="font-size: 14px;">
+                            Tài sản: <b class="code-cell" id="inv-code">MDM-0001</b>
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label">Ngày kiểm kê</label>
+                            <input type="date" name="lastInventoryDate" id="inv-date" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Người kiểm kê</label>
+                            <input type="text" name="inventoryBy" class="form-control" placeholder="Bỏ trống sẽ lấy tài khoản đang đăng nhập">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tình trạng TS khi kiểm kê</label>
+                            <select name="inventoryCondition" class="form-select">
+                                <option th:each="c : ${conditions}" th:value="${c}" th:text="${c}"></option>
+                            </select>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label">Ghi chú</label>
+                            <textarea name="note" class="form-control" rows="2" placeholder="Bỏ trống sẽ giữ nguyên ghi chú cũ"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-check me-1"></i> Ghi nhận
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: LẬP BIÊN BẢN BÀN GIAO ===== -->
+    <div class="modal fade" id="handoverModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius: 16px;">
+                <form th:action="@{/assets/handover}" method="post" id="handoverForm">
+                    <div class="modal-header" style="background:#15803d; color:#fff; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title"><i class="fa-solid fa-file-word me-2"></i>Lập biên bản bàn giao</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Bên nhận, lấy từ tài sản đã chọn -->
+                        <p class="section-divider">Bên nhận (Bên B)</p>
+                        <div class="row g-2 mb-2" id="ho-receiver"></div>
+                        <div class="alert alert-warning py-2 mb-3 d-none" id="ho-receiver-warn" style="font-size:13px;">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            <span></span>
+                        </div>
+
+                        <!-- Tài sản đã chọn -->
+                        <p class="section-divider">Tài sản bàn giao</p>
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-custom mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>STT</th><th>Tên tài sản</th><th>Serial / Mã tài sản</th><th>SL</th><th>Hiện trạng</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ho-assets"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Phụ kiện kèm theo: chỉ in ra giấy, không lưu hệ thống -->
+                        <p class="section-divider">Phụ kiện kèm theo <span class="text-muted fw-normal text-lowercase">(không lưu vào hệ thống)</span></p>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-2">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32%; font-size:12px; color:#6b7280;">Tên phụ kiện</th>
+                                        <th style="width:32%; font-size:12px; color:#6b7280;">Thông số kỹ thuật</th>
+                                        <th style="width:12%; font-size:12px; color:#6b7280;">SL</th>
+                                        <th style="width:20%; font-size:12px; color:#6b7280;">Hiện trạng</th>
+                                        <th style="width:4%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ho-accessories"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addAccessoryRow()">
+                            <i class="fa-solid fa-plus me-1"></i> Thêm phụ kiện
+                        </button>
+
+                        <div class="alert alert-info mt-3 mb-0" style="font-size: 13px;">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            Mục <b>Bên giao (Bên A)</b> để trống trong file để ký và điền tay sau khi in.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-success" id="ho-submit">
+                            <i class="fa-solid fa-download me-1"></i> Tải biên bản (.docx)
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: QUẢN LÝ DANH MỤC ===== -->
+    <div class="modal fade" id="categoryModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px;">
+                <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title"><i class="fa-solid fa-tags me-2"></i>Danh mục công cụ dụng cụ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form th:action="@{/assets/category/save}" method="post" class="row g-2 align-items-end mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Tên danh mục mới</label>
+                            <input type="text" name="name" class="form-control" placeholder="VD: Máy chiếu" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Icon (FontAwesome)</label>
+                            <input type="text" name="icon" class="form-control" placeholder="fa-solid fa-box">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Thứ tự</label>
+                            <input type="number" name="sortOrder" class="form-control" value="99">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-center gap-2">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" name="itEquipment" value="true" id="new-cat-it">
+                                <label class="form-check-label" for="new-cat-it" style="font-size:13px;">Thiết bị CNTT</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm ms-auto" style="background:#1e3a8a; border:none;">
+                                <i class="fa-solid fa-plus"></i> Thêm
+                            </button>
+                        </div>
+                    </form>
+
+                    <table class="table table-custom align-middle mb-0">
+                        <thead>
+                            <tr><th>Danh mục</th><th>Nhóm CNTT</th><th>Số tài sản</th><th class="text-end">Thao tác</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c : ${categories}">
+                                <td>
+                                    <i class="me-2 text-muted" th:classappend="${c.icon} ?: 'fa-solid fa-box'"></i>
+                                    <span class="fw-semibold" th:text="${c.name}">Thiết bị CNTT</span>
+                                </td>
+                                <td>
+                                    <span th:if="${c.itEquipment}" class="badge-it">Có · xuất được form bàn giao</span>
+                                    <span th:unless="${c.itEquipment}" class="text-muted">—</span>
+                                </td>
+                                <td th:text="${countByCategory[c.id]}">0</td>
+                                <td class="text-end">
+                                    <form th:action="@{'/assets/category/delete/' + ${c.id}}" method="post" class="d-inline"
+                                          onsubmit="return confirm('Xóa danh mục này?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa danh mục">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-muted mt-3 mb-0" style="font-size: 12px;">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        Không xóa được danh mục còn tài sản bên trong. Đánh dấu "Thiết bị CNTT" để bật nút xuất biên bản bàn giao.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: LỊCH SỬ NGƯỜI SỬ DỤNG TÀI SẢN ===== -->
+    <div class="modal fade" id="assetHistoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header text-white py-3" style="background:#1e3a8a; border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title fs-6 fw-bold">
+                        <i class="fa-solid fa-clock-rotate-left me-2"></i> Lịch Sử Bàn Giao & Người Sử Dụng - <span id="histCodeStr"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="assetHistoryModalBody">
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="mb-0">Đang tải lịch sử bàn giao tài sản...</p>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORM XÓA (ẩn) -->
+    <form method="post" id="deleteForm" style="display:none;"></form>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        const SUGGESTED_CODE = /*[[${suggestedCode}]]*/ 'MDM-00001';
+
+        /**
+         * Mở modal thêm mới (row = null) hoặc sửa — khi sửa, dữ liệu tài sản
+         * đọc từ thuộc tính data-json của hàng tương ứng.
+         */
+        function openAssetModal(row) {
+            const form = document.getElementById('assetForm');
+            form.reset();
+            document.getElementById('f-id').value = '';
+
+            if (row) {
+                const a = assetOf(row);
+                document.getElementById('assetModalTitle').textContent = 'Sửa tài sản ' + a.inventoryCode;
+                document.getElementById('f-id').value = a.id;
+                setVal('f-inventoryCode', a.inventoryCode);
+                setVal('f-categoryId', a.categoryId);
+                setVal('f-officeLocation', a.officeLocation);
+                setVal('f-quantity', a.quantity || 1);
+                setVal('f-assignedToName', a.assignedToName);
+                setVal('f-assignedToPosition', a.assignedToPosition);
+                setVal('f-assignedToDepartment', a.assignedToDepartment);
+                setVal('f-assignedToLocation', a.assignedToLocation);
+                setVal('f-assetType', a.assetType);
+                setVal('f-manufacturer', a.manufacturer);
+                setVal('f-model', a.model);
+                setVal('f-details', a.details);
+                setVal('f-serialNumber', a.serialNumber);
+                setVal('f-purchaseDate', a.purchaseDate);
+                setVal('f-status', a.status);
+                setVal('f-note', a.note);
+            } else {
+                document.getElementById('assetModalTitle').textContent = 'Thêm tài sản';
+                setVal('f-inventoryCode', SUGGESTED_CODE);
+                setVal('f-quantity', 1);
+            }
+            // Khối "Thiết bị cấp kèm theo" dùng được cả khi thêm mới lẫn khi sửa:
+            // thiết bị thêm ở đây luôn được tạo thành tài sản MỚI, không đè lên tài sản đang sửa
+            document.getElementById('extra-devices').innerHTML = '';
+            new bootstrap.Modal(document.getElementById('assetModal')).show();
+        }
+
+        /** Thêm một dòng thiết bị kèm theo trong modal thêm tài sản. */
+        function addExtraDevice() {
+            const box = document.createElement('div');
+            box.className = 'row g-2 align-items-end mb-2 pb-2';
+            box.style.borderBottom = '1px dashed #e5e7eb';
+            box.innerHTML =
+                '<div class="col-md-3"><label class="form-label">Loại thiết bị</label>'
+                + '<input type="text" name="extraType" class="form-control form-control-sm" placeholder="VD: Màn hình, Chuột..."></div>'
+                + '<div class="col-md-2"><label class="form-label">Nhà sản xuất</label>'
+                + '<input type="text" name="extraManufacturer" class="form-control form-control-sm" placeholder="VD: Dell"></div>'
+                + '<div class="col-md-3"><label class="form-label">Model</label>'
+                + '<input type="text" name="extraModel" class="form-control form-control-sm"></div>'
+                + '<div class="col-md-3"><label class="form-label">Serial Number</label>'
+                + '<input type="text" name="extraSerial" class="form-control form-control-sm"></div>'
+                + '<div class="col-md-1 text-end"><button type="button" class="btn btn-sm btn-outline-danger" title="Bỏ thiết bị này"'
+                + ' onclick="this.closest(\'.row\').remove()"><i class="fa-solid fa-xmark"></i></button></div>'
+                + '<div class="col-12"><input type="text" name="extraDetails" class="form-control form-control-sm"'
+                + ' placeholder="Thông số / ghi chú thiết bị (không bắt buộc)"></div>';
+            document.getElementById('extra-devices').appendChild(box);
+            box.querySelector('input').focus();
+        }
+
+        function openInventoryModal(id, code) {
+            document.getElementById('inventoryForm').action = '/assets/inventory/' + id;
+            document.getElementById('inv-code').textContent = code;
+            // Mặc định là hôm nay
+            document.getElementById('inv-date').value = new Date().toISOString().slice(0, 10);
+            new bootstrap.Modal(document.getElementById('inventoryModal')).show();
+        }
+
+        function confirmDelete(id, code) {
+            if (!confirm('Xóa tài sản ' + code + '? Thao tác này không hoàn tác được.')) return;
+            const form = document.getElementById('deleteForm');
+            form.action = '/assets/delete/' + id;
+            form.submit();
+        }
+
+        function setVal(elId, value) {
+            const el = document.getElementById(elId);
+            if (el) el.value = (value === null || value === undefined) ? '' : value;
+        }
+
+        // ===== Chọn nhiều tài sản =====
+
+        function checkedRows() {
+            return Array.from(document.querySelectorAll('.row-check:checked'))
+                .map(cb => cb.closest('tr'));
+        }
+
+        function assetOf(tr) {
+            return JSON.parse(tr.dataset.json);
+        }
+
+        /** Cập nhật thanh hành động mỗi khi thay đổi lựa chọn. */
+        function refreshSelection() {
+            const rows = checkedRows();
+            const bar = document.getElementById('selection-bar');
+            bar.classList.toggle('d-none', rows.length === 0);
+            bar.classList.toggle('d-flex', rows.length > 0);
+            document.getElementById('selection-count').textContent = rows.length;
+
+            const names = [...new Set(rows.map(tr => (assetOf(tr).assignedToName || '').trim()))];
+            const note = document.getElementById('selection-receiver');
+            if (names.length === 1 && names[0]) {
+                note.textContent = '· giao cho ' + names[0];
+            } else if (names.length > 1) {
+                note.textContent = '· nhiều người nhận khác nhau';
+            } else {
+                note.textContent = '';
+            }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+            const all = document.getElementById('checkAll');
+            if (all) all.checked = false;
+            refreshSelection();
+        }
+
+        // ===== Biên bản bàn giao =====
+
+        /** tr = null -> dùng các dòng đang tick; ngược lại lập biên bản cho riêng dòng đó. */
+        function openHandoverModal(tr) {
+            const rows = tr ? [tr] : checkedRows();
+            if (rows.length === 0) return;
+
+            const assets = rows.map(assetOf);
+
+            // Biên bản chỉ có một mục "Bên nhận" nên mọi tài sản phải cùng người nhận
+            const names = [...new Set(assets.map(a => (a.assignedToName || '').trim()))];
+            const warn = document.getElementById('ho-receiver-warn');
+            const submit = document.getElementById('ho-submit');
+            if (names.length > 1) {
+                warn.classList.remove('d-none');
+                warn.querySelector('span').textContent =
+                    'Các tài sản đang chọn được giao cho những người khác nhau (' + names.join(', ')
+                    + '). Một biên bản chỉ dành cho một người nhận — vui lòng chọn lại.';
+                submit.disabled = true;
+            } else {
+                warn.classList.add('d-none');
+                submit.disabled = false;
+            }
+
+            const first = assets[0];
+            document.getElementById('ho-receiver').innerHTML = [
+                receiverField('Đại diện', first.assignedToName),
+                receiverField('Chức vụ', first.assignedToPosition),
+                receiverField('Phòng ban', first.assignedToDepartment)
+            ].join('');
+
+            // Danh sách tài sản + input ẩn mang id gửi lên server
+            const form = document.getElementById('handoverForm');
+            form.querySelectorAll('input[name="ids"]').forEach(el => el.remove());
+            document.getElementById('ho-assets').innerHTML = assets.map((a, i) => {
+                const name = [a.assetType, a.manufacturer].filter(Boolean).join(' ');
+                const serial = a.serialNumber ? a.serialNumber + ' / ' + a.inventoryCode : a.inventoryCode;
+                return '<tr><td>' + (i + 1) + '</td><td>' + esc(name) + '</td><td>' + esc(serial)
+                    + '</td><td>' + (a.quantity || 1) + '</td><td>' + esc(a.inventoryCondition || a.status || '')
+                    + '</td></tr>';
+            }).join('');
+            assets.forEach(a => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'ids';
+                hidden.value = a.id;
+                form.appendChild(hidden);
+            });
+
+            document.getElementById('ho-accessories').innerHTML = '';
+            new bootstrap.Modal(document.getElementById('handoverModal')).show();
+        }
+
+        /** Ô thông tin bên nhận, chỉ để xem — sửa thì sửa ở form tài sản. */
+        function receiverField(label, value) {
+            const shown = value ? esc(value) : '<span class="text-danger">chưa có — sẽ để trống trong biên bản</span>';
+            return '<div class="col-md-4"><label class="form-label">' + label + '</label>'
+                + '<div class="form-control bg-light" style="min-height:38px;">' + shown + '</div></div>';
+        }
+
+        function addAccessoryRow() {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="text" name="accName" class="form-control form-control-sm" placeholder="VD: Chuột"></td>'
+                + '<td><input type="text" name="accSpec" class="form-control form-control-sm" placeholder="VD: Lenovo"></td>'
+                + '<td><input type="text" name="accQuantity" class="form-control form-control-sm" value="1"></td>'
+                + '<td><input type="text" name="accCondition" class="form-control form-control-sm" value="Mới"></td>'
+                + '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove()">'
+                + '<i class="fa-solid fa-xmark"></i></button></td>';
+            document.getElementById('ho-accessories').appendChild(tr);
+        }
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s === null || s === undefined ? '' : s;
+            return d.innerHTML;
+        }
+
+        function showAssetHistory(assetId, code) {
+            document.getElementById('histCodeStr').innerText = code || 'Tài sản';
+            const body = document.getElementById('assetHistoryModalBody');
+            body.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                    <p class="mb-0">Đang tải lịch sử bàn giao tài sản...</p>
+                </div>
+            `;
+
+            const elem = document.getElementById('assetHistoryModal');
+            const bsModal = new bootstrap.Modal(elem);
+            bsModal.show();
+
+            fetch('/assets/history/' + assetId)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        body.innerHTML = `
+                            <div class="text-center py-4 text-muted">
+                                <i class="fa-solid fa-user-clock fs-1 text-secondary mb-2 d-block"></i>
+                                <p class="mb-0 fw-semibold text-dark">Chưa ghi nhận lịch sử thay đổi người sử dụng cho tài sản này.</p>
+                                <small class="text-muted">Hệ thống sẽ tự động cập nhật nhật ký khi có thay đổi thông tin "Giao cho".</small>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = `<div class="timeline-history">`;
+                    data.forEach((item, idx) => {
+                        const isCurrent = (item.returnedDate === null || item.returnedDateStr === 'Đang sử dụng');
+                        const badge = isCurrent ? 
+                            `<span class="badge bg-success"><i class="fa-solid fa-check-circle me-1"></i>Đang sử dụng</span>` : 
+                            `<span class="badge bg-secondary">Đã thu hồi / Chuyển giao</span>`;
+                        
+                        const timeRange = isCurrent ?
+                            `<b>Cấp máy từ ngày:</b> ${item.assignedDateStr || '—'} ➔ <span class="text-success fw-bold">Hiện tại</span>` :
+                            `<b>Thời gian dùng:</b> ${item.assignedDateStr || '—'} ➔ <b>Đến ngày:</b> ${item.returnedDateStr || '—'}`;
+
+                        const posDept = [item.assignedToPosition, item.assignedToDepartment, item.assignedToLocation].filter(Boolean).join(' · ');
+
+                        html += `
+                            <div class="card border rounded-3 p-3 mb-3 shadow-sm ${isCurrent ? 'border-primary bg-primary bg-opacity-10' : 'bg-light'}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-0">
+                                            <i class="fa-solid fa-user-tie me-2 text-primary"></i> ${item.assignedToName || 'Chưa đặt tên'}
+                                        </h6>
+                                        ${posDept ? `<small class="text-muted d-block mt-1"><i class="fa-solid fa-building me-1"></i> ${esc(posDept)}</small>` : ''}
+                                    </div>
+                                    <div>${badge}</div>
+                                </div>
+                                <div class="small text-muted mb-1">
+                                    <i class="fa-solid fa-calendar-days me-1"></i> ${timeRange}
+                                </div>
+                                ${item.note ? `<div class="small text-dark mt-2 p-2 bg-white rounded border"><i class="fa-solid fa-comment-dots text-primary me-1"></i> ${esc(item.note)}</div>` : ''}
+                                <div class="text-end text-muted mt-2" style="font-size: 11px;">
+                                    Ghi nhận bởi: ${item.createdBy || 'system'}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                    body.innerHTML = html;
+                })
+                .catch(err => {
+                    body.innerHTML = `<div class="alert alert-danger mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi khi tải lịch sử bàn giao!</div>`;
+                });
+        }
+
+        function viewModalAssetHistory() {
+            const assetId = document.getElementById('f-id').value;
+            const code = document.getElementById('f-inventoryCode').value;
+            if (assetId) {
+                showAssetHistory(assetId, code);
+            } else {
+                alert("Tài sản mới chưa được tạo. Vui lòng lưu thông tin tài sản trước để xem và ghi nhận lịch sử.");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const all = document.getElementById('checkAll');
+            if (all) {
+                all.addEventListener('change', function () {
+                    document.querySelectorAll('.row-check').forEach(cb => cb.checked = all.checked);
+                    refreshSelection();
+                });
+            }
+            setupAssetPagination();
+        });
+
+        // ===== Phân trang phía trình duyệt: 8 tài sản / trang =====
+        const ASSET_PAGE_SIZE = 8;
+
+        function setupAssetPagination() {
+            const rows = Array.from(document.querySelectorAll('tbody tr[data-json]'));
+            const pager = document.getElementById('asset-pager');
+            if (!pager || rows.length === 0) return;
+            if (rows.length <= ASSET_PAGE_SIZE) return; // ít dòng thì không cần pager
+
+            const totalPages = Math.ceil(rows.length / ASSET_PAGE_SIZE);
+            // Nhớ trang đang xem theo từng bộ lọc (URL), để sau khi sửa/xóa quay lại đúng trang
+            const stateKey = 'assetPage:' + location.search;
+            let page = parseInt(sessionStorage.getItem(stateKey)) || 1;
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+
+            const info = document.getElementById('asset-pager-info');
+            const prev = document.getElementById('asset-prev');
+            const next = document.getElementById('asset-next');
+
+            function render() {
+                const start = (page - 1) * ASSET_PAGE_SIZE;
+                const end = start + ASSET_PAGE_SIZE;
+                rows.forEach((tr, i) => { tr.style.display = (i >= start && i < end) ? '' : 'none'; });
+                info.textContent = 'Trang ' + page + '/' + totalPages
+                    + ' — dòng ' + (start + 1) + '-' + Math.min(end, rows.length) + ' trên ' + rows.length;
+                prev.disabled = page <= 1;
+                next.disabled = page >= totalPages;
+                sessionStorage.setItem(stateKey, page);
+            }
+
+            prev.addEventListener('click', function () { if (page > 1) { page--; render(); } });
+            next.addEventListener('click', function () { if (page < totalPages) { page++; render(); } });
+
+            pager.classList.remove('d-none');
+            pager.classList.add('d-flex');
+            render();
+        }
+    </script>
+</body>
+</html>

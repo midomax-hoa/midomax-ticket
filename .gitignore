@@ -1,0 +1,48 @@
+# ===== Build =====
+target/
+build/
+*.class
+*.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# ===== Bản sao lưu (đã có thư mục BACCKUP riêng, không đưa vào git) =====
+backup_*/
+backup_*.zip
+backup_*.sql
+backup_full.ps1
+do_backup.ps1
+create_deploy_package.ps1
+create_source_data_backup.ps1
+MIDOMAX_HELPDESK_DEPLOY_*/
+MIDOMAX_HELPDESK_*.zip
+_tmp_extract/
+$sqlDumpPath
+
+# ===== File tạm / bản nháp =====
+*.log
+*.tmp
+*.bak
+top.html
+bottom.html
+success_pure.txt
+success-modal.html
+ticket_fragment_pure.txt
+ticket-modal-fragment.html
+TicketController_Replacement.txt
+clickup-list-view-demo.html
+TaiLieuBaoCao_HoatDong.html
+
+# ===== File người dùng tải lên (dữ liệu, không phải mã nguồn) =====
+**/static/uploads/
+
+# ===== IDE / hệ điều hành =====
+.idea/
+.vscode/
+.claude/
+*.iml
+.settings/
+.project
+.classpath
+Thumbs.db
+Desktop.ini

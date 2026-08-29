@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Tài Chính - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); border: 1px solid #e5e7eb; }
+
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
+
+        /* ===== BUDGET HERO ===== */
+        .budget-hero { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border-radius: 20px; padding: 30px; color: #fff; box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.35); position: relative; overflow: hidden; }
+        .budget-hero::after { content: '\f0d6'; font-family: 'Font Awesome 6 Free'; font-weight: 900; position: absolute; right: -15px; bottom: -30px; font-size: 150px; color: rgba(255,255,255,0.08); transform: rotate(-12deg); }
+        .budget-stat { display: flex; flex-direction: column; }
+        .budget-stat .label { font-size: 13px; opacity: 0.85; font-weight: 500; margin-bottom: 4px; }
+        .budget-stat .value { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
+        .budget-stat .value.remaining { font-size: 34px; }
+
+        .progress-track { height: 26px; background: rgba(255,255,255,0.22); border-radius: 30px; overflow: hidden; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #fbbf24, #f97316); border-radius: 30px; width: 0; transition: width 1.4s cubic-bezier(0.25, 1, 0.5, 1); display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; color: #fff; font-weight: 700; font-size: 13px; white-space: nowrap; }
+        .progress-fill.danger { background: linear-gradient(90deg, #f87171, #dc2626); }
+
+        .mini-stat { background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; padding: 18px 20px; display: flex; align-items: center; gap: 15px; height: 100%; }
+        .mini-stat .icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        .mini-stat .m-label { font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; }
+        .mini-stat .m-value { font-size: 20px; font-weight: 800; color: #1e293b; }
+
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 14px 12px; white-space: nowrap; }
+        .table-custom td { padding: 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
+        .table-custom tbody tr:hover { background-color: #f8fafc; }
+
+        .invoice-thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; transition: 0.2s; }
+        .invoice-thumb:hover { transform: scale(1.08); border-color: #3b82f6; }
+        .amount-cell { font-weight: 700; color: #dc2626; white-space: nowrap; }
+
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 9px 12px; font-size: 14px; }
+        .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.12); }
+        .section-divider { font-weight: 700; font-size: 13px; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px; }
+
+        .empty-state { text-align: center; padding: 50px 20px; color: #94a3b8; }
+        .empty-state i { font-size: 46px; margin-bottom: 12px; }
+
+        /* Tabs điều hướng */
+        #fundTabs .nav-link { color: #475569; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 18px; font-size: 14px; }
+        #fundTabs .nav-link:hover { border-color: #93c5fd; color: #1e3a8a; }
+        #fundTabs .nav-link.active { background: #1e3a8a; color: #fff; border-color: #1e3a8a; box-shadow: 0 4px 10px -2px rgba(30,58,138,0.35); }
+        #fundTabs .nav-link.active .badge { background: #fff !important; color: #1e3a8a !important; }
+
+        /* Nhóm OPEX/CAPEX đóng mở */
+        .group-toggle .chev { transition: transform 0.25s ease; font-size: 13px; }
+        .group-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+        .group-toggle:hover { filter: brightness(1.08); }
+
+        @media (max-width: 991px) {
+            .main-content { margin-left: 0; width: 100%; padding: 15px; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== SIDEBAR ===== -->
+    <div th:replace="~{fragments/sidebar :: sidebar('expenses')}"></div>
+
+    <div class="main-content" id="main-content">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <a th:href="@{/expenses}" class="btn btn-light border me-2" title="Về tổng quan">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <div class="overflow-hidden">
+                    <h5 class="fw-bold m-0 text-truncate" style="color:#1e3a8a; max-width: 420px;" th:text="${fund.name}" th:title="${fund.name}">Quỹ CCDC</h5>
+                    <small class="text-muted">Chi tiết chi tiêu của quỹ</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                <!-- Chuyển nhanh sang quỹ khác -->
+                <select class="form-select d-none d-lg-block flex-shrink-0" style="width: 190px;"
+                        onchange="if(this.value) window.location.href='/expenses/fund/' + this.value;">
+                    <option th:each="f : ${funds}" th:value="${f.id}" th:text="${f.name}" th:selected="${f.id == fund.id}"></option>
+                </select>
+                <button class="btn btn-outline-success fw-semibold shadow-sm text-nowrap flex-shrink-0" data-bs-toggle="modal" data-bs-target="#importBudgetModal" title="Import Excel Ngân sách">
+                    <i class="fa-solid fa-file-import"></i><span class="d-none d-md-inline ms-1">Import Excel Ngân Sách</span>
+                </button>
+                <a th:href="@{/expenses/export(fundId=${fund.id}, month=${selectedMonth})}" class="btn btn-success fw-semibold shadow-sm text-nowrap flex-shrink-0" title="Xuất Báo Cáo Excel">
+                    <i class="fa-solid fa-file-excel"></i><span class="d-none d-md-inline ms-1">Xuất Báo Cáo</span>
+                </a>
+                <button class="btn btn-primary fw-semibold shadow-sm text-nowrap flex-shrink-0" style="background:#1e3a8a; border:none;" data-bs-toggle="modal" data-bs-target="#addExpenseModal" title="Thêm khoản chi">
+                    <i class="fa-solid fa-plus"></i><span class="d-none d-md-inline ms-1">Thêm khoản chi</span>
+                </button>
+                <span class="position-relative ms-2 d-none d-md-inline-block"><i class="fa-solid fa-bell fs-5" style="color: #6b7280; cursor: pointer;"></i></span>
+            </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- ===== BUDGET HERO ===== -->
+        <div class="budget-hero mb-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap mb-3" style="position: relative; z-index: 2;">
+                <div class="budget-stat mb-2">
+                    <span class="label">
+                        <i class="fa-solid fa-sack-dollar me-1"></i> <span th:text="${fund.name}">Quỹ CCDC</span> · Ngân sách được cấp
+                        <!-- Kỳ ngân sách: cho biết đang tính hóa đơn của khoảng tháng nào -->
+                        <span class="badge bg-white text-dark ms-2" style="font-weight:700;"
+                              th:text="${fund.periodLabel}">T6–T12/2026</span>
+                    </span>
+                    <span class="value" th:text="${#numbers.formatInteger(allocated, 0, 'POINT')} + ' đ'">10.000.000 đ</span>
+                    <span th:if="${outOfPeriodCount != null and outOfPeriodCount > 0}"
+                          class="d-block mt-1" style="font-size:12px; opacity:.85;"
+                          th:text="'Đã bỏ qua ' + ${outOfPeriodCount} + ' hóa đơn nằm ngoài kỳ ngân sách'">Đã bỏ qua 0 hóa đơn</span>
+                </div>
+                <button class="btn btn-sm btn-light fw-semibold" data-bs-toggle="modal" data-bs-target="#editFundModal"
+                        sec:authorize="hasAnyRole('ADMIN','IT')" style="position: relative; z-index: 3;">
+                    <i class="fa-solid fa-pen me-1"></i> Sửa ngân sách
+                </button>
+            </div>
+
+            <!-- Progress bar chạy dần -->
+            <div class="progress-track mb-2" style="position: relative; z-index: 2;">
+                <div class="progress-fill" th:classappend="${overBudget} ? 'danger' : ''"
+                     th:attr="data-percent=${spentPercent}"
+                     th:text="'Đã chi ' + ${spentPercent} + '%'">Đã chi 0%</div>
+            </div>
+
+            <div class="row g-3 mt-1" style="position: relative; z-index: 2;">
+                <div class="col-6 col-md-4">
+                    <div class="budget-stat">
+                        <span class="label"><i class="fa-solid fa-arrow-trend-down me-1"></i> Đã chi</span>
+                        <span class="value" th:text="${#numbers.formatInteger(spent, 0, 'POINT')} + ' đ'">0 đ</span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4">
+                    <div class="budget-stat">
+                        <span class="label"><i class="fa-solid fa-wallet me-1"></i> Còn lại</span>
+                        <span class="value remaining" th:classappend="${overBudget} ? 'text-warning' : ''"
+                              th:text="${#numbers.formatInteger(remaining, 0, 'POINT')} + ' đ'">10.000.000 đ</span>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <span class="badge bg-light text-dark fw-semibold" style="font-size: 13px;">
+                        <i class="fa-solid fa-receipt me-1"></i> <span th:text="${expenseCount}">0</span> khoản chi
+                    </span>
+                    <span th:if="${overBudget}" class="badge bg-danger ms-2" style="font-size: 13px;">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Vượt ngân sách!
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TABS ĐIỀU HƯỚNG ===== -->
+        <ul class="nav nav-pills gap-2 mb-3" id="fundTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" th:classappend="${selectedMonth == null} ? 'active' : ''"
+                        id="tab-budget-btn" data-bs-toggle="pill" data-bs-target="#tab-budget" type="button" role="tab">
+                    <i class="fa-solid fa-table-cells me-1"></i> Ngân Sách Hạng Mục
+                    <span class="badge bg-white text-primary ms-1" th:text="${budgetItems.size()}">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" th:classappend="${selectedMonth != null} ? 'active' : ''"
+                        id="tab-expenses-btn" data-bs-toggle="pill" data-bs-target="#tab-expenses" type="button" role="tab">
+                    <i class="fa-solid fa-list-check me-1"></i> Lịch Sử Chi Tiêu
+                    <span class="badge bg-white text-primary ms-1" th:text="${expenseCount}">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-monthly-btn" data-bs-toggle="pill" data-bs-target="#tab-monthly" type="button" role="tab">
+                    <i class="fa-solid fa-calendar-days me-1"></i> Báo Cáo Tháng
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+        <!-- ===== TAB 1: NGÂN SÁCH HẠNG MỤC ===== -->
+        <div class="tab-pane fade" th:classappend="${selectedMonth == null} ? 'show active' : ''" id="tab-budget" role="tabpanel">
+        <div class="widget-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold m-0" style="color:#1e3a8a;">
+                        <i class="fa-solid fa-table-cells me-2"></i>Phân Bổ Ngân Sách Hạng Mục & Khấu Trừ
+                    </h5>
+                    <small class="text-muted">Các hạng mục được cấp theo file Excel & tự động khấu trừ khi nộp hóa đơn chi tiêu</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:href="@{/expenses/sample-budget-template}" class="btn btn-sm btn-outline-primary fw-semibold" title="Tải mẫu Excel">
+                        <i class="fa-solid fa-download me-1"></i> Tải File Mẫu
+                    </a>
+                    <button class="btn btn-sm btn-success fw-semibold" data-bs-toggle="modal" data-bs-target="#importBudgetModal" title="Import Excel Ngân sách">
+                        <i class="fa-solid fa-file-import me-1"></i> Import Excel Ngân Sách
+                    </button>
+                </div>
+            </div>
+
+            <!-- Trường hợp chưa import file Excel -->
+            <div th:if="${budgetItems.isEmpty()}" class="empty-state py-4 border rounded-3 bg-light text-center">
+                <i class="fa-solid fa-file-excel text-success fs-1 mb-2"></i>
+                <h6 class="fw-bold text-dark mb-1">Chưa có bảng phân bổ hạng mục ngân sách</h6>
+                <p class="small text-muted mb-3">Vui lòng bấm <b>Import Excel Ngân Sách</b> để nạp bảng ngân sách chi tiết (Phần cứng, License, Photocopy...) từ file Excel của team.</p>
+                <button class="btn btn-sm btn-success fw-bold px-3" data-bs-toggle="modal" data-bs-target="#importBudgetModal">
+                    <i class="fa-solid fa-file-import me-1"></i> Upload File Excel Ngân Sách Ngay
+                </button>
+            </div>
+
+            <!-- Bảng hiển thị danh mục đã import: nhóm OPEX / CAPEX đóng mở -->
+            <div th:if="${!budgetItems.isEmpty()}">
+                <div th:each="entry, gIter : ${budgetGroupMap}"
+                     th:with="gSum=${groupSummaryMap.get(entry.key)},
+                              gAlloc=${gSum[0]}, gSpent=${gSum[1]}, gPct=${gSum[2]}"
+                     class="mb-3 border rounded-3 overflow-hidden shadow-sm bg-white">
+                    <div class="p-3 d-flex justify-content-between align-items-center group-toggle"
+                         style="background: linear-gradient(90deg, #1e3a8a, #3b82f6); color:#fff; cursor:pointer;"
+                         data-bs-toggle="collapse" th:attr="data-bs-target='#group-' + ${gIter.index}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-chevron-right chev"></i>
+                            <i class="fa-solid fa-layer-group text-warning"></i>
+                            <h6 class="fw-bold m-0 text-uppercase" th:text="${entry.key}">OPEX</h6>
+                            <span class="badge bg-white text-dark ms-2 fw-semibold" th:text="${entry.value.size()} + ' mục'">3 mục</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 text-nowrap" style="font-size:13px;">
+                            <span>Cấp: <b th:text="${#numbers.formatInteger(gAlloc, 0, 'POINT')} + ' đ'">0 đ</b></span>
+                            <span>Đã chi: <b th:text="${#numbers.formatInteger(gSpent, 0, 'POINT')} + ' đ'">0 đ</b></span>
+                            <span class="badge fw-bold"
+                                  th:classappend="${gPct >= 100} ? 'bg-danger' : (${gPct >= 90} ? 'bg-warning text-dark' : (${gPct >= 70} ? 'bg-warning text-dark' : 'bg-success'))"
+                                  th:text="${gPct} + '%'">0%</span>
+                        </div>
+                    </div>
+                    <div class="collapse" th:id="'group-' + ${gIter.index}">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Chi phí nhóm 3</th>
+                                    <th>Nội dung / Diễn giải</th>
+                                    <th class="text-center">Đơn giá & Đơn vị</th>
+                                    <th class="text-center">SL</th>
+                                    <th class="text-end">Ngân sách cấp</th>
+                                    <th class="text-end">Đã chi (Khấu trừ)</th>
+                                    <th class="text-end">Còn lại</th>
+                                    <th style="width: 140px;">Tiến trình</th>
+                                    <th class="text-center">Trạng thái</th>
+                                    <th class="text-center" style="width:60px;">Kế hoạch<br>theo tháng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="item : ${entry.value}">
+                                    <td class="fw-bold text-primary" th:text="${item.subCategory}">Phần cứng (Laptop/PC)</td>
+                                    <td>
+                                        <div class="fw-semibold text-dark" th:text="${item.itemName}">Giám đốc</div>
+                                        <small class="text-muted d-block" th:if="${item.description != null and !item.description.isBlank()}" th:text="${item.description}"></small>
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        <span th:text="${#numbers.formatInteger(item.unitPrice, 0, 'POINT')} + ' đ'">50.000.000 đ</span>
+                                        <small class="text-muted" th:text="' / ' + ${item.unit}"> / Cái</small>
+                                    </td>
+                                    <td class="text-center fw-bold" th:text="${item.quantity}">1</td>
+                                    <td class="text-end fw-bold text-dark text-nowrap" th:text="${#numbers.formatInteger(item.allocatedAmount, 0, 'POINT')} + ' đ'">50.000.000 đ</td>
+                                    <td class="text-end fw-bold text-danger text-nowrap">
+                                        <span th:text="${#numbers.formatInteger(item.spentAmount, 0, 'POINT')} + ' đ'">0 đ</span>
+                                        <!-- Cho biết bao nhiêu đến từ Sổ Hóa Đơn, để đối chiếu ngay tại chỗ -->
+                                        <div th:if="${invoiceCountByItem.get(item.id) != null}"
+                                             class="text-muted fw-normal" style="font-size:11px;"
+                                             th:text="'gồm ' + ${invoiceCountByItem.get(item.id)} + ' hóa đơn'">gồm 2 hóa đơn</div>
+                                    </td>
+                                    <td class="text-end fw-bold text-success text-nowrap" th:classappend="${item.remainingAmount < 0} ? 'text-danger' : ''"
+                                        th:text="${#numbers.formatInteger(item.remainingAmount, 0, 'POINT')} + ' đ'">50.000.000 đ</td>
+                                    <td>
+                                        <div class="progress" style="height: 10px; border-radius: 10px;">
+                                            <div class="progress-bar" role="progressbar"
+                                                 th:style="'width: ' + ${item.spentPercent} + '%;'"
+                                                 th:classappend="${item.spentPercent >= 100} ? 'bg-danger' : (${item.spentPercent >= 80} ? 'bg-warning' : 'bg-success')"></div>
+                                        </div>
+                                        <small class="text-muted fw-semibold" style="font-size: 11px;" th:text="${item.spentPercent} + '% đã chi'"></small>
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        <span th:if="${item.spentPercent >= 100}" class="badge bg-danger">Vượt ngân sách</span>
+                                        <span th:if="${item.spentPercent >= 80 and item.spentPercent < 100}" class="badge bg-warning text-dark">Cảnh báo > 80%</span>
+                                        <span th:if="${item.spentPercent < 80}" class="badge bg-success">Trong hạn</span>
+                                    </td>
+                                    <!-- Nhập ngân sách theo từng tháng (khoản trả hàng tháng: ChatGPT, cước net...) -->
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-monthly"
+                                                th:attr="data-id=${item.id}, data-name=${item.itemName},
+                                                         data-sub=${item.subCategory},
+                                                         data-months=${item.monthlyAmounts} ?: ''"
+                                                title="Nhập ngân sách từng tháng">
+                                            <i class="fa-solid fa-calendar-days"></i>
+                                        </button>
+                                        <div th:if="${item.monthlyAmounts != null and !item.monthlyAmounts.isBlank()}"
+                                             class="text-success fw-bold" style="font-size:10px;">đã lập</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    </div><!-- /collapse -->
+                </div>
+            </div>
+        </div>
+
+        </div><!-- /tab-budget -->
+
+        <!-- ===== TAB 2: BÁO CÁO THEO THÁNG ===== -->
+        <div class="tab-pane fade" id="tab-monthly" role="tabpanel">
+        <div th:if="${monthlyReport.isEmpty()}" class="widget-card empty-state">
+            <i class="fa-solid fa-calendar-days d-block"></i>
+            <p class="mb-0 fw-semibold">Chưa có dữ liệu chi tiêu theo tháng</p>
+        </div>
+        <div class="widget-card mb-4" th:if="${!monthlyReport.isEmpty()}">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0" style="color:#1e3a8a;"><i class="fa-solid fa-calendar-days me-2"></i>Báo cáo theo tháng</h5>
+                <a th:if="${selectedMonth != null}" th:href="@{/expenses/fund/${fund.id}}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-xmark me-1"></i> Bỏ lọc
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tháng</th>
+                            <th class="text-center">Số khoản chi</th>
+                            <th class="text-end">Tổng chi</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="m : ${monthlyReport}" th:classappend="${m.monthKey == selectedMonth} ? 'table-active' : ''">
+                            <td class="fw-semibold" th:text="${m.label}">Tháng 07/2026</td>
+                            <td class="text-center"><span class="badge bg-light text-dark" th:text="${m.count}">3</span></td>
+                            <td class="text-end amount-cell" th:text="${#numbers.formatInteger(m.total, 0, 'POINT')} + ' đ'">5.000.000 đ</td>
+                            <td class="text-end">
+                                <a th:href="@{/expenses/fund/${fund.id}(month=${m.monthKey})}" class="btn btn-sm btn-outline-primary" title="Xem tháng này">
+                                    <i class="fa-solid fa-filter"></i>
+                                </a>
+                                <a th:href="@{/expenses/export(fundId=${fund.id}, month=${m.monthKey})}" class="btn btn-sm btn-outline-success" title="Xuất Excel tháng này">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        </div><!-- /tab-monthly -->
+
+        <!-- ===== TAB 3: LỊCH SỬ CHI TIÊU ===== -->
+        <div class="tab-pane fade" th:classappend="${selectedMonth != null} ? 'show active' : ''" id="tab-expenses" role="tabpanel">
+        <div class="widget-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0" style="color:#1e3a8a;">
+                    <i class="fa-solid fa-list-check me-2"></i>Lịch sử chi tiêu
+                    <span th:if="${selectedMonth != null}" class="badge bg-primary ms-2" style="font-size: 12px;" th:text="${selectedMonthLabel}">Tháng 07/2026</span>
+                </h5>
+                <a th:if="${selectedMonth != null}" th:href="@{/expenses/fund/${fund.id}}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-list me-1"></i> Xem tất cả
+                </a>
+            </div>
+
+            <div class="table-responsive" th:if="${expenseCount > 0}">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Công cụ / Dụng cụ</th>
+                            <th>Loại</th>
+                            <th>Số tiền</th>
+                            <th>Số HĐ</th>
+                            <th>Ngày HĐ</th>
+                            <th>Ảnh HĐ</th>
+                            <th>Người chi</th>
+                            <th>Thời gian</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="e, iter : ${expenses}">
+                            <td th:text="${iter.count}">1</td>
+                            <td>
+                                <div class="fw-semibold" th:text="${e.itemName}">Máy khoan</div>
+                                <small class="text-muted" th:if="${e.note}" th:text="${e.note}"></small>
+                            </td>
+                            <td><span class="badge bg-light text-dark" th:text="${e.category != null and !e.category.isBlank() ? e.category : 'Khác'}">Khác</span></td>
+                            <td class="amount-cell" th:text="${#numbers.formatInteger(e.amount, 0, 'POINT')} + ' đ'">2.000.000 đ</td>
+                            <td th:text="${e.invoiceNumber != null and !e.invoiceNumber.isBlank() ? e.invoiceNumber : '—'}">HD-000123</td>
+                            <td class="text-muted small" th:text="${e.invoiceDateStr != null and !e.invoiceDateStr.isBlank() ? e.invoiceDateStr : '—'}">01/07/2026</td>
+                            <td>
+                                <a th:if="${e.invoicePath}" th:href="${e.invoicePath}" target="_blank" title="Xem hóa đơn">
+                                    <img th:src="${e.invoicePath}" class="invoice-thumb" alt="Hóa đơn">
+                                </a>
+                                <span th:unless="${e.invoicePath}" class="text-muted small"><i class="fa-regular fa-image me-1"></i>Không có</span>
+                            </td>
+                            <td th:text="${e.createdBy}">user</td>
+                            <td class="text-muted small" th:text="${e.createdAtStr}">14/07/2026 10:00</td>
+                            <td class="text-end">
+                                <form th:action="@{'/expenses/delete/' + ${e.id}}" method="post" class="d-inline"
+                                      onsubmit="return confirm('Xóa khoản chi này? Số tiền sẽ được cộng lại vào quỹ.');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${expenseCount == 0}" class="empty-state">
+                <i class="fa-solid fa-receipt d-block"></i>
+                <p class="mb-1 fw-semibold">Chưa có khoản chi nào</p>
+                <p class="small mb-3">Bấm "Thêm khoản chi" để ghi nhận công cụ đầu tiên bạn đã mua.</p>
+                <button class="btn btn-primary" style="background:#1e3a8a; border:none;" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+                    <i class="fa-solid fa-plus me-1"></i> Thêm khoản chi
+                </button>
+            </div>
+        </div>
+        </div><!-- /tab-expenses -->
+        </div><!-- /tab-content -->
+    </div>
+
+    <!-- ===== MODAL: THÊM KHOẢN CHI ===== -->
+    <div class="modal fade" id="addExpenseModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px;">
+                <form th:action="@{/expenses/add}" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="fundId" th:value="${fund.id}">
+                    <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title"><i class="fa-solid fa-cart-plus me-2"></i>Thêm khoản chi</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="section-divider">Hạng mục khấu trừ ngân sách</div>
+                        <div class="mb-3" th:if="${!budgetItems.isEmpty()}">
+                            <label class="form-label fw-bold"><i class="fa-solid fa-list-check text-primary me-1"></i> Khấu trừ vào Hạng mục Ngân sách</label>
+                            <select name="budgetItemId" class="form-select border-primary" style="background-color: #f0f7ff;">
+                                <option value="">-- Không khấu trừ (Chi tự do) --</option>
+                                <option th:each="b : ${budgetItems}"
+                                        th:value="${b.id}"
+                                        th:text="${b.groupCategory} + ' ➔ ' + ${b.subCategory} + ' (' + ${b.itemName} + ') - Còn: ' + ${#numbers.formatInteger(b.remainingAmount, 0, 'POINT')} + 'đ'">
+                                </option>
+                            </select>
+                            <small class="text-muted"><i class="fa-solid fa-circle-info me-1"></i> Số tiền chi sẽ tự động trừ vào cục tiền của hạng mục này.</small>
+                        </div>
+                        <div class="section-divider mt-3">Thông tin mua sắm</div>
+                        <div class="mb-3">
+                            <label class="form-label">Tên công cụ / dụng cụ <span class="text-danger">*</span></label>
+                            <input type="text" name="itemName" class="form-control" placeholder="VD: Máy khoan Bosch, Màn hình Dell..." required>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Số tiền (đ) <span class="text-danger">*</span></label>
+                                <input type="text" name="amount" id="amountInput" class="form-control" inputmode="numeric" placeholder="2.000.000" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Loại</label>
+                                <select name="category" class="form-select">
+                                    <option value="Phần cứng">Phần cứng</option>
+                                    <option value="License">License / Bản quyền</option>
+                                    <option value="Photocopy / In ấn">Photocopy / In ấn</option>
+                                    <option value="Công cụ">Công cụ</option>
+                                    <option value="Dụng cụ">Dụng cụ</option>
+                                    <option value="Vật tư">Vật tư</option>
+                                    <option value="Thiết bị">Thiết bị</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="section-divider mt-3">Thông tin hóa đơn</div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="fa-solid fa-hashtag me-1"></i> Số hóa đơn</label>
+                                <input type="text" name="invoiceNumber" class="form-control" placeholder="VD: HD-000123">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="fa-solid fa-calendar-day me-1"></i> Ngày hóa đơn</label>
+                                <input type="date" name="invoiceDate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3 mt-3">
+                            <label class="form-label">Ghi chú</label>
+                            <textarea name="note" class="form-control" rows="2" placeholder="Mua ở đâu, dùng cho việc gì..."></textarea>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label"><i class="fa-solid fa-image me-1"></i> Ảnh hóa đơn</label>
+                            <input type="file" name="invoiceFile" accept="image/*" class="form-control">
+                            <small class="text-muted">Chụp ảnh hóa đơn để đối chiếu sau này.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-check me-1"></i> Ghi nhận
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: SỬA / TẠO QUỸ ===== -->
+    <div class="modal fade" id="editFundModal" tabindex="-1" sec:authorize="hasAnyRole('ADMIN','IT')">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px;">
+                <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title"><i class="fa-solid fa-sliders me-2"></i>Ngân sách quỹ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Sửa quỹ hiện tại -->
+                    <form th:action="@{/expenses/fund/update}" method="post">
+                        <input type="hidden" name="fundId" th:value="${fund.id}">
+                        <div class="section-divider">Sửa quỹ đang xem</div>
+                        <div class="mb-3">
+                            <label class="form-label">Tên quỹ</label>
+                            <input type="text" name="name" class="form-control" th:value="${fund.name}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Số tiền được cấp (đ)</label>
+                            <input type="text" name="allocatedAmount" class="form-control money-input" th:value="${#numbers.formatInteger(allocated, 0, 'POINT')}" required>
+                        </div>
+                        <!-- Kỳ ngân sách: chỉ hóa đơn trong khoảng này mới trừ vào quỹ -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Kỳ ngân sách
+                                <span class="text-muted" style="font-weight:400;">— chỉ tính hóa đơn trong kỳ này</span>
+                            </label>
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <input type="number" name="budgetYear" class="form-control" placeholder="Năm"
+                                           th:value="${fund.budgetYear}" min="2020" max="2100">
+                                    <small class="text-muted" style="font-size:11px;">Năm (trống = mọi năm)</small>
+                                </div>
+                                <div class="col-4">
+                                    <select name="fromMonth" class="form-select">
+                                        <option value="">Từ tháng 1</option>
+                                        <option th:each="m : ${#numbers.sequence(1,12)}" th:value="${m}"
+                                                th:text="'Từ tháng ' + ${m}"
+                                                th:selected="${fund.fromMonth != null and fund.fromMonth == m}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <select name="toMonth" class="form-select">
+                                        <option value="">Đến tháng 12</option>
+                                        <option th:each="m : ${#numbers.sequence(1,12)}" th:value="${m}"
+                                                th:text="'Đến tháng ' + ${m}"
+                                                th:selected="${fund.toMonth != null and fund.toMonth == m}"></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                VD ngân sách 6 tháng cuối năm 2026: chọn <b>2026 · Từ tháng 6 · Đến tháng 12</b> —
+                                hóa đơn tháng 1–5 sẽ không bị trừ vào quỹ này.
+                            </small>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi
+                        </button>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <!-- Xóa quỹ -->
+                    <div class="section-divider text-danger" style="border-color:#fecaca;">Vùng nguy hiểm</div>
+                    <p class="text-muted small mb-2">Xóa quỹ này sẽ xóa vĩnh viễn toàn bộ khoản chi thuộc quỹ.</p>
+                    <form th:action="@{'/expenses/fund/delete/' + ${fund.id}}" method="post"
+                          onsubmit="return confirm('Xóa quỹ này cùng TẤT CẢ khoản chi bên trong? Không thể hoàn tác.');">
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="fa-solid fa-trash-can me-1"></i> Xóa quỹ này
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL IMPORT EXCEL NGÂN SÁCH -->
+    <!-- ===== MODAL: NGÂN SÁCH THEO TỪNG THÁNG =====
+         Dành cho khoản trả hàng tháng (ChatGPT, cước Internet, thuê máy photo...):
+         gõ thẳng số tiền của từng tháng, tổng 12 tháng = ngân sách cấp của hạng mục. -->
+    <div class="modal fade" id="monthlyPlanModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;">
+                <form method="post" id="monthlyPlanForm">
+                    <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius:16px 16px 0 0;">
+                        <h5 class="modal-title"><i class="fa-solid fa-calendar-days me-2"></i>Ngân sách theo tháng</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <div class="fw-bold" style="color:#1e3a8a;" id="mp-name">Gia hạn ChatGPT</div>
+                            <small class="text-muted" id="mp-sub">GIA HẠN</small>
+                        </div>
+
+                        <div class="alert alert-info py-2 small">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            Gõ <b>số tiền</b> của tháng nào có trả, tháng không trả để trống.
+                            <b>Ngân sách cấp = tổng các tháng</b> — không cần quy về đơn giá × số lượng.
+                        </div>
+
+                        <div class="row g-2" id="mp-months"><!-- 12 ô tháng dựng bằng JS --></div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3"
+                             style="border-top:1px solid #e5e7eb;">
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="mp-fill-all">
+                                    Điền đều 12 tháng
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="mp-clear">
+                                    Xóa hết
+                                </button>
+                            </div>
+                            <div class="fw-bold" style="font-size:16px; color:#1e3a8a;">
+                                Tổng: <span id="mp-total">0</span> đ
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Lưu kế hoạch
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="importBudgetModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px;">
+                <form th:action="@{/expenses/import-budget}" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="fundId" th:value="${fund.id}">
+                    <div class="modal-header" style="background:#15803d; color:#fff; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title"><i class="fa-solid fa-file-excel me-2"></i>Import Ngân sách Hạng mục vào <span th:text="${fund.name}"></span></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info py-2 small mb-3">
+                            <i class="fa-solid fa-circle-info me-1"></i> Ngân sách sẽ được nạp trực tiếp vào quỹ: <b th:text="${fund.name}"></b>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tệp Excel Ngân Sách (.xlsx) <span class="text-danger">*</span></label>
+                            <input type="file" name="excelFile" class="form-control" accept=".xlsx, .xls" required>
+                            <div class="form-text mt-2">
+                                Hỗ trợ các cột chuẩn: <b>Chi phí nhóm 2, Chi phí nhóm 3, Nội dung, Đơn giá, Thành tiền...</b> (như mẫu của team).
+                            </div>
+                        </div>
+                        <div class="p-3 bg-light rounded-3 border">
+                            <a th:href="@{/expenses/sample-budget-template}" class="btn btn-sm btn-outline-primary fw-semibold">
+                                <i class="fa-solid fa-download me-1"></i> Tải File Excel Mẫu Chuẩn (Chi tiết)
+                            </a>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-success fw-bold" style="background:#15803d; border:none;">
+                            <i class="fa-solid fa-upload me-1"></i> Tải Lên & Tự Động Khấu Trừ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        // Animate progress bar: chạy dần từ 0 -> spentPercent
+        document.addEventListener('DOMContentLoaded', function () {
+            var fill = document.querySelector('.progress-fill');
+            if (fill) {
+                var pct = parseInt(fill.getAttribute('data-percent')) || 0;
+                requestAnimationFrame(function () {
+                    setTimeout(function () { fill.style.width = pct + '%'; }, 150);
+                });
+            }
+
+            // Định dạng tiền có dấu chấm khi gõ
+            function formatMoney(el) {
+                el.addEventListener('input', function () {
+                    var digits = el.value.replace(/[^0-9]/g, '');
+                    el.value = digits ? Number(digits).toLocaleString('vi-VN') : '';
+                });
+            }
+            var amt = document.getElementById('amountInput');
+            if (amt) formatMoney(amt);
+            document.querySelectorAll('.money-input').forEach(formatMoney);
+
+            // ===== Ngân sách theo từng tháng =====
+            var MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
+                          'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+
+            function digitsOf(v) { return (v || '').toString().replace(/[^0-9]/g, ''); }
+            function group(n) { return n ? Number(n).toLocaleString('vi-VN') : ''; }
+
+            function recalcTotal() {
+                var sum = 0;
+                document.querySelectorAll('#mp-months input').forEach(function (i) {
+                    sum += parseInt(digitsOf(i.value) || '0', 10);
+                });
+                document.getElementById('mp-total').textContent = sum.toLocaleString('vi-VN');
+            }
+
+            // Dựng 12 ô nhập, đổ sẵn giá trị đã lưu (CSV "0,0,3000000,...")
+            function buildMonthInputs(csv) {
+                var saved = (csv || '').split(',');
+                var box = document.getElementById('mp-months');
+                box.innerHTML = '';
+                for (var i = 0; i < 12; i++) {
+                    var val = parseInt(digitsOf(saved[i]) || '0', 10);
+                    var col = document.createElement('div');
+                    col.className = 'col-6 col-md-3';
+                    col.innerHTML = '<label class="form-label mb-1" style="font-size:12px;">' + MONTHS[i] + '</label>'
+                        + '<input type="text" name="amounts" class="form-control form-control-sm text-end" '
+                        + 'inputmode="numeric" placeholder="0" value="' + (val ? group(val) : '') + '">';
+                    box.appendChild(col);
+                }
+                box.querySelectorAll('input').forEach(function (input) {
+                    input.addEventListener('input', function () {
+                        var d = digitsOf(input.value);
+                        input.value = d ? group(d) : '';
+                        recalcTotal();
+                    });
+                });
+                recalcTotal();
+            }
+
+            document.querySelectorAll('.btn-monthly').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.getElementById('mp-name').textContent = btn.getAttribute('data-name') || '';
+                    document.getElementById('mp-sub').textContent = btn.getAttribute('data-sub') || '';
+                    document.getElementById('monthlyPlanForm').action =
+                        '/expenses/budget-item/' + btn.getAttribute('data-id') + '/monthly';
+                    buildMonthInputs(btn.getAttribute('data-months'));
+                    new bootstrap.Modal(document.getElementById('monthlyPlanModal')).show();
+                });
+            });
+
+            var fillAll = document.getElementById('mp-fill-all');
+            if (fillAll) {
+                fillAll.addEventListener('click', function () {
+                    var raw = prompt('Số tiền mỗi tháng (VD 3000000):');
+                    if (raw === null) return;
+                    var d = digitsOf(raw);
+                    document.querySelectorAll('#mp-months input').forEach(function (i) {
+                        i.value = d ? group(d) : '';
+                    });
+                    recalcTotal();
+                });
+            }
+            var clearAll = document.getElementById('mp-clear');
+            if (clearAll) {
+                clearAll.addEventListener('click', function () {
+                    document.querySelectorAll('#mp-months input').forEach(function (i) { i.value = ''; });
+                    recalcTotal();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

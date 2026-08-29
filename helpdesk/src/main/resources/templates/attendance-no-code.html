@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chấm Công Của Tôi - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('my-attendance')}"></div>
+
+    <div class="main-content" id="main-content">
+        <div class="widget-card text-center" style="padding: 70px 20px; color: #64748b;">
+            <div style="width: 90px; height: 90px; border-radius: 24px; background: linear-gradient(135deg, #f0fdfa, #ccfbf1);
+                        display: inline-flex; align-items: center; justify-content: center; font-size: 38px; color: #0d9488; margin-bottom: 18px;">
+                <i class="fa-solid fa-fingerprint"></i>
+            </div>
+            <h5 class="fw-bold mb-2" style="color: #1e3a8a;">Tài khoản chưa được gán mã chấm công</h5>
+            <p class="mb-1">Để xem lịch chấm công của bạn, quản trị viên cần nhập <b>mã nhân viên trên máy chấm công</b> vào tài khoản này.</p>
+            <p class="mb-0">Vui lòng liên hệ <b>bộ phận IT</b> để được gán mã.</p>
+            <a th:if="${canApprove != null and canApprove}" href="/attendance/requests"
+               class="btn btn-primary fw-semibold mt-4" style="background:#1e3a8a; border:none;">
+                <i class="fa-solid fa-clipboard-check me-1"></i> Duyệt đơn nghỉ / bổ sung công
+            </a>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

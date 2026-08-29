@@ -1,0 +1,61 @@
+﻿<!-- MODAL CHI TI?T TICKET (PHUONG �N 2) -->
+    <div class="modal fade" id="editTicketModal" tabindex="-1" aria-labelledby="editTicketModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form action="/ticket/update" method="post">
+                    <input type="hidden" name="id" id="detail-id">
+                    <div class="modal-header bg-light border-bottom-0">
+                        <h5 class="modal-title fw-bold text-primary" id="detail-modal-title"><i
+                                class="fa-solid fa-ticket me-2"></i>Chi ti?t Ticket</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-3 p-md-4">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold text-muted small">N?i dung y�u c?u (Ch? d?c)</label>
+                                <input type="text" id="detail-title" name="title" class="form-control bg-light" value=""
+                                    readonly>
+                            </div>
+                            <div class="col-md-12" id="detail-image-container" style="display: none;">
+                                <label class="form-label fw-bold text-muted small">H�nh ?nh 
+                        if (saveBtn) saveBtn.style.display = 'block';
+                    }
+
+                    // Sync Tom Select instances if they exist
+                    const selectIds = ['detail-status', 'detail-priority', 'detail-assignee', 'detail-category'];
+                    selectIds.forEach(id => {
+                        const selectEl = document.getElementById(id);
+                        if (selectEl && selectEl.tomselect) {
+                            selectEl.tomselect.setValue(selectEl.value);
+                            if (!isAdmin || isResolved) {
+                                selectEl.tomselect.disable();
+                            } else {
+                                selectEl.tomselect.enable();
+                            }
+                        }
+                    });
+
+                    // Open the modal
+                    const modalEl = document.getElementById('editTicketModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modal.show();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Kh�ng th? t?i th�ng tin chi ti?t ticket!');
+                });
+        }
+
+        // C�i d?t Tom Select cho c�c menu Dropdown trong Modal d? giao di?n d?ng nh?t & d?p m?t (kh�ng d�ng native c?a m�y)
+        document.querySelectorAll('.modal .form-select').forEach((el) => {
+            new TomSelect(el, {
+                controlInput: null, // ?n � t�m ki?m n?u kh�ng c?n thi?t
+                sortField: false,
+                searchField: [] // Disable search
+            });
+        });
+    </script>
+
+
+    

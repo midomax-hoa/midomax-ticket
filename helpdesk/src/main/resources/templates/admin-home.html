@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang chủ - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/time-theme.css}">
+    <link rel="stylesheet" th:href="@{/css/ticket-rig.css}">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #e2e8f0;
+            color: #333;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 30px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
+
+        .topbar {
+            padding: 15px 30px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .admin-badge {
+            border: 1px solid #e5e7eb;
+            color: #1e3a8a;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+        }
+
+        /* WELCOME BANNER */
+        .welcome-banner {
+            border-radius: 20px;
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .welcome-banner::after {
+            content: '\f5fc';
+            /* fa-laptop-code */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: -20px;
+            bottom: -40px;
+            font-size: 180px;
+            color: rgba(255, 255, 255, 0.1);
+            transform: rotate(-15deg);
+        }
+
+        .welcome-banner h1 {
+            font-weight: 800;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .welcome-banner p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 0;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        /* QUICK ACTION CARDS */
+        .section-title {
+            font-weight: 800;
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: #3b82f6;
+        }
+
+        .quick-action-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            display: block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            height: 100%;
+        }
+
+        .quick-action-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1);
+            border-color: #bfdbfe;
+        }
+
+        .qa-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .quick-action-card:hover .qa-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .qa-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #1e3a8a;
+        }
+
+        .qa-desc {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Icon Colors */
+        .ic-dashboard {
+            background: #eff6ff;
+            color: #3b82f6;
+        }
+
+        .ic-ticket {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .ic-network {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .ic-asset {
+            background: #fef9c3;
+            color: #eab308;
+        }
+
+        .ic-hr {
+            background: #f3e8ff;
+            color: #a855f7;
+        }
+
+        .ic-user {
+            background: #ffedd5;
+            color: #f97316;
+        }
+
+        @media (max-width: 991px) {
+            #mobile-toggle-btn {
+                display: block !important;
+            }
+
+            .sidebar {
+                left: -100% !important;
+                width: 80% !important;
+                max-width: 320px;
+                transition: all 0.3s ease !important;
+                z-index: 9999 !important;
+            }
+
+            .sidebar.active {
+                left: 0 !important;
+                box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5) !important;
+            }
+
+
+
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 15px !important;
+            }
+
+            .topbar {
+                padding: 12px 15px !important;
+                margin-bottom: 20px !important;
+                top: 0;
+                border-radius: 0 0 12px 12px;
+            }
+
+            .welcome-banner {
+                padding: 30px 20px;
+            }
+
+            .welcome-banner h1 {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .topbar {
+                padding: 10px 12px !important;
+                margin-bottom: 15px !important;
+            }
+
+            .topbar h4 {
+                font-size: 15px !important;
+            }
+
+            .topbar small {
+                font-size: 10px !important;
+            }
+
+            #mobile-toggle-btn {
+                margin-right: 8px !important;
+                font-size: 18px !important;
+            }
+
+            .admin-badge {
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+            }
+
+            .admin-badge i {
+                margin-right: 4px !important;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('')}"></div>
+
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn"
+                    style="display: none; cursor: pointer; font-size: 22px; color: #1e3a8a; margin-right: 15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color: #1e3a8a;">MIDOMAX IT PORTAL</h4>
+                    <small class="text-muted">Cổng thông tin quản trị hệ thống</small>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #6b7280; cursor: pointer;"></i>
+            </div>
+        </div>
+
+        <!-- WELCOME BANNER -->
+        <div class="welcome-banner">
+            <h1>Chào buổi sáng, <span th:text="${adminName}">Admin</span>! 👋</h1>
+            <p>Hôm nay là một ngày tuyệt vời để tối ưu hóa hệ thống. Hiện tại không có sự cố mạng nào nghiêm trọng. Hãy
+                bắt đầu công việc của bạn bằng cách chọn các phân hệ bên dưới.</p>
+        </div>
+
+        <!-- MÁY TÍNH TICKET + LỐI TẮT trên tấm giấy kẻ ô.
+             Máy và phụ kiện dùng CHUNG fragment với trang User (fragments/ticket-rig.html),
+             chỉ khác bộ số truyền vào: trang này xem toàn hệ thống. -->
+        <div class="rig-panel">
+
+            <div th:replace="~{fragments/ticket-rig :: rigMachine(
+                    ${stats.total},
+                    ${stats.total}, 'Tổng ticket',
+                    ${stats.unassigned}, 'Chưa phân công',
+                    ${stats.inProgress}, 'Đang xử lý',
+                    ${stats.overdue}, 'quá hạn',
+                    ${stats.mine}, 'việc của tôi')}"></div>
+
+            <!-- Con mèo ngủ cạnh máy -->
+            <svg class="rig-cat" viewBox="0 0 180 100" aria-hidden="true">
+                <path class="cat-tail" d="M50 58 q-42 12 -50 -8 q28 -10 48 -4 z" fill="#8A93A0" />
+                <ellipse cx="106" cy="66" rx="56" ry="27" fill="#9AA3B0" />
+                <ellipse cx="106" cy="60" rx="44" ry="17" fill="#AEB6C2" opacity=".55" />
+                <circle cx="150" cy="46" r="25" fill="#9AA3B0" />
+                <path d="M134 30 l2 -16 l13 11 z" fill="#7E8794" />
+                <path d="M158 26 l12 -12 l3 16 z" fill="#7E8794" />
+                <path d="M140 48 q6 5 12 0" fill="none" stroke="#59616D" stroke-width="2.5" stroke-linecap="round" />
+                <path d="M160 48 q6 5 12 0" fill="none" stroke="#59616D" stroke-width="2.5" stroke-linecap="round" />
+                <path d="M44 72 q22 -6 44 -2" fill="none" stroke="#828B98" stroke-width="3" opacity=".8" />
+            </svg>
+
+            <!-- Sticky notes bên dưới máy, stagger bằng JS -->
+            <div class="sc-grid" id="sc-grid-admin">
+
+                <a href="/dashboard" class="sc">
+                    <div class="sc-ic"><i class="fa-solid fa-chart-pie"></i></div>
+                    <div class="sc-label">Dashboard</div>
+                </a>
+
+                <a href="/ticket-management" class="sc">
+                    <div class="sc-ic"><i class="fa-solid fa-ticket"></i></div>
+                    <div class="sc-label">Quản lý Ticket</div>
+                </a>
+
+                <a href="#" class="sc" sec:authorize="hasRole('ADMIN')">
+                    <div class="sc-ic"><i class="fa-solid fa-network-wired"></i></div>
+                    <div class="sc-label">Quản trị Mạng</div>
+                </a>
+
+                <a href="/assets" class="sc" sec:authorize="hasRole('ADMIN')">
+                    <div class="sc-ic"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div class="sc-label">Tài sản &amp; Công cụ</div>
+                </a>
+
+                <a href="/expenses" class="sc" sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+                    <div class="sc-ic"><i class="fa-solid fa-wallet"></i></div>
+                    <div class="sc-label">Quản Lý Tài Chính</div>
+                </a>
+
+                <a href="/schedule" class="sc">
+                    <div class="sc-ic"><i class="fa-solid fa-calendar-check"></i></div>
+                    <div class="sc-label">Lịch Trình</div>
+                </a>
+
+                <a href="/work-reports" class="sc" sec:authorize="hasAnyRole('ADMIN','IT','MANAGER')">
+                    <div class="sc-ic"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="sc-label">Báo Cáo Công Việc</div>
+                </a>
+
+                <a href="/employees" class="sc">
+                    <div class="sc-ic"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="sc-label">Quản lý nhân sự</div>
+                </a>
+
+                <a href="/admin/users" class="sc" sec:authorize="hasRole('ADMIN')">
+                    <div class="sc-ic"><i class="fa-solid fa-users-gear"></i></div>
+                    <div class="sc-label">Quản lý User</div>
+                </a>
+
+            </div>
+
+        </div>
+
+    </div> <!-- End main-content -->
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/time-theme.js}"></script>
+
+    <script th:replace="~{fragments/ticket-rig :: rigScript}"></script>
+
+    <!-- Trang đích sau đăng nhập của Admin/IT, và sidebar ở đây cũng có nút "Tạo Ticket"
+         nên phải có modal tạo ticket + vé thông tin ticket vừa tạo. Thiếu thì nút bấm
+         không lên gì và tạo xong cũng không thấy vé. -->
+    <div th:replace="~{fragments/ticket-modals :: ticketModals}"></div>
+    <div th:replace="~{success-modal :: successModal}"></div>
+</body>
+
+</html>

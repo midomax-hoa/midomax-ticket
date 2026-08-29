@@ -1,0 +1,80 @@
+﻿        .sidebar-bottom:hover {
+            background: #f8fafc;
+        }
+
+        .sidebar-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+        }
+
+        .sidebar-user-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar-user-name {
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .sidebar-logout {
+            margin-left: auto;
+            color: #94a3b8;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        
+        .sidebar-bottom:hover .sidebar-logout {
+            color: #ef4444;
+            transform: translateX(3px)
+        .legend-item { display: flex; align-items: center; font-size: 12px; font-weight: 600; color: #4b5563; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+        
+        /* Select */
+        .select-light { background: #f8fafc; border: none; font-size: 12px; font-weight: 600; color: #3b82f6; padding: 4px 10px; border-radius: 12px; cursor: pointer; outline: none; }
+        
+        /* Recent Activity */
+        .activity-item { display: flex; align-items: center; margin-bottom: 15px; }
+        .activity-item img { width: 36px; height: 36px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
+        .activity-item .info h6 { font-size: 13px; font-weight: 700; margin: 0 0 3px; color: #1e3a8a; }
+        .activity-item .info p { font-size: 11px; margin: 0; color: #9ca3af; font-weight: 500; }
+        .activity-item .status { margin-left: auto; font-size: 12px; font-weight: 600; color: #6b7280; }
+    </style>
+</head>
+<body>
+
+   <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-bars" id="toggle-btn"></i>
+            <span class="brand-text">MIDOMAX</span>
+        </div>
+
+        <!-- Menu Items -->
+        <div class="sidebar-menu">
+            <a href="/admin-home" title="Trang chủ">
+                <div class="icon-wrapper"><i class="fa-solid fa-house"></i></div>
+                <span>Trang chủ</span>
+            </a>
+            <a href="/dashboard" class="active" title="Dashboard">
+                <div class="icon-wrapper"><i class="fa-solid fa-chart-pie"></i></div>

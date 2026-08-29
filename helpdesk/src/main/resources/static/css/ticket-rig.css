@@ -1,0 +1,380 @@
+/* =========================================================================
+   ticket-rig.css — Máy tính ticket + sticky notes lối tắt
+   Dùng chung cho admin-home và user-home.
+   ========================================================================= */
+
+.rig-panel {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 4px 0 0;
+    /* Bù phần padding 30px của .main-content để chân cỗ bài chạm mép trang */
+    margin-bottom: -30px;
+    position: relative;
+}
+@media (max-width: 768px) {
+    .rig-panel { margin-bottom: -15px; }  /* mobile: main-content đệm 15px */
+}
+
+.rig-scene {
+    perspective: 1400px;
+    position: relative;
+}
+
+.rig-tilt-wrapper {
+    perspective: 1400px;
+}
+
+#rig-tilt {
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(var(--tz, 0px));
+    transform-origin: 433px 340px;
+    transform-box: fill-box;
+    transition: transform .18s cubic-bezier(0.1, 0.4, 0.2, 1);
+    will-change: transform;
+    transform-style: preserve-3d;
+}
+
+/* Hiệu ứng Mắt nhìn theo con trỏ chuột (Eye Tracking) */
+.eye-track {
+    transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+    transition: transform 0.08s cubic-bezier(0.1, 0.5, 0.1, 1);
+    will-change: transform;
+}
+
+.rig-svg {
+    width: 100%;
+    max-width: 760px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    overflow: visible;
+    animation: rig-hover 7s ease-in-out infinite;
+}
+
+@keyframes rig-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+/* --- hoạt hình trên màn hình & robot chibi --- */
+.legs-a { animation: rig-frA .16s steps(1) infinite; }
+.legs-b { animation: rig-frB .16s steps(1) infinite; }
+@keyframes rig-frA { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes rig-frB { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+.dino-jump { animation: rig-jump 3.3s cubic-bezier(.3, .7, .4, 1) infinite; }
+@keyframes rig-jump {
+    0%, 58%   { transform: translateY(0); }
+    70%       { transform: translateY(-34px); }
+    82%, 100% { transform: translateY(0); }
+}
+
+.cact { animation: rig-roll 3.3s linear infinite; }
+.cact.c2 { animation-delay: -1.75s; }
+@keyframes rig-roll { from { transform: translateX(300px); } to { transform: translateX(-60px); } }
+
+.gline { animation: rig-scrollg 1s linear infinite; }
+@keyframes rig-scrollg { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -26; } }
+
+.led-num { animation: rig-led 2.6s ease-in-out infinite; }
+@keyframes rig-led { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px #4ADE80); } 50% { opacity: .72; filter: none; } }
+
+.cat-tail { transform-origin: 50px 58px; animation: rig-tail 3.6s ease-in-out infinite; }
+@keyframes rig-tail { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-13deg); } }
+
+.tagfloat { animation: rig-bob 5.4s ease-in-out infinite; }
+.tagfloat.t2 { animation-delay: -1.5s; }
+.tagfloat.t3 { animation-delay: -2.9s; }
+.tagfloat.t4 { animation-delay: -2.2s; }
+.tagfloat.t5 { animation-delay: -3.6s; }
+@keyframes rig-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+/* === HOẠT HÌNH ROBOT CHIBI KAMITO (THEO HÌNH 1 & HÌNH 2) === */
+/* Toàn bộ robot lơ lửng bồng bềnh trong không trung (Floating) */
+.robot-head-bob {
+    transform-origin: 433px 350px;
+    animation: chibi-floating 4.5s ease-in-out infinite;
+}
+@keyframes chibi-floating {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50%      { transform: translateY(-12px) rotate(0.6deg); }
+}
+
+/* Bóng dưới đất co giãn nhịp nhàng theo độ cao robot */
+.robot-ground-shadow {
+    transform-origin: 433px 538px;
+    animation: shadow-breathe 4.5s ease-in-out infinite;
+}
+@keyframes shadow-breathe {
+    0%, 100% { transform: scaleX(1) scaleY(1); opacity: 0.22; }
+    50%      { transform: scaleX(0.86) scaleY(0.9); opacity: 0.14; }
+}
+
+/* Cánh tay phải vẫy chào vui vẻ (Waving Hand) */
+.arm-wave {
+    transform-origin: 520px 446px;
+    animation: wave-motion 2.8s ease-in-out infinite;
+}
+@keyframes wave-motion {
+    0%, 100% { transform: rotate(0deg); }
+    30%      { transform: rotate(-18deg); }
+    60%      { transform: rotate(6deg); }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen&family=VT323&display=swap');
+
+/* === MÀN HÌNH ROBOT: chu kỳ 24s xen kẽ Mặt Cười ➔ Chữ 1 ➔ Mặt Cười ➔ Chữ 2 ➔ Mặt Cười ➔ Chữ 3 === */
+.face-smile   { animation: scr-face 24s infinite; }
+.pixel-text-1 { animation: scr-t1 24s infinite; }
+.pixel-text-2 { animation: scr-t2 24s infinite; }
+.pixel-text-3 { animation: scr-t3 24s infinite; }
+
+/* Rê chuột: ẩn chữ, hiện mặt để mắt nhìn theo con trỏ */
+.rig-scene.is-hovering .pixel-text-1,
+.rig-scene.is-hovering .pixel-text-2,
+.rig-scene.is-hovering .pixel-text-3 {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.2s ease-out;
+}
+.rig-scene.is-hovering .face-smile {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transition: opacity 0.2s ease-out;
+}
+
+@keyframes scr-face {
+    0%, 13%    { opacity: 1; }
+    14%, 34%   { opacity: 0; }
+    35%, 49%   { opacity: 1; }
+    50%, 65%   { opacity: 0; }
+    66%, 80%   { opacity: 1; }
+    81%, 98%   { opacity: 0; }
+    99%, 100%  { opacity: 1; }
+}
+
+@keyframes scr-t1 {
+    0%, 13.5%    { opacity: 0; }
+    14.5%, 33.5% { opacity: 1; }
+    34.5%, 100%  { opacity: 0; }
+}
+
+@keyframes scr-t2 {
+    0%, 49.5%    { opacity: 0; }
+    50.5%, 64.5% { opacity: 1; }
+    65.5%, 100%  { opacity: 0; }
+}
+
+@keyframes scr-t3 {
+    0%, 80.5%    { opacity: 0; }
+    81.5%, 97.5% { opacity: 1; }
+    98.5%, 100%  { opacity: 0; }
+}
+
+/* Chữ chạy vừa vặn, không quá nhanh, vừa tầm đọc */
+.pixel-scroll-1 { animation: scr-m1 24s linear infinite; }
+.pixel-scroll-2 { animation: scr-m2 24s linear infinite; }
+.pixel-scroll-3 { animation: scr-m3 24s linear infinite; }
+
+@keyframes scr-m1 {
+    0%, 14%     { transform: translateX(300px); }
+    33.5%, 100% { transform: translateX(-850px); }
+}
+
+@keyframes scr-m2 {
+    0%, 49.5%   { transform: translateX(300px); }
+    64.5%, 100% { transform: translateX(-450px); }
+}
+
+@keyframes scr-m3 {
+    0%, 80.5%   { transform: translateX(300px); }
+    97.5%, 100% { transform: translateX(-1250px); }
+}
+
+/* Con trỏ nhấp nháy cho màn hình Pixel (Blinking Cursor) */
+.pixel-cursor {
+    animation: pixel-cursor-blink 0.7s infinite;
+}
+@keyframes pixel-cursor-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+/* Gò má hồng ửng rạng rỡ */
+.robot-blush {
+    animation: blush-glow 3s ease-in-out infinite;
+}
+@keyframes blush-glow {
+    0%, 100% { opacity: 0.75; }
+    50%      { opacity: 1; }
+}
+
+/* Hiệu ứng nhấp nháy ngôi sao/trái tim vui vẻ (Joy stars/hearts) */
+.joy-bounce {
+    transform-origin: center;
+    animation: joy-bounce-anim 0.8s ease-in-out infinite alternate;
+}
+@keyframes joy-bounce-anim {
+    from { transform: translateY(0) scale(1); }
+    to   { transform: translateY(-4px) scale(1.18); }
+}
+
+/* Khớp tai radar & ăng-ten đèn chớp */
+.ear-pulse {
+    animation: ear-glow 2.2s ease-in-out infinite;
+}
+@keyframes ear-glow {
+    0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px #00EAFF); }
+    50%      { opacity: 0.45; filter: none; }
+}
+
+.antenna-led {
+    animation: antenna-pulse 1.8s ease-in-out infinite;
+}
+.antenna-led-2 {
+    animation: antenna-pulse 1.8s ease-in-out infinite;
+    animation-delay: -0.9s;
+}
+@keyframes antenna-pulse {
+    0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px #00EAFF); }
+    50%      { opacity: 0.45; filter: none; }
+}
+
+/* Con mèo đứng độc lập bên phải máy */
+.rig-cat {
+    display: block;
+    width: 110px;
+    position: absolute;
+    right: 16px;
+    bottom: 24px;
+    pointer-events: none;
+    opacity: .88;
+}
+
+/* === SHORTCUT TILES ===
+   Thẻ kính mờ xếp lưới đều, cùng ngôn ngữ với topbar/sidebar glass của
+   time-theme.css. Không xoay, không ghim, không màu pastel. */
+/* Đường ray ngang: các thẻ xếp CHỒNG mép (margin âm), kéo/vuốt để lướt.
+   JS (initDeck trong time-theme.js) tính độ nghiêng + nâng theo vị trí
+   so với tâm ray → thẻ giữa dựng thẳng nổi lên, hai bên nghiêng xoè ra. */
+.sc-grid {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;   /* neo chân thẻ cùng một đường */
+    gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Đáy sát mép trang; trên chừa ít chỗ cho thẻ giữa phóng to mọc lên */
+    padding: 22px 40% 8px;
+    margin: 0 auto;
+    max-width: 100%;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+    perspective: 1200px;
+    /* Cảm ứng: cho phép vuốt ngang cuộn native (đừng để JS chặn) */
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+    /* Mép trái/phải tan dần thay vì cắt cụt thẻ đầu/cuối trên màn nhỏ */
+    -webkit-mask-image: linear-gradient(90deg,
+        transparent 0, #000 7%, #000 93%, transparent 100%);
+    mask-image: linear-gradient(90deg,
+        transparent 0, #000 7%, #000 93%, transparent 100%);
+}
+.sc-grid::-webkit-scrollbar { display: none; }
+.sc-grid.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+
+.sc {
+    /* Thẻ bài: gradient màu rực full-card, tên ở trên, icon lớn làm hình nền */
+    --ic-a: #3b82f6;
+    --ic-b: #1d4ed8;
+    flex: 0 0 152px;
+    margin-left: -48px;              /* chồng mép thẻ trước (cỗ bài gọn) */
+    scroll-snap-align: center;
+    transform-origin: bottom center;
+    will-change: transform;
+    background: linear-gradient(155deg, var(--ic-a), var(--ic-b));
+    border: none;
+    border-radius: 18px;
+    padding: 15px 14px;
+    text-align: left;
+    text-decoration: none;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    height: 196px;           /* cao CỐ ĐỊNH — tên 1 hay 2 dòng thì chân vẫn bằng nhau */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    box-shadow: 0 10px 24px rgba(15,23,42,.28);
+}
+.sc:first-child { margin-left: 0; }
+/* Vệt sáng bóng phía trên cho card có độ bóng như thẻ thật */
+.sc::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,0) 42%);
+    pointer-events: none;
+}
+
+/* Transform do JS điều khiển (coverflow); hover chỉ tăng bóng + icon động */
+.sc:hover { box-shadow: 0 22px 44px rgba(15,23,42,.4); }
+.sc:hover .sc-ic { transform: scale(1.08) rotate(-4deg); }
+
+/* Tên mục = tiêu đề đậm góc trên-trái */
+.sc-label {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    line-height: 1.25;
+    margin: 0;
+    color: #fff;
+    text-shadow: 0 1px 5px rgba(0,0,0,.28);
+    position: relative;
+    z-index: 1;
+    max-width: 90%;
+}
+
+/* Icon = "hình nền" lớn mờ ở góc dưới-phải, như art của thẻ game */
+.sc-ic {
+    position: absolute;
+    right: 6px;
+    bottom: -6px;
+    width: auto;
+    height: auto;
+    font-size: 64px;
+    line-height: 1;
+    color: #fff !important;
+    background: transparent !important;
+    box-shadow: none;
+    opacity: .26;
+    transition: transform .22s ease;
+    transform-origin: bottom right;
+}
+.sc-ic i { color: #fff !important; }
+
+/* Bảng màu thẻ — 9 tông trầm khử chói, kiểu doanh nghiệp */
+.sc:nth-child(9n+1) { --ic-a:#54749e; --ic-b:#324e74; } /* xanh thép */
+.sc:nth-child(9n+2) { --ic-a:#4b8b84; --ic-b:#2d5f5a; } /* mòng két trầm */
+.sc:nth-child(9n+3) { --ic-a:#6b74a8; --ic-b:#454e80; } /* chàm xám */
+.sc:nth-child(9n+4) { --ic-a:#b3894a; --ic-b:#7d5c2c; } /* đồng cổ */
+.sc:nth-child(9n+5) { --ic-a:#6d9679; --ic-b:#456a51; } /* lục xô thơm */
+.sc:nth-child(9n+6) { --ic-a:#8878a6; --ic-b:#5d4f7d; } /* tím khói */
+.sc:nth-child(9n+7) { --ic-a:#5a8fa3; --ic-b:#376275; } /* lơ bụi */
+.sc:nth-child(9n+8) { --ic-a:#a86e77; --ic-b:#7a464f; } /* hồng đất */
+.sc:nth-child(9n+9) { --ic-a:#6e7887; --ic-b:#454e5c; } /* than chì */
+
+
+
+@media (prefers-reduced-motion: reduce) {
+    .rig-svg, .legs-a, .legs-b, .dino-jump, .cact, .gline,
+    .led-num, .cat-tail, .tagfloat, .sc, .robot-head-bob,
+    .robot-ground-shadow, .arm-wave, .face-smile, .face-laugh,
+    .face-wink, .robot-blush, .joy-bounce, .ear-pulse, .antenna-led,
+    .antenna-led-2 { animation: none; }
+    .legs-b { opacity: 0; }
+}

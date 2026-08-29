@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <style>
+/* SIDEBAR CSS - ORIGINAL COLORS WITH GOOEY NOTCH */
+        .sidebar {
+            width: 260px;
+            background: #ffffff;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            z-index: 1000;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            overflow-x: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none; /* Chrome/Safari/Opera */
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding-left: 25px;
+        }
+
+        #toggle-btn {
+            cursor: pointer;
+            color: #4b5563;
+            font-size: 20px;
+            transition: 0.2s;
+            padding: 5px;
+        }
+
+        #toggle-btn:hover {
+            color: 
+                    <span>Phân Quyền User</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Bottom Account -->
+        <a th:href="@{/logout}" class="sidebar-bottom" title="Đăng xuất">
+            <div class="sidebar-avatar">
+                <span th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</span>
+            </div>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name" th:text="${#authentication.name}">Username</span>
+                <span class="sidebar-user-role" th:text="${#authentication.authorities[0].authority}">Role</span>
+            </div>
+            <i class="fa-solid fa-right-from-bracket ms-auto" style="color: #ef4444; font-size: 16px;"></i>
+        </a>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+const toggleBtn = document.getElementById('toggle-btn');
+        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+
+        mobileToggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            sidebar.classList.add('active');
+        });
+
+        toggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (window.innerWidth > 991) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            } else {
+                sidebar.classList.remove('active');
+            }
+        });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Midomax IT</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        
+
+        
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+
+        .topbar { 
+            background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb;
+        }
+        
+        .admin-badge { border: 1px solid #e5e7eb; color: #1e3a8a; padding: 6px 15px; border-radius: 20px; font-weight: bold; background: #f8fafc; display: flex; align-items: center;}
+        
+        /* DASHBOARD WIDGETS */
+        .widget-card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-bottom: 25px; }
+        
+        .stat-card-modern {
+            background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); transition: transform 0.2s; height: 100%;
+        }
+        .stat-card-modern:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .stat-icon-m { width: 55px; height: 55px; border-radius: 14px; display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0; }
+        
+        .bg-icon-blue { background: #eff6ff; color: #3b82f6; }
+        .bg-icon-yellow { background: #fef9c3; color: #ca8a04; }
+        .bg-icon-green { background: #dcfce7; color: #16a34a; }
+        
+        .stat-info-m h2 { font-size: 28px; font-weight: 800; margin: 0; color: #1e3a8a; }
+        .stat-info-m p { margin: 0; color: #6b7280; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+
+        /* URGENT TICKET CARD */
+        .urgent-card { border: 2px solid #ef4444; border-top-width: 6px; border-radius: 16px; background: #fff; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.1); position: relative; overflow: hidden; }
+        .urgent-header { padding: 20px 25px 10px; font-weight: 800; color: #dc2626; font-size: 16px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+        .urgent-item { background: #fef2f2; border: 1px solid #fee2e2; border-radius: 12px; padding: 20px; margin: 0 25px 25px; }
+        .urgent-item h5 { color: #991b1b; font-weight: 700; margin-bottom: 8px; font-size: 16px; }
+        .urgent-item p { color: #b91c1c; font-size: 14px; margin-bottom: 15px; }
+        
+        .btn-urgent { background: #ef4444; color: #fff; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: bold; transition: 0.2s; }
+        .btn-urgent:hover { background: #dc2626; color: #fff; transform: scale(1.02); }
+        
+        .urgent-item-secondary { background: #fff7ed; border: 1px solid #ffedd5; border-radius: 12px; padding: 20px; margin: 0 25px 25px; }
+        .urgent-item-secondary h5 { color: #9a3412; font-weight: 700; margin-bottom: 8px; font-size: 15px; }
+        .urgent-item-secondary p { color: #c2410c; font-size: 13px; margin: 0; }
+
+        /* MINI TABLE */
+        .card-title-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .card-title-main h5 { font-size: 16px; font-weight: 800; color: #1e3a8a; margin: 0; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+        .link-view-all { color: #3b82f6; font-weight: 700; font-size: 14px; text-decoration: none; text-transform: uppercase; }
+        .link-view-all:hover { color: #1e3a8a; }
+        
+        .table-mini { width: 100%; margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+        .table-mini thead th { color: #1e3a8a; font-weight: 700; padding: 15px; border-bottom: 2px solid #e5e7eb; white-space: nowrap; font-size: 14px; }
+        .table-mini tbody tr { transition: background-color 0.2s; }
+        .table-mini tbody tr:hover { background-color: #f8fafc; }
+        .table-mini td { padding: 15px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; font-size: 14px; color: #4b5563; }
+        
+        /* BADGES */
+        .badge-custom { padding: 5px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+        .badge-status-open { background: #fef9c3; color: #ca8a04; }
+        .badge-status-resolved { background: #dcfce7; color: #16a34a; }
+        
+        .badge-priority-high { background: #ef4444; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+        .badge-priority-med { background: #f59e0b; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+
+        @media (max-width: 991px) {
+            #mobile-toggle-btn { display: block !important; }
+            .sidebar { left: -100% !important; width: 80% !important; max-width: 320px; transition: all 0.3s ease !important; z-index: 9999 !important; }
+            .sidebar.active { left: 0 !important; box-shadow: 0 0 0 10000px rgba(0,0,0,0.5) !important; }
+
+
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 15px !important; }
+            .topbar { padding: 12px 15px !important; margin-bottom: 20px !important; top: 0; border-radius: 0 0 12px 12px; }
+            .stat-card-modern { margin-bottom: 15px; }
+        }
+
+        @media (max-width: 767px) {
+            .topbar {
+                padding: 10px 12px !important;
+                margin-bottom: 15px !important;
+            }
+            .topbar h4 {
+                font-size: 15px !important;
+            }
+            .topbar small {
+                font-size: 10px !important;
+            }
+            #mobile-toggle-btn {
+                margin-right: 8px !important;
+                font-size: 18px !important;
+            }
+            .admin-badge {
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+            }
+            .admin-badge i {
+                margin-right: 4px !important;
+            }
+            .stat-card-modern {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 10px 5px !important;
+                gap: 6px !important;
+                margin-bottom: 0 !important;
+            }
+            .stat-icon-m {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 14px !important;
+                border-radius: 8px !important;
+            }
+            .stat-info-m h2 {
+                font-size: 16px !important;
+            }
+            .stat-info-m p {
+                font-size: 9px !important;
+                letter-spacing: 0px !important;
+            }
+            .widget-card {
+                padding: 15px !important;
+            }
+            .card-title-main {
+                margin-bottom: 15px !important;
+            }
+            .card-title-main h5 {
+                font-size: 13px !important;
+            }
+            .link-view-all {
+                font-size: 11px !important;
+            }
+            .table-mini th, .table-mini td {
+                padding: 10px 6px !important;
+                font-size: 11px !important;
+            }
+        }
+        
+        /* DASHBOARD NEW LAYOUT CSS */
+        .widget-card { background: #ffffff; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .widget-card-title { font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .stat-box { border-radius: 16px; padding: 15px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+        .stat-box h3 { font-size: 24px; font-weight: 800; margin: 10px 0 5px; color: #191b28; }
+        .stat-box p { font-size: 11px; margin: 0; color: #6b7280; font-weight: 600; }
+        
+        .bg-purple-light { background: #f4f0fa; }
+        .bg-orange-light { background: #fff4eb; }
+        .bg-green-light { background: #eefdf3; }
+        .bg-blue-light { background: #f0f5fa; }
+        
+        .text-purple { color: #8b5cf6; }
+        .text-orange { color: #f97316; }
+        .text-green { color: #10b981; }
+        .text-blue { color: #3b82f6; }
+        
+        /* Calendar */
+        .calendar-wrapper { padding-top: 10px; }
+        .calendar-days { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px; font-weight: 600; color: #9ca3af; }
+        .calendar-dates { display: flex; flex-wrap: wrap; gap: 8px 0; }
+        .calendar-dates span { width: 14.28%; text-align: center; font-size: 13px; font-weight: 600; color: #4b5563; padding: 6px 0; border-radius: 50%; cursor: pointer; transition: 0.2s; position: relative; }
+        .calendar-dates span:hover:not(.text-muted) { background: #f3f4f6; }
+        .calendar-dates span.active-date { background: #3b82f6; color: white; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
+        .calendar-dates span.has-event::after {
+            content: '';
+            width: 5px;
+            height: 5px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .calendar-dates span.active-date.has-event::after {
+            background-color: #ffffff;
+        }
+        
+        /* Donut Chart */
+        .donut-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; font-weight: 600; color: #4b5563; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+        
+        /* Select */
+        .select-light { background: #f8fafc; border: none; font-size: 12px; font-weight: 600; color: #3b82f6; padding: 4px 10px; border-radius: 12px; cursor: pointer; outline: none; }
+        
+        /* Horizontal Timeline Steps Styling (Hình 2) */
+        .timeline-steps-container {
+            padding: 15px 0 5px;
+            position: relative;
+        }
+        .timeline-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+        }
+        .t-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            width: 25%;
+            text-align: center;
+        }
+        /* Connection lines between steps */
+        .t-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: calc(50% + 16px);
+            width: calc(100% - 32px);
+            height: 3px;
+            background: #e5e7eb;
+            z-index: 1;
+            transition: 0.3s;
+        }
+        .t-step.completed:not(:last-child)::after {
+            background: #16a34a;
+        }
+        .t-step.active:not(:last-child)::after {
+            background: transparent;
+            border-top: 3px dashed #3b82f6;
+        }
+        .t-step.rejected:not(:last-child)::after {
+            background: #ef4444;
+        }
+
+        .t-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            color: #9ca3af;
+            transition: 0.3s;
+            position: relative;
+            z-index: 3;
+        }
+        .t-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+
+        /* Step Status Modifiers */
+        .t-step.completed .t-icon {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: white;
+        }
+        .t-step.completed .t-label {
+            color: #16a34a;
+        }
+
+        .t-step.active .t-icon {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            animation: pulse-blue-glow 2s infinite;
+        }
+        .t-step.active .t-label {
+            color: #3b82f6;
+        }
+
+        .t-step.rejected .t-icon {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+        .t-step.rejected .t-label {
+            color: #ef4444;
+        }
+
+        @keyframes pulse-blue-glow {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+            70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+
+        @media (max-width: 767px) {
+            .timeline-steps {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+                padding-left: 20px;
+            }
+            .t-step:not(:last-child)::after {
+                top: 32px;
+                left: 15px;
+                width: 3px;
+                height: calc(100% - 32px);
+                border-top: none;
+                border-left: 3px dashed #3b82f6;
+            }
+            .t-step.completed:not(:last-child)::after {
+                background: #16a34a;
+                border-left: none;
+            }
+            .t-step.active:not(:last-child)::after {
+                background: transparent;
+                border-left: 3px dashed #3b82f6;
+            }
+            .t-step {
+                flex-direction: row;
+                width: 100%;
+                text-align: left;
+                gap: 15px;
+            }
+            .t-label {
+                margin-top: 0;
+            }
+        }
+
+        /* Vertical Status Timeline (Hình 1) */
+        .vt-steps {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            gap: 15px;
+        }
+        .vt-step-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+        /* Connecting vertical line on the right side */
+        .vt-step-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 40px;
+            right: 11px;
+            width: 2px;
+            height: calc(100% + 15px - 40px);
+            background: #e5e7eb;
+            z-index: 1;
+        }
+        .vt-step-item.completed:not(:last-child)::after {
+            background: #4ade80; /* Light green line */
+        }
+        .vt-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f3f4f6;
+            padding: 10px 15px;
+            border-radius: 12px;
+            width: 85%;
+            border: 1px solid #e5e7eb;
+            transition: 0.3s;
+        }
+        .vt-step-item.completed .vt-card {
+            background: #ecfdf5; /* Light green card */
+            border-color: #a7f3d0;
+        }
+        .vt-step-item.active .vt-card {
+            background: #eff6ff; /* Light blue card */
+            border-color: #bfdbfe;
+            animation: vt-pulse-blue-card 2s infinite;
+        }
+        .vt-step-item.rejected .vt-card {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+        .vt-icon-box {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            background: #9ca3af;
+            color: white;
+            font-size: 16px;
+        }
+        .vt-step-item.completed .vt-icon-box {
+            background: #10b981;
+        }
+        .vt-step-item.active .vt-icon-box {
+            background: #3b82f6;
+        }
+        .vt-step-item.rejected .vt-icon-box {
+            background: #ef4444;
+        }
+        .vt-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .vt-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: #4b5563;
+        }
+        .vt-step-item.completed .vt-title {
+            color: #065f46;
+        }
+        .vt-step-item.active .vt-title {
+            color: #1e40af;
+        }
+        .vt-step-item.rejected .vt-title {
+            color: #991b1b;
+        }
+        .vt-dot-line {
+            width: 15%;
+            display: flex;
+            justify-content: flex-end;
+            position: relative;
+            z-index: 2;
+        }
+        .vt-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            border: 2px solid white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 10px;
+        }
+        .vt-step-item.completed .vt-dot {
+            background: #4ade80;
+        }
+        .vt-step-item.active .vt-dot {
+            background: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+            animation: vt-pulse-dot 2s infinite;
+        }
+        .vt-step-item.rejected .vt-dot {
+            background: #ef4444;
+        }
+
+        @keyframes vt-pulse-blue-card {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.1); }
+            70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        @keyframes vt-pulse-dot {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+
+        /* Mini compact vertical timeline for dashboard side panel */
+        .vt-small.vt-steps {
+            gap: 8px;
+        }
+        .vt-small .vt-step-item:not(:last-child)::after {
+            top: 26px;
+            right: 7px;
+            height: calc(100% + 8px - 26px);
+        }
+        .vt-small .vt-card {
+            padding: 6px 12px;
+            border-radius: 8px;
+            gap: 8px;
+            width: 85%;
+        }
+        .vt-small .vt-icon-box {
+            width: 24px;
+            height: 24px;
+            font-size: 11px;
+            border-radius: 6px;
+        }
+        .vt-small .vt-title {
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .vt-small .vt-dot-line {
+            width: 15%;
+        }
+        .vt-small .vt-dot {
+            width: 16px;
+            height: 16px;
+            font-size: 8px;
+        }
+
+        /* Mini horizontal timeline steps for dashboard side widget */
+        .hz-mini-steps-container {
+            padding: 10px 0 5px;
+            width: 100%;
+        }
+        .hz-mini-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+        }
+        .hz-mini-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            width: 25%;
+            text-align: center;
+        }
+        .hz-mini-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: calc(50% + 10px);
+            width: calc(100% - 20px);
+            height: 2px;
+            background: #e5e7eb;
+            z-index: 1;
+            transition: 0.3s;
+        }
+        .hz-mini-step.completed:not(:last-child)::after {
+            background: #16a34a;
+        }
+        .hz-mini-step.active:not(:last-child)::after {
+            background: transparent;
+            border-top: 2px dashed #3b82f6;
+        }
+        .hz-mini-step.rejected:not(:last-child)::after {
+            background: #ef4444;
+        }
+        
+        .hz-mini-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 8px;
+            color: #9ca3af;
+            transition: 0.3s;
+            position: relative;
+            z-index: 3;
+        }
+        .hz-mini-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #6b7280;
+            margin-top: 6px;
+            word-break: keep-all;
+        }
+        
+        .hz-mini-step.completed .hz-mini-icon {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: white;
+        }
+        .hz-mini-step.completed .hz-mini-label {
+            color: #16a34a;
+        }
+        .hz-mini-step.active .hz-mini-icon {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            animation: pulse-blue-glow 2s infinite;
+        }
+        .hz-mini-step.active .hz-mini-label {
+            color: #3b82f6;
+        }
+        .hz-mini-step.rejected .hz-mini-icon {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+        .hz-mini-step.rejected .hz-mini-label {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('dashboard')}"></div>
+
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display: none; cursor: pointer; font-size: 22px; color: #1e3a8a; margin-right: 15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color: #1e3a8a;">Dashboard Tổng quan</h4>
+                    <small class="text-muted">Cập nhật lúc: <span id="current-time">19/05/2026 - 21:02</span></small>
+                </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-bell fs-5 ms-2 d-none d-md-block" style="color: #ef4444; cursor: pointer;"></i>
+            </div>
+        </div>
+
+        <!-- DASHBOARD GRID LAYOUT -->
+        <div class="row g-4 mb-4">
+            <!-- Left: Calendar with IT Dropdown -->
+            <div class="col-xl-4 col-lg-6">
+                <div class="widget-card h-100">
+                    <div class="widget-card-title mb-2">
+                        <button class="btn btn-sm btn-light rounded-circle" id="prevMonthBtn" style="width:28px;height:28px;padding:0;"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i></button>
+                        <span id="calendarMonthYear" class="fw-bold text-primary">Tháng 7 2026</span>
+                        <button class="btn btn-sm btn-light rounded-circle" id="nextMonthBtn" style="width:28px;height:28px;padding:0;"><i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                    
+                    <!-- IT Staff Selection Dropdown -->
+                    <div class="mb-2">
+                        <div class="d-flex align-items-center gap-1">
+                            <i class="fa-solid fa-user-gear text-primary me-1" style="font-size: 12px;"></i>
+                            <select id="itStaffDropdown" class="form-select form-select-sm border-0 bg-light fw-semibold text-dark shadow-none" onchange="onItDropdownChange()" style="font-size: 11px; border-radius: 8px;">
+                                <option value="">-- Tất cả nhân viên IT --</option>
+                                <option th:each="it : ${itWorkload}" 
+                                        th:value="${it.email}" 
+                                        th:data-name="${it.name}"
+                                        th:data-status="${it.status}"
+                                        th:data-groups="${it.groupLabels}"
+                                        th:text="${it.name + ' (' + (it.groupLabels != null and !it.groupLabels.isEmpty() ? it.groupLabels : 'IT') + ')'}">
+                                    Nguyễn Thành Tín
+                                </option>
+                            </select>
+                        </div>
+                        <div id="selectedItInfoBox" class="mt-2 p-2 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 d-none">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-primary small" id="selectedItName">IT Staff</span>
+                                <span class="badge bg-success" id="selectedItStatusBadge">Available</span>
+                            </div>
+                            <div class="small text-muted mt-1" style="font-size: 10px;" id="selectedItGroups">Danh mục: Helpdesk</div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-wrapper">
+                        <div class="calendar-days">
+                            <span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span>
+                        </div>
+                        <div class="calendar-dates" id="calendarDatesGrid">
+                            <!-- Injected dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Middle: 4 Stat Cards -->
+            <div class="col-xl-4 col-lg-6">
+                <div class="row g-3 h-100">
+                    <!-- Card 1 -->
+                    <div class="col-6">
+                        <div class="stat-box bg-purple-light">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fa-solid fa-ticket text-purple me-2"></i> 
+                                <span class="fw-bold text-muted" style="font-size: 11px;" th:text="${isAdmin ? 'Tổng Ticket' : (isIt ? 'Ticket Được Giao' : 'Ticket Của Bạn')}">Tổng Ticket</span>
+                            </div>
+                            <h3 th:text="${stats != null ? (stats['total'] != null ? stats['total'] : 0) : 0}">0</h3>
+                            <p>Tất cả <span class="text-purple"><i class="fa-solid fa-arrow-trend-up ms-1"></i></span></p>
+                        </div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div class="col-6">
+                        <div class="stat-box bg-orange-light">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fa-solid fa-check-double text-orange me-2"></i> 
+                                <span class="fw-bold text-muted" style="font-size: 11px;">Đang Xử Lý</span>
+                            </div>
+                            <h3 th:text="${stats != null ? (stats['inProgress'] != null ? stats['inProgress'] : 0) : 0}">0</h3>
+                            <p>Hiện tại <span class="text-orange"><i class="fa-solid fa-arrow-trend-up ms-1"></i></span></p>
+                        </div>
+                    </div>
+                    <!-- Card 3 -->
+                    <div class="col-6">
+                        <div class="stat-box bg-green-light">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fa-solid fa-bolt text-green me-2"></i> 
+                                <span class="fw-bold text-muted" style="font-size: 11px;" th:text="${isAdmin ? 'Cần Xử Lý Gấp' : (isIt ? 'Vé Của Tôi' : 'Đang Mở')}">Trạng Thái</span>
+                            </div>
+                            <h3 th:text="${stats != null ? (isAdmin ? (stats['overdue'] != null ? stats['overdue'] : 0) : (isIt ? (stats['mine'] != null ? stats['mine'] : 0) : (stats['open'] != null ? stats['open'] : 0))) : 0}">0</h3>
+                            <p>Quan trọng <span class="text-green"><i class="fa-solid fa-arrow-trend-down ms-1"></i></span></p>
+                        </div>
+                    </div>
+                    <!-- Card 4 -->
+                    <div class="col-6">
+                        <div class="stat-box bg-blue-light">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fa-solid fa-clock-rotate-left text-blue me-2"></i> 
+                                <span class="fw-bold text-muted" style="font-size: 11px;" th:text="${isAdmin ? 'Chưa Phân Công' : (isIt ? 'Chưa Phân Công' : 'Đã Giải Quyết')}">Chờ Xử Lý</span>
+                            </div>
+                            <h3 th:text="${stats != null ? (isAdmin ? (stats['unassigned'] != null ? stats['unassigned'] : 0) : (isIt ? (stats['unassigned'] != null ? stats['unassigned'] : 0) : (stats['resolved'] != null ? stats['resolved'] : 0))) : 0}">0</h3>
+                            <p>Đang chờ <span class="text-blue"><i class="fa-solid fa-arrow-trend-up ms-1"></i></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right: Dynamic Donut Chart -->
+            <div class="col-xl-4 col-lg-12">
+                <div class="widget-card h-100">
+                    <div class="widget-card-title">
+                        <span>Ticket Theo Danh Mục</span>
+                    </div>
+                    <div class="row align-items-center h-100">
+                        <div class="col-6 text-center" style="position: relative;">
+                            <canvas id="donutChart" style="max-height: 140px;"></canvas>
+                            <div class="donut-inner">
+                                <span style="font-size: 10px; color: #6b7280; font-weight: 600;">Tổng</span><br>
+                                <span style="font-size: 18px; font-weight: 800; color: #1e3a8a;" id="donutTotal">0</span>
+                            </div>
+                        </div>
+                        <div class="col-6" id="donutLegendList">
+                            <!-- Injected dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DYNAMIC TICKET LAYOUT: LEFT TIMELINE (SHRUNK WIDTH), RIGHT IT WORKLOAD -->
+        <div class="row g-4 mt-2" th:if="${userTickets != null and !userTickets.content.isEmpty()}">
+            <!-- Left: Timeline list (8/12 width on desktop to shrink the horizontal width!) -->
+            <div class="col-lg-8 col-md-7">
+                <div class="widget-card h-100">
+                    <div class="card-title-main">
+                        <h5 sec:authorize="hasRole('ADMIN')"><i class="fa-solid fa-list-check me-2 text-primary"></i> Tiến trình xử lý ticket hệ thống</h5>
+                        <h5 sec:authorize="hasRole('ROLE_IT') and !hasRole('ADMIN')"><i class="fa-solid fa-list-check me-2 text-primary"></i> Tiến trình xử lý ticket của bạn hỗ trợ</h5>
+                        <h5 sec:authorize="!hasRole('ADMIN') and !hasRole('ROLE_IT')"><i class="fa-solid fa-list-check me-2 text-primary"></i> Tiến trình yêu cầu của bạn</h5>
+                        <a href="/ticket-management" class="link-view-all">Quản lý tất cả</a>
+                    </div>
+
+                    <div class="ticket-timeline-item border rounded p-3 mb-3 bg-light bg-opacity-25 shadow-sm" 
+                         th:each="t, iter : ${userTickets.content}" 
+                         th:if="${iter.index < 3}"
+                         th:onclick="|openDetailModal(${t.id}, false)|" 
+                         style="cursor: pointer; transition: 0.3s;" 
+                         onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 16px rgba(0,0,0,0.06)'" 
+                         onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                            <div>
+                                <span class="badge bg-secondary text-white me-2" th:text="'#' + ${t.id}">#1</span>
+                                <span class="badge" th:classappend="${t.category == 'network'} ? 'bg-info' : (${t.category == 'hardware'} ? 'bg-warning' : (${t.category == 'software'} ? 'bg-primary' : 'bg-secondary'))">
+                                    <i th:class="${t.category == 'network'} ? 'fa-solid fa-network-wired' : (${t.category == 'hardware'} ? 'fa-solid fa-laptop' : (${t.category == 'software'} ? 'fa-solid fa-compact-disc' : 'fa-solid fa-server'))"></i>
+                                    <span th:text="${t.category == 'network' ? 'Mạng' : (t.category == 'hardware' ? 'Phần cứng' : (t.category == 'software' ? 'Phần mềm' : 'Thiết bị'))}" class="ms-1">Mạng</span>
+                                </span>
+                                <strong class="ms-2 text-dark fs-6" th:text="${t.title}">Lỗi kết nối VPN</strong>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge-custom" th:classappend="${t.status == 'OPEN'} ? 'badge-status-open' : (${t.status == 'PROGRESS'} ? 'bg-primary text-white' : 'badge-status-resolved')" th:text="${t.status == 'OPEN' ? 'OPEN' : (t.status == 'PROGRESS' ? 'IN PROGRESS' : 'RESOLVED')}">OPEN</span>
+                            </div>
+                        </div>
+                        
+                        <div class="hz-mini-steps-container">
+                            <div class="hz-mini-steps">
+                                <!-- Step 1: Gửi yêu cầu -->
+                                <div class="hz-mini-step completed">
+                                    <div class="hz-mini-icon"><i class="fa-solid fa-check"></i></div>
+                                    <div class="hz-mini-label">Gửi yêu cầu</div>
+                                </div>
+                                
+                                <!-- Step 2: Trưởng bộ phận -->
+                                <div class="hz-mini-step" th:classappend="${t.managerApproval == 'APPROVED' || (t.assignee != null and t.assignee != '') || t.status == 'RESOLVED' || t.status == 'PROGRESS' ? 'completed' : (t.managerApproval == 'REJECTED' ? 'rejected' : 'active')}">
+                                    <div class="hz-mini-icon">
+                                        <i th:class="${t.managerApproval == 'APPROVED' || (t.assignee != null and t.assignee != '') || t.status == 'RESOLVED' || t.status == 'PROGRESS' ? 'fa-solid fa-check' : (t.managerApproval == 'REJECTED' ? 'fa-solid fa-xmark' : 'fa-solid fa-circle')}"></i>
+                                    </div>
+                                    <div class="hz-mini-label">Trưởng b.phận</div>
+                                </div>
+                                
+                                <!-- Step 3: IT tiếp nhận -->
+                                <div class="hz-mini-step" th:classappend="${t.status == 'PROGRESS' || t.status == 'RESOLVED' ? 'completed' : (t.managerApproval == 'APPROVED' || (t.assignee != null and t.assignee != '') ? 'active' : '')}">
+                                    <div class="hz-mini-icon">
+                                        <i th:class="${t.status == 'PROGRESS' || t.status == 'RESOLVED' ? 'fa-solid fa-check' : 'fa-solid fa-circle'}"></i>
+                                    </div>
+                                    <div class="hz-mini-label">IT tiếp nhận</div>
+                                </div>
+                                
+                                <!-- Step 4: Kết thúc -->
+                                <div class="hz-mini-step" th:classappend="${t.status == 'RESOLVED' ? 'completed' : (t.status == 'PROGRESS' ? 'active' : '')}">
+                                    <div class="hz-mini-icon">
+                                        <i th:class="${t.status == 'RESOLVED' ? 'fa-solid fa-check' : 'fa-solid fa-circle'}"></i>
+                                    </div>
+                                    <div class="hz-mini-label">Kết thúc</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: IT workload / support team widget (4/12 width on desktop) -->
+            <div class="col-lg-4 col-md-5">
+                <div class="widget-card h-100">
+                    <div class="card-title-main">
+                        <h5><i class="fa-solid fa-user-group me-2 text-primary"></i> Đội ngũ IT hỗ trợ</h5>
+                    </div>
+                    
+                    <div class="d-flex flex-column gap-2 mt-2" style="max-height: 320px; overflow-y: auto; padding-right: 5px;">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded border bg-light bg-opacity-50" th:each="it : ${itWorkload}">
+                            <div>
+                                <h6 class="fw-bold text-dark m-0" style="font-size: 13px;" th:text="${it.name}">IT Staff</h6>
+                                <small class="text-muted" style="font-size: 11px;" th:text="${it.email}">staff@midomax.vn</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge" th:classappend="${it.status == 'Available' ? 'bg-success' : 'bg-warning text-dark'}" style="font-size: 10px; font-weight: 700;" th:text="${it.status}">Available</span>
+                                <div class="text-muted mt-1" style="font-size: 11px;">
+                                    Đang xử lý: <strong class="text-primary" th:text="${it.assigned}">0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="row g-4 mt-2" th:if="${userTickets == null or userTickets.content.isEmpty()}">
+            <div class="col-12">
+                <div class="widget-card text-center py-5 text-muted">
+                    <i class="fa-solid fa-inbox fs-1 mb-3 d-block text-secondary"></i>
+                    <h5 class="fw-semibold">Không có dữ liệu ticket gần đây</h5>
+                    <p class="small text-muted mb-0">Hệ thống chưa ghi nhận yêu cầu nào gần đây.</p>
+                </div>
+            </div>
+        </div>
+
+        <div th:replace="~{fragments/ticket-modals :: ticketModals}"></div>
+        <!-- Vé thông tin ticket vừa tạo -->
+        <div th:replace="~{success-modal :: successModal}"></div>
+
+        <!-- IT Staff Schedule Modal -->
+        <div class="modal fade" id="itScheduleModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header bg-primary text-white border-0 py-3" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+                        <h5 class="modal-title fw-bold fs-6" id="itScheduleModalTitle">
+                            <i class="fa-solid fa-calendar-check me-2"></i> Lịch Làm Việc IT Staff - <span id="modalSelectedDateStr"></span>
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4" id="itScheduleModalBody">
+                        <div class="text-center py-4 text-muted">
+                            <div class="spinner-border text-primary mb-2" role="status"></div>
+                            <p class="mb-0">Đang tải lịch làm việc nhân viên IT...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- End main-content -->
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:inline="javascript">
+        document.addEventListener("DOMContentLoaded", () => {
+            // Update current time
+            const timeSpan = document.getElementById('current-time');
+            if (timeSpan) {
+                const now = new Date();
+                timeSpan.textContent = now.toLocaleDateString('vi-VN') + ' - ' + now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+            }
+
+            Chart.defaults.font.family = "'Segoe UI', sans-serif";
+            Chart.defaults.color = '#9ca3af';
+
+            // Dynamic Donut Chart Logic with Rich Palette
+            const catStatsData = /*[[${categoryStats}]]*/ {} || {};
+            
+            const catLabelsMap = {
+                'report': 'Phần báo cáo',
+                'helpdesk': 'Hỗ trợ Helpdesk',
+                'hardware': 'Phần cứng',
+                'software': 'Phần mềm',
+                'network': 'Mạng',
+                'equipment': 'Thiết bị',
+                'server': 'Máy chủ',
+                'other': 'Khác'
+            };
+
+            // Predefined distinct colors for known category keys
+            const catColorsMap = {
+                'report': '#ec4899',    // Vibrant Pink/Rose
+                'helpdesk': '#6366f1',  // Indigo
+                'hardware': '#f59e0b',  // Amber/Yellow
+                'software': '#3b82f6',  // Primary Blue
+                'network': '#06b6d4',   // Cyan
+                'equipment': '#10b981', // Emerald Green
+                'server': '#8b5cf6',    // Purple
+                'user': '#f97316',      // Orange
+                'other': '#9ca3af'     // Grey
+            };
+
+            // Distinct fallback palette array for dynamic category names
+            const fallbackPalette = [
+                '#ec4899', '#6366f1', '#f59e0b', '#3b82f6', '#06b6d4',
+                '#10b981', '#8b5cf6', '#f97316', '#14b8a6', '#e11d48'
+            ];
+
+            let labels = [];
+            let data = [];
+            let backgroundColors = [];
+            let totalCount = 0;
+
+            if (catStatsData && Object.keys(catStatsData).length > 0) {
+                let colorIdx = 0;
+                for (const [key, count] of Object.entries(catStatsData)) {
+                    const lowerKey = key.toLowerCase();
+                    const labelName = catLabelsMap[lowerKey] || key;
+                    const color = catColorsMap[lowerKey] || fallbackPalette[colorIdx % fallbackPalette.length];
+                    labels.push(labelName);
+                    data.push(count);
+                    backgroundColors.push(color);
+                    totalCount += count;
+                    colorIdx++;
+                }
+            }
+
+            if (data.length === 0) {
+                labels = ['Chưa có ticket'];
+                data = [0];
+                backgroundColors = ['#e5e7eb'];
+                totalCount = 0;
+            }
+
+            const totalSpan = document.getElementById('donutTotal');
+            if (totalSpan) totalSpan.innerText = totalCount;
+
+            const ctx = document.getElementById('donutChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data.length > 0 && totalCount > 0 ? data : [1],
+                            backgroundColor: data.length > 0 && totalCount > 0 ? backgroundColors : ['#e5e7eb'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            cutout: '75%'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false }, tooltip: { enabled: totalCount > 0 } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
+            const legendContainer = document.getElementById('donutLegendList');
+            if (legendContainer) {
+                legendContainer.innerHTML = '';
+                if (totalCount > 0) {
+                    labels.forEach((label, idx) => {
+                        const val = data[idx];
+                        const pct = Math.round((val / totalCount) * 100);
+                        const color = backgroundColors[idx];
+                        const div = document.createElement('div');
+                        div.className = 'mb-2';
+                        div.innerHTML = `
+                            <div class="legend-item" style="font-weight: 700;">
+                                <span class="legend-dot" style="background-color: ${color}; width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 6px;"></span> 
+                                ${label}
+                            </div>
+                            <div style="font-size:11px; color:#6b7280; margin-left: 16px; font-weight: 700;">${pct}% (${val})</div>
+                        `;
+                        legendContainer.appendChild(div);
+                    });
+                } else {
+                    legendContainer.innerHTML = `<div class="text-muted small">Chưa có dữ liệu danh mục</div>`;
+                }
+            }
+
+            // Interactive Calendar Logic
+            window.currentCalDate = new Date();
+
+            window.renderCalendar = function(date) {
+                const monthYearSpan = document.getElementById('calendarMonthYear');
+                const datesGrid = document.getElementById('calendarDatesGrid');
+                if (!monthYearSpan || !datesGrid) return;
+
+                const year = date.getFullYear();
+                const month = date.getMonth(); // 0-11
+                
+                const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+                monthYearSpan.innerText = `${monthNames[month]} ${year}`;
+
+                const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) to 6 (Sat)
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const prevMonthLastDate = new Date(year, month, 0).getDate();
+
+                const dropdown = document.getElementById('itStaffDropdown');
+                const selectedEmail = dropdown ? dropdown.value : '';
+
+                let busyApiUrl = `/api/dashboard/busy-dates?year=${year}&month=${month + 1}`;
+                if (selectedEmail) {
+                    busyApiUrl += `&email=${encodeURIComponent(selectedEmail)}`;
+                }
+
+                fetch(busyApiUrl)
+                    .then(res => res.json())
+                    .then(busyDatesList => {
+                        const busySet = new Set(busyDatesList || []);
+                        let gridHtml = '';
+
+                        // Previous month trailing days
+                        for (let i = firstDayOfMonth; i > 0; i--) {
+                            gridHtml += `<span class="text-muted">${prevMonthLastDate - i + 1}</span>`;
+                        }
+
+                        // Current month days
+                        const today = new Date();
+                        for (let day = 1; day <= daysInMonth; day++) {
+                            const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const isBusy = busySet.has(dateStr);
+                            let classes = [];
+                            if (isToday) classes.push('active-date');
+                            if (isBusy) classes.push('has-event');
+                            const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+
+                            gridHtml += `<span ${classAttr} onclick="openItScheduleModal('${dateStr}', ${day}, ${month + 1}, ${year})">${day}</span>`;
+                        }
+
+                        // Next month leading days to complete row
+                        const totalCells = firstDayOfMonth + daysInMonth;
+                        const nextDays = (7 - (totalCells % 7)) % 7;
+                        for (let i = 1; i <= nextDays; i++) {
+                            gridHtml += `<span class="text-muted">${i}</span>`;
+                        }
+
+                        datesGrid.innerHTML = gridHtml;
+                    })
+                    .catch(() => {
+                        let gridHtml = '';
+                        for (let i = firstDayOfMonth; i > 0; i--) {
+                            gridHtml += `<span class="text-muted">${prevMonthLastDate - i + 1}</span>`;
+                        }
+                        const today = new Date();
+                        for (let day = 1; day <= daysInMonth; day++) {
+                            const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const activeClass = isToday ? 'active-date' : '';
+                            gridHtml += `<span class="${activeClass}" onclick="openItScheduleModal('${dateStr}', ${day}, ${month + 1}, ${year})">${day}</span>`;
+                        }
+                        datesGrid.innerHTML = gridHtml;
+                    });
+            };
+
+            document.getElementById('prevMonthBtn')?.addEventListener('click', () => {
+                window.currentCalDate.setMonth(window.currentCalDate.getMonth() - 1);
+                window.renderCalendar(window.currentCalDate);
+            });
+
+            document.getElementById('nextMonthBtn')?.addEventListener('click', () => {
+                window.currentCalDate.setMonth(window.currentCalDate.getMonth() + 1);
+                window.renderCalendar(window.currentCalDate);
+            });
+
+            window.renderCalendar(window.currentCalDate);
+        });
+
+        // Triggered when selecting an IT member from dropdown
+        function onItDropdownChange() {
+            const dropdown = document.getElementById('itStaffDropdown');
+            const infoBox = document.getElementById('selectedItInfoBox');
+            if (!dropdown) return;
+
+            const selectedOpt = dropdown.options[dropdown.selectedIndex];
+            const email = selectedOpt.value;
+
+            if (infoBox) {
+                if (!email) {
+                    infoBox.classList.add('d-none');
+                } else {
+                    const name = selectedOpt.getAttribute('data-name') || 'IT Staff';
+                    const status = selectedOpt.getAttribute('data-status') || 'Available';
+                    const groups = selectedOpt.getAttribute('data-groups') || 'IT Support';
+
+                    document.getElementById('selectedItName').innerText = name;
+                    document.getElementById('selectedItGroups').innerText = `Danh mục hỗ trợ: ${groups}`;
+                    
+                    const badge = document.getElementById('selectedItStatusBadge');
+                    if (badge) {
+                        badge.innerText = status === 'Available' ? 'Available (Sẵn sàng)' : 'Busy (Đang bận)';
+                        badge.className = status === 'Available' ? 'badge bg-success' : 'badge bg-warning text-dark';
+                    }
+
+                    infoBox.classList.remove('d-none');
+                }
+            }
+
+            if (window.renderCalendar && window.currentCalDate) {
+                window.renderCalendar(window.currentCalDate);
+            }
+        }
+
+        // Function to open IT schedule modal (with optional IT email filter from dropdown)
+        function openItScheduleModal(dateStr, day, month, year) {
+            const dropdown = document.getElementById('itStaffDropdown');
+            const selectedEmail = dropdown ? dropdown.value : '';
+
+            const modalTitleStr = document.getElementById('modalSelectedDateStr');
+            if (modalTitleStr) modalTitleStr.innerText = `${day}/${month}/${year}`;
+
+            const modalBody = document.getElementById('itScheduleModalBody');
+            if (modalBody) {
+                modalBody.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="mb-0">Đang tải lịch làm việc nhân viên IT...</p>
+                    </div>
+                `;
+            }
+
+            const modalElem = document.getElementById('itScheduleModal');
+            if (modalElem) {
+                const bsModal = new bootstrap.Modal(modalElem);
+                bsModal.show();
+            }
+
+            let apiUrl = `/api/dashboard/it-schedule?date=${dateStr}`;
+            if (selectedEmail) {
+                apiUrl += `&email=${encodeURIComponent(selectedEmail)}`;
+            }
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (!modalBody) return;
+                    if (!data || data.length === 0) {
+                        modalBody.innerHTML = `<div class="text-center py-4 text-muted"><p>Không tìm thấy nhân viên IT nào phù hợp với bộ lọc trong ngày này.</p></div>`;
+                        return;
+                    }
+
+                    let html = `<div class="row g-3">`;
+                    data.forEach(it => {
+                        const statusBadge = it.status === 'Available' ? 
+                            `<span class="badge bg-success">Sẵn sàng (Available)</span>` : 
+                            `<span class="badge bg-warning text-dark">Bận (Busy)</span>`;
+                        
+                        let ticketsHtml = '';
+                        if (it.tickets && it.tickets.length > 0) {
+                            ticketsHtml = `<div class="mt-2"><strong class="small text-muted d-block mb-1">Danh mục ticket cần xử lý / lịch làm việc:</strong><ul class="list-group list-group-flush small">`;
+                            it.tickets.forEach(t => {
+                                const statusColor = t.status === 'RESOLVED' ? 'text-success' : (t.status === 'PROGRESS' ? 'text-primary' : 'text-warning');
+                                const catLabel = t.category || 'helpdesk';
+                                ticketsHtml += `<li class="list-group-item px-0 py-1 bg-transparent border-0"><i class="fa-solid fa-ticket me-1 ${statusColor}"></i> <strong>#${t.id}</strong> [${catLabel}] ${t.title} <span class="badge bg-secondary ms-1">${t.status}</span></li>`;
+                            });
+                            ticketsHtml += `</ul></div>`;
+                        } else {
+                            ticketsHtml = `<p class="small text-muted mb-0 mt-2"><i class="fa-solid fa-check-circle text-success me-1"></i> Chưa có ticket giao riêng trong ngày.</p>`;
+                        }
+
+                        html += `
+                            <div class="col-md-6">
+                                <div class="card border rounded-3 p-3 shadow-sm h-100 bg-light bg-opacity-50">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-user-gear me-2 text-primary"></i>${it.name}</h6>
+                                            <small class="text-muted d-block">${it.email}</small>
+                                            <small class="text-primary fw-semibold">Danh mục: ${it.groupLabels || 'IT Support'}</small>
+                                        </div>
+                                        <div>${statusBadge}</div>
+                                    </div>
+                                    ${ticketsHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                    modalBody.innerHTML = html;
+                })
+                .catch(err => {
+                    if (modalBody) {
+                        modalBody.innerHTML = `<div class="alert alert-danger mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi khi tải danh sách lịch làm việc IT!</div>`;
+                    }
+                });
+        }
+    </script>

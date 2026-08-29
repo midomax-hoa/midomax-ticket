@@ -1,0 +1,22 @@
+﻿
+        toggleBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (window.innerWidth > 991) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            } else {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (window.innerWidth <= 991 && sidebar.classList.contains('active')) {
+                if (!sidebar.contains(e.target) && e.target !== mobileToggleBtn) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

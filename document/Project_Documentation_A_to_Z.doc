@@ -1,0 +1,330 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+    <meta charset="utf-8">
+    <title>Tài Liệu Dự Án</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+        @page {
+            margin: 2.5cm 2cm 2.5cm 2cm;
+            mso-page-orientation: portrait;
+        }
+        body { 
+            font-family: "Times New Roman", Times, serif; 
+            font-size: 13pt; 
+            line-height: 1.5; 
+            text-align: justify;
+        }
+        h1 { 
+            font-size: 18pt; 
+            text-align: center; 
+            color: #000; 
+            text-transform: uppercase; 
+            font-weight: bold; 
+            margin-top: 24pt;
+            margin-bottom: 24pt;
+        }
+        h2 { 
+            font-size: 15pt; 
+            font-weight: bold; 
+            margin-top: 18pt; 
+            margin-bottom: 6pt;
+            color: #000; 
+        }
+        h3 { 
+            font-size: 13.5pt; 
+            font-weight: bold; 
+            margin-top: 12pt; 
+            margin-bottom: 6pt;
+            font-style: italic; 
+            color: #000; 
+        }
+        p { 
+            margin-bottom: 12pt; 
+            margin-top: 0;
+        }
+        ul, ol { 
+            margin-bottom: 12pt; 
+            margin-top: 0;
+            margin-left: 20pt; 
+        }
+        li { 
+            margin-bottom: 6pt; 
+        }
+        blockquote { 
+            border-left: 3px solid #ccc; 
+            padding-left: 10px; 
+            font-style: italic; 
+            background-color: #f9f9f9; 
+            padding: 10px; 
+            margin: 10pt 0;
+        }
+        code { 
+            font-family: "Courier New", Courier, monospace; 
+            background: #f4f4f4; 
+            padding: 2px 4px; 
+            border: 1px solid #ddd; 
+            font-size: 11pt;
+        }
+        pre { 
+            font-family: "Courier New", Courier, monospace; 
+            background: #f4f4f4; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            white-space: pre-wrap; 
+            font-size: 11pt; 
+            margin-bottom: 12pt;
+        }
+        hr { 
+            border: 0; 
+            border-bottom: 1px solid #000; 
+            margin: 20pt 0; 
+        }
+        strong {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h1>TÀI LIỆU DỰ ÁN MIDOMAX HELPDESK & HR (TỪ A ĐẾN Z)</h1>
+
+<blockquote>
+    <strong>Mục đích tài liệu:</strong> Cung cấp cái nhìn toàn diện từ tổng quan, thiết kế kiến trúc, chi tiết các tính năng, cơ sở dữ liệu cho đến hướng dẫn cài đặt của dự án <code>helpdesk</code>. Tài liệu này dành cho Developer, Quản trị viên hệ thống và Quản lý dự án.
+</blockquote>
+
+<hr>
+
+<h2>1. GIỚI THIỆU CHUNG (INTRODUCTION)</h2>
+
+<p><strong>Midomax Helpdesk</strong> là một ứng dụng Web (Monolithic Application) được thiết kế đặc thù cho doanh nghiệp nhằm tự động hóa và số hóa hai quy trình cốt lõi:</p>
+<ol>
+    <li><strong>Hỗ trợ Kỹ thuật & Hành chính (Ticketing System):</strong> Cổng thông tin nội bộ để nhân viên gửi các sự cố, yêu cầu (lỗi phần cứng, phần mềm, mạng) và phòng ban chuyên trách (IT) tiếp nhận, theo dõi, và giải quyết.</li>
+    <li><strong>Quản lý Hồ sơ Nhân sự (HR Management):</strong> Hệ thống lưu trữ tập trung, chi tiết hồ sơ vòng đời của nhân sự từ thông tin cá nhân, hợp đồng, gia đình cho đến theo dõi các giấy tờ tùy thân đính kèm.</li>
+</ol>
+
+<hr>
+
+<h2>2. NGĂN XẾP CÔNG NGHỆ (TECH STACK)</h2>
+
+<p>Dự án được xây dựng trên hệ sinh thái Java Spring Boot hiện đại, cụ thể:</p>
+
+<h3>2.1. Backend (Server-side)</h3>
+<ul>
+    <li><strong>Ngôn ngữ:</strong> Java 17</li>
+    <li><strong>Framework chính:</strong> Spring Boot 3.5.x</li>
+    <li><strong>Bảo mật:</strong> Spring Security 6 (In-memory Authentication hiện tại)</li>
+    <li><strong>Tương tác CSDL:</strong> Spring Data JPA, Hibernate ORM</li>
+    <li><strong>Tiện ích:</strong> Lombok (giảm boilerplate code cho Getter/Setter/Constructor)</li>
+    <li><strong>Xử lý file:</strong> Apache POI 5.2.3 (Dùng để Import/Export dữ liệu Excel)</li>
+</ul>
+
+<h3>2.2. Frontend (Client-side)</h3>
+<ul>
+    <li><strong>Template Engine:</strong> Thymeleaf (Server-Side Rendering)</li>
+    <li><strong>Tương tác API:</strong> Fetch API / AJAX cho các tác vụ cập nhật nhanh không cần tải lại trang.</li>
+    <li><strong>Giao diện:</strong> HTML5, CSS3, JavaScript kết hợp CSS Framework (như Bootstrap/Tailwind tùy chỉnh).</li>
+</ul>
+
+<h3>2.3. Database & Cấu hình</h3>
+<ul>
+    <li><strong>Hệ quản trị CSDL:</strong> MySQL 8+</li>
+    <li><strong>Driver:</strong> MySQL Connector/J (<code>mysql-connector-j</code>)</li>
+</ul>
+
+<hr>
+
+<h2>3. CẤU TRÚC THƯ MỤC DỰ ÁN (PROJECT STRUCTURE)</h2>
+
+<p>Dự án tuân theo kiến trúc MVC chuẩn của Spring Boot:</p>
+<pre>
+helpdesk/
+├── src/main/java/vn/midomax/helpdesk/
+│   ├── HelpdeskApplication.java      # Class khởi chạy ứng dụng (Main)
+│   ├── SecurityConfig.java           # Cấu hình Spring Security (Phân quyền)
+│   ├── WebConfig.java                # Cấu hình MVC, Resource mapping
+│   ├── Controllers/                  # Nhận request, trả về View/JSON
+│   │   ├── HomeController.java       # Routing trang chủ, login
+│   │   ├── DashboardController.java  # Thống kê, biểu đồ cho Admin
+│   │   ├── TicketController.java     # Logic điều hướng Module Hỗ trợ
+│   │   └── EmployeeController.java   # Logic điều hướng Module Nhân sự
+│   ├── Services/                     # Chứa Business Logic cốt lõi
+│   │   ├── TicketService(Impl)
+│   │   ├── EmployeeService(Impl)
+│   │   └── ExcelService.java         # Xử lý thư viện POI (Đọc/Ghi Excel)
+│   ├── Repositories/                 # Giao tiếp DB (Interface kế thừa JpaRepository)
+│   └── Entities (Models)/            # Mapping với Table trong MySQL
+│       ├── Ticket.java
+│       ├── Employee.java
+│       ├── EmergencyContact.java     # Liên hệ khẩn cấp (1-N với Employee)
+│       └── RelativeInfo.java         # Người thân (1-N với Employee)
+│
+└── src/main/resources/
+    ├── application.properties        # Cấu hình Port, Kết nối DB, Hibernate JPA
+    ├── static/                       # File tĩnh: CSS, JS, Images, Uploads
+    └── templates/                    # Chứa các file giao diện HTML (Thymeleaf)
+        ├── layout.html               # File khung layout chung (Header, Sidebar)
+        ├── login.html                # Giao diện Đăng nhập
+        ├── admin-home.html           # Trang chủ Admin
+        ├── user-home.html            # Trang chủ User
+        ├── ticket-management.html    # Lưới quản lý Ticket
+        └── employee-management.html  # Lưới quản lý Nhân sự
+</pre>
+
+<hr>
+
+<h2>4. CẤU HÌNH HỆ THỐNG (CONFIGURATION)</h2>
+
+<p>Thông tin cấu hình chạy ứng dụng được đặt tại <code>application.properties</code>:</p>
+<ul>
+    <li><strong>Server Port:</strong> <code>8080</code> (Ứng dụng chạy tại http://localhost:8080)</li>
+    <li><strong>Database URL:</strong> <code>jdbc:mysql://localhost:3306/helpdesk</code></li>
+    <li><strong>Tài khoản DB mặc định:</strong> root / Root@123</li>
+    <li><strong>Chiến lược JPA Hibernate:</strong> <code>update</code> (Tự động cập nhật cấu trúc bảng theo Entity mà không xóa dữ liệu cũ).</li>
+</ul>
+
+<hr>
+
+<h2>5. CHI TIẾT CÁC MODULE VÀ TÍNH NĂNG (FEATURES)</h2>
+
+<h3>5.1. Module Xác Thực & Phân Quyền (Authentication)</h3>
+<ul>
+    <li>Sử dụng Spring Security. Mặc định mọi Endpoint đều yêu cầu đăng nhập, ngoại trừ <code>/login</code> và các resource tĩnh.</li>
+    <li><strong>Tài khoản có sẵn (In-memory):</strong>
+        <ul>
+            <li><strong>USER:</strong> <code>user</code> / Pass: <code>123</code> (Nhân viên thường)</li>
+            <li><strong>ADMIN:</strong> <code>admin</code> / Pass: <code>123</code> (Quản trị viên IT/Hành chính)</li>
+        </ul>
+    </li>
+    <li><strong>Điều hướng thông minh:</strong> Đăng nhập thành công, hệ thống tự rẽ nhánh: Admin vào trang <code>/admin-home</code>, User vào trang <code>/user-home</code>.</li>
+</ul>
+
+<h3>5.2. Module Quản Lý Yêu Cầu Hỗ Trợ (Ticket Management)</h3>
+<ul>
+    <li><strong>Với Nhân viên (User):</strong>
+        <ul>
+            <li>Tạo Ticket mới: Nhập tiêu đề, phân loại (Mạng, Phần cứng, Phần mềm), mô tả và <strong>đính kèm được hình ảnh</strong>.</li>
+            <li>Theo dõi Ticket của riêng mình, xem số lượng ticket đang Mở/Xử lý/Hoàn thành.</li>
+        </ul>
+    </li>
+    <li><strong>Với Quản trị viên (Admin):</strong>
+        <ul>
+            <li>Xem được toàn bộ Ticket của hệ thống.</li>
+            <li>Phân công (Assign) Ticket cho từng IT cụ thể.</li>
+            <li>Cập nhật độ ưu tiên (LOW/MED/HIGH) và trạng thái (OPEN, PROGRESS, RESOLVED).</li>
+            <li>Có thể tạo Ticket thay cho User khác hoặc khách.</li>
+            <li>Sửa nhanh (Inline-edit) trực tiếp trên lưới dữ liệu thông qua AJAX.</li>
+        </ul>
+    </li>
+    <li><strong>Xử lý Upload Ảnh:</strong> Hình ảnh đính kèm của Ticket được lưu vật lý vào <code>src/main/resources/static/uploads/</code> và <code>target/classes/static/uploads/</code> dưới dạng mã hóa UUID để tránh trùng tên.</li>
+</ul>
+
+<h3>5.3. Module Quản Lý Nhân Sự (Employee Management)</h3>
+<p>Module hỗ trợ quản lý hơn 50 trường thông tin chia làm 5 nhóm chính:</p>
+<ul>
+    <li><strong>Thông tin Chung & Cá nhân:</strong> Mã NV, Họ tên, Phòng ban, Giới tính, Quê quán, Hộ khẩu, Trình độ, CCCD, Mã số thuế.</li>
+    <li><strong>Hợp đồng & Bảo hiểm:</strong> Ngày vào, Ngày ký HĐ, Trạng thái (Đang làm/Nghỉ việc), Sổ BH, Thông tin tài khoản ngân hàng, Chế độ thai sản.</li>
+    <li><strong>Gia đình:</strong> Bố, Mẹ, Vợ/Chồng, Con cái.</li>
+    <li><strong>Liên hệ khẩn cấp:</strong> Danh sách động (1-N).</li>
+    <li><strong>Hồ sơ đính kèm:</strong> Checkbox theo dõi 12 loại giấy tờ cần nộp (Sơ yếu lý lịch, Bằng cấp, Ảnh 3x4...).</li>
+</ul>
+
+<p><strong>Tính năng nâng cao của HR:</strong></p>
+<ul>
+    <li>Tìm kiếm & Lọc phức tạp (Theo tên, bộ phận, trạng thái làm việc).</li>
+    <li><strong>Import từ Excel:</strong> Tải file danh sách <code>.xlsx</code> lên, hệ thống tự map vào DB.</li>
+    <li><strong>Export ra Excel:</strong> Xuất toàn bộ danh sách nhân sự hiện tại ra file Excel chuẩn (sử dụng thư viện <code>Apache POI</code>).</li>
+</ul>
+
+<hr>
+
+<h2>6. KIẾN TRÚC CƠ SỞ DỮ LIỆU (DATABASE SCHEMA)</h2>
+
+<p>Hệ thống sử dụng cơ chế Code-First (Tạo bảng từ Entity của Hibernate). Có 4 bảng chính:</p>
+
+<ol>
+    <li><strong>Bảng <code>tickets</code></strong>
+        <ul>
+            <li>Lưu trữ yêu cầu: <code>id</code>, <code>title</code>, <code>description</code>, <code>category</code>, <code>reporterName</code>, <code>reporterDepartment</code>, <code>priority</code>, <code>status</code>, <code>assignee</code>, <code>imagePath</code>, v.v.</li>
+        </ul>
+    </li>
+    <li><strong>Bảng <code>employees</code></strong>
+        <ul>
+            <li>Bảng khổng lồ lưu mọi thông tin của nhân sự (hơn 50 cột). Sử dụng <code>employeeCode</code> làm mã định danh.</li>
+        </ul>
+    </li>
+    <li><strong>Bảng <code>employee_children</code> (ElementCollection)</strong>
+        <ul>
+            <li>Bảng phụ lưu con cái, mapping N-1 về <code>employees</code> qua khóa ngoại <code>employee_id</code>.</li>
+        </ul>
+    </li>
+    <li><strong>Bảng <code>employee_emergency_contacts</code> (ElementCollection)</strong>
+        <ul>
+            <li>Bảng phụ lưu liên hệ khẩn cấp, mapping N-1 về <code>employees</code> qua khóa ngoại <code>employee_id</code>.</li>
+        </ul>
+    </li>
+</ol>
+
+<hr>
+
+<h2>7. HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY DỰ ÁN (INSTALLATION GUIDE)</h2>
+
+<h3>Bước 1: Yêu cầu môi trường (Prerequisites)</h3>
+<ul>
+    <li>Cài đặt Java JDK 17.</li>
+    <li>Cài đặt MySQL Server (Phiên bản 8.0 trở lên).</li>
+    <li>Cài đặt Maven (hoặc dùng <code>mvnw</code> có sẵn trong thư mục dự án).</li>
+    <li>IDE khuyên dùng: IntelliJ IDEA, Eclipse, hoặc VS Code.</li>
+</ul>
+
+<h3>Bước 2: Thiết lập Cơ sở dữ liệu</h3>
+<ol>
+    <li>Mở MySQL Workbench hoặc Terminal.</li>
+    <li>Chạy lệnh tạo database: 
+        <pre>CREATE DATABASE helpdesk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;</pre>
+    </li>
+    <li>Đảm bảo bạn có tài khoản <code>root</code> với mật khẩu là <code>Root@123</code>. Nếu mật khẩu khác, hãy vào file <code>src/main/resources/application.properties</code> để sửa lại <code>spring.datasource.password</code>.</li>
+</ol>
+
+<h3>Bước 3: Build và Chạy dự án</h3>
+<p>Mở terminal/Command Prompt tại thư mục chứa file <code>pom.xml</code>:</p>
+<ul>
+    <li>Lệnh Build để tải các thư viện (Dependencies):
+        <pre>mvn clean install -DskipTests</pre>
+    </li>
+    <li>Lệnh Chạy Server Spring Boot:
+        <pre>mvn spring-boot:run</pre>
+    </li>
+</ul>
+
+<h3>Bước 4: Truy cập hệ thống</h3>
+<ul>
+    <li>Mở trình duyệt web.</li>
+    <li>Truy cập địa chỉ: <code>http://localhost:8080</code></li>
+    <li>Sử dụng tài khoản đăng nhập:
+        <ul>
+            <li>Admin: <code>admin</code> / <code>123</code></li>
+            <li>User: <code>user</code> / <code>123</code></li>
+        </ul>
+    </li>
+</ul>
+
+<hr>
+
+<h2>8. ĐỊNH HƯỚNG PHÁT TRIỂN TIẾP THEO (FUTURE ROADMAP)</h2>
+<ol>
+    <li><strong>Thay thế In-Memory Auth:</strong> Tạo Entity <code>User</code> và bảng <code>users</code> để liên kết với cấu hình Spring Security, quản lý đăng nhập qua Database.</li>
+    <li><strong>Quản lý File Chuyên Nghiệp:</strong> Kết nối với AWS S3, Google Cloud Storage hoặc MinIO để lưu trữ ảnh/file đính kèm thay vì lưu ở local thư mục <code>static</code>.</li>
+    <li><strong>Email Notification:</strong> Tích hợp <code>spring-boot-starter-mail</code> để tự động gửi email cho người dùng khi Ticket chuyển trạng thái hoặc IT tiếp nhận.</li>
+    <li><strong>RESTful APIs:</strong> Bổ sung các controller <code>@RestController</code> tách biệt, chuẩn bị sẵn sàng cho việc phát triển Mobile App (iOS/Android) trong tương lai.</li>
+</ol>
+
+</body>
+</html>

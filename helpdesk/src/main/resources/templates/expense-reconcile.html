@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đối Chiếu Ngân Sách - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #fff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 22px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,.02); margin-bottom: 22px; }
+
+        .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+        .kpi-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px 18px; }
+        .kpi-label { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .kpi-value { font-size: 21px; font-weight: 800; color: #1e293b; margin-top: 4px; }
+
+        .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tbl th { background: #f8fafc; color: #475569; font-weight: 600; font-size: 11.5px; text-transform: uppercase; padding: 10px 8px; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+        .tbl td { padding: 9px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .tbl tbody tr:hover { background: #f8fafc; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+        .badge-soft { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+        .b-ok { background: #dcfce7; color: #15803d; }
+        .b-warn { background: #fef3c7; color: #b45309; }
+        .b-over { background: #fee2e2; color: #b91c1c; }
+        .b-none { background: #f1f5f9; color: #64748b; }
+
+        .scroll-x { overflow-x: auto; }
+        @media (max-width: 1199px) { .kpi { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('expenses')}"></div>
+
+    <div class="main-content" id="main-content">
+        <div class="topbar">
+            <div>
+                <h4 class="mb-0 fw-bold" style="color:#1e3a8a;">Đối Chiếu Ngân Sách ↔ Sổ Hóa Đơn</h4>
+                <div class="text-muted" style="font-size:13px;">
+                    Kế hoạch từng tháng so với hóa đơn thực chi — kiểm chứng số liệu trước khi chốt kỳ
+                </div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <form method="get" action="/expenses/reconcile" class="d-flex gap-2">
+                    <select name="fundId" class="form-select form-select-sm" style="min-width:220px;" onchange="this.form.submit()">
+                        <option th:each="f : ${funds}" th:value="${f.id}" th:text="${f.name}"
+                                th:selected="${fund != null and fund.id == f.id}">Quỹ 2026</option>
+                    </select>
+                    <input type="number" name="year" class="form-control form-control-sm" style="width:100px;"
+                           th:value="${year}" min="2020" max="2100" onchange="this.form.submit()">
+                </form>
+                <a th:href="@{/expenses/fund/{id}(id=${fund != null ? fund.id : 0})}" class="btn btn-outline-secondary btn-sm fw-semibold">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Quỹ chi tiêu
+                </a>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div th:if="${fund == null}" class="widget-card text-center text-muted py-5">
+            <i class="fa-solid fa-folder-open fs-1 d-block mb-2"></i>
+            Chưa có quỹ ngân sách nào. Hãy import file ngân sách ở trang Quỹ Chi Tiêu trước.
+        </div>
+
+        <div th:if="${fund != null}">
+            <!-- KPI -->
+            <div class="kpi">
+                <div class="kpi-card">
+                    <div class="kpi-label">Kế hoạch năm <span th:text="${year}">2026</span></div>
+                    <div class="kpi-value" th:text="${#numbers.formatInteger(plannedGrand, 0, 'POINT')} + ' đ'">0 đ</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Thực chi (hóa đơn đã gán)</div>
+                    <div class="kpi-value" style="color:#b45309;" th:text="${#numbers.formatInteger(actualGrand, 0, 'POINT')} + ' đ'">0 đ</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Chênh lệch</div>
+                    <div class="kpi-value"
+                         th:style="${plannedGrand - actualGrand < 0} ? 'color:#b91c1c;' : 'color:#15803d;'"
+                         th:text="${#numbers.formatInteger(plannedGrand - actualGrand, 0, 'POINT')} + ' đ'">0 đ</div>
+                </div>
+                <div class="kpi-card" th:style="${unlinkedTotal > 0} ? 'border-color:#fcd34d; background:#fffbeb;' : ''">
+                    <div class="kpi-label">Hóa đơn chưa gán</div>
+                    <div class="kpi-value" style="color:#b45309;">
+                        <span th:text="${#lists.size(unlinked)}">0</span>
+                        <span class="fw-normal" style="font-size:14px;"
+                              th:text="'(' + ${#numbers.formatInteger(unlinkedTotal, 0, 'POINT')} + ' đ)'">(0 đ)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TỔNG THEO THÁNG -->
+            <div class="widget-card">
+                <h6 class="fw-bold mb-3" style="color:#1e293b;">
+                    <i class="fa-solid fa-chart-column me-1" style="color:#1e3a8a;"></i>Kế hoạch vs Thực chi theo tháng
+                </h6>
+                <div class="scroll-x">
+                    <table class="tbl">
+                        <thead>
+                            <tr>
+                                <th style="min-width:120px;">Chỉ tiêu</th>
+                                <th class="num" th:each="m : ${#numbers.sequence(1,12)}" th:text="'T' + ${m}">T1</th>
+                                <th class="num">Cả năm</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-semibold">Kế hoạch</td>
+                                <td class="num" th:each="m : ${#numbers.sequence(0,11)}"
+                                    th:text="${plannedByMonth[m] == 0} ? '—' : ${#numbers.formatInteger(plannedByMonth[m]/1000000, 0, 'POINT')} + 'tr'">—</td>
+                                <td class="num fw-bold" th:text="${#numbers.formatInteger(plannedGrand/1000000, 0, 'POINT')} + 'tr'">0tr</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Thực chi</td>
+                                <td class="num" th:each="m : ${#numbers.sequence(0,11)}"
+                                    th:style="${actualByMonth[m] > plannedByMonth[m]} ? 'color:#b91c1c; font-weight:700;' : ''"
+                                    th:text="${actualByMonth[m] == 0} ? '—' : ${#numbers.formatInteger(actualByMonth[m]/1000000, 0, 'POINT')} + 'tr'">—</td>
+                                <td class="num fw-bold" style="color:#b45309;" th:text="${#numbers.formatInteger(actualGrand/1000000, 0, 'POINT')} + 'tr'">0tr</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">Đơn vị: triệu đồng. Ô đỏ = tháng đó chi vượt kế hoạch.</small>
+            </div>
+
+            <!-- CHI TIẾT TỪNG HẠNG MỤC -->
+            <div class="widget-card">
+                <h6 class="fw-bold mb-3" style="color:#1e293b;">
+                    <i class="fa-solid fa-list-check me-1" style="color:#15803d;"></i>Đối chiếu từng hạng mục
+                    <span class="text-muted fw-normal" style="font-size:13px;" th:text="'(' + ${#lists.size(rows)} + ' hạng mục)'">(0)</span>
+                </h6>
+                <div class="scroll-x">
+                    <table class="tbl">
+                        <thead>
+                            <tr>
+                                <th>Hạng mục</th>
+                                <th>Loại</th>
+                                <th class="num">Kế hoạch</th>
+                                <th class="num">Thực chi</th>
+                                <th class="num">Chênh lệch</th>
+                                <th class="num">Số HĐ</th>
+                                <th class="text-center">Tình trạng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="r : ${rows}" th:if="${r.plannedTotal > 0 or r.actualTotal > 0}">
+                                <td>
+                                    <div class="fw-semibold" style="color:#1e3a8a;" th:text="${r.item.itemName}">Gia hạn ChatGPT</div>
+                                    <small class="text-muted" th:text="${r.item.groupCategory}">OPEX</small>
+                                </td>
+                                <td><span class="badge-soft b-none" th:text="${r.item.subCategory}">GIA HẠN</span></td>
+                                <td class="num fw-semibold" th:text="${#numbers.formatInteger(r.plannedTotal, 0, 'POINT')}">0</td>
+                                <td class="num fw-semibold" style="color:#b45309;" th:text="${#numbers.formatInteger(r.actualTotal, 0, 'POINT')}">0</td>
+                                <td class="num fw-bold"
+                                    th:style="${r.variance < 0} ? 'color:#b91c1c;' : 'color:#15803d;'"
+                                    th:text="${#numbers.formatInteger(r.variance, 0, 'POINT')}">0</td>
+                                <td class="num" th:text="${r.invoiceCount}">0</td>
+                                <td class="text-center">
+                                    <span th:if="${r.actualTotal == 0}" class="badge-soft b-none">Chưa phát sinh</span>
+                                    <span th:if="${r.actualTotal > 0 and r.usedPercent < 90}" class="badge-soft b-ok"
+                                          th:text="'Trong hạn ' + ${r.usedPercent} + '%'">Trong hạn</span>
+                                    <span th:if="${r.usedPercent >= 90 and !r.overBudget}" class="badge-soft b-warn"
+                                          th:text="'Sắp hết ' + ${r.usedPercent} + '%'">Sắp hết</span>
+                                    <span th:if="${r.overBudget}" class="badge-soft b-over"
+                                          th:text="'Vượt ' + ${r.usedPercent} + '%'">Vượt</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(rows)}">
+                                <td colspan="7" class="text-center text-muted py-4">Quỹ này chưa có hạng mục ngân sách nào.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- HÓA ĐƠN CHƯA GÁN -->
+            <div class="widget-card" th:if="${!#lists.isEmpty(unlinked)}" style="border-color:#fcd34d;">
+                <h6 class="fw-bold mb-2" style="color:#b45309;">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Hóa đơn chưa gán hạng mục ngân sách
+                    (<span th:text="${#lists.size(unlinked)}">0</span>)
+                </h6>
+                <p class="text-muted mb-3" style="font-size:13px;">
+                    Những hóa đơn này <b>chưa được tính vào đối chiếu</b>. Chọn hạng mục cho từng cái để số liệu khớp đúng.
+                </p>
+                <div class="scroll-x">
+                    <table class="tbl">
+                        <thead>
+                            <tr>
+                                <th>Ngày</th><th>NCC / Người nhận</th><th>Diễn giải</th>
+                                <th class="num">Số tiền</th><th style="min-width:280px;">Gán vào hạng mục</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="inv : ${unlinked}">
+                                <td class="text-nowrap" th:text="${inv.transDate != null} ? ${#temporals.format(inv.transDate,'dd/MM/yyyy')} : '—'">01/09</td>
+                                <td th:text="${inv.vendor}">NCC</td>
+                                <td style="max-width:280px;">
+                                    <div th:text="${inv.description}">Mô tả</div>
+                                    <small class="text-muted" th:if="${inv.subCategory != null}" th:text="${inv.subCategory}"></small>
+                                </td>
+                                <td class="num fw-bold" th:text="${#numbers.formatInteger(inv.amount, 0, 'POINT')}">0</td>
+                                <td>
+                                    <form method="post" action="/expenses/reconcile/link" class="d-flex gap-1">
+                                        <input type="hidden" name="invoiceId" th:value="${inv.id}">
+                                        <input type="hidden" name="fundId" th:value="${fund.id}">
+                                        <input type="hidden" name="year" th:value="${year}">
+                                        <select name="budgetItemId" class="form-select form-select-sm">
+                                            <option value="">— Chọn hạng mục —</option>
+                                            <option th:each="r : ${rows}" th:value="${r.item.id}"
+                                                    th:text="${r.item.groupCategory} + ' › ' + ${r.item.itemName}">OPEX › ChatGPT</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-primary" style="background:#1e3a8a; border:none;">
+                                            <i class="fa-solid fa-link"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

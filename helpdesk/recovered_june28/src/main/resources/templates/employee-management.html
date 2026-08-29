@@ -1,0 +1,21 @@
+﻿                <div class="icon-wrapper"><i class="fa-solid fa-calendar-check"></i></div>
+                <span>Lịch Trình</span>
+            </a>
+            <a href="/employees" class="active" title="Quản Lý Nhân Sự" sec:authorize="hasRole('ADMIN')">
+                <div class="icon-wrapper"><i class="fa-solid fa-user-tie"></i></div>
+                <span>Quản Lý Nhân Sự</span>
+            </a>
+            <div style="margin: 10px 25px; border-top: 1px solid #e5e7eb;" sec:authorize="hasRole('ADMIN')"></div>
+            <a href="/admin/users" title="Quản Lý User" sec:authorize="hasRole('ADMIN')">
+                <div class="icon-wrapper"><i class="fa-solid fa-users-gear"></i></div>
+                <span>Quản Lý User</span>
+            </a>
+            <a href="/admin/users" title="Phân Quyền User" sec:authorize="hasRole('ADMIN')" style="padding-left: 40px; font-size: 14px; height: 40px;">
+                <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px;"><i class="fa-solid fa-user-shield"></i></div>
+                <span>Phân Quyền User</span>
+            </a>
+        </div>
+        <a th:href="@{/logout}" class="sidebar-bottom" title="Đăng xuất">
+            <div class="sidebar-avatar">
+                <span th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</span>
+            </div>

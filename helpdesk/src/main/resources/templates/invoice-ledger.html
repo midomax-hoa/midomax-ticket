@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sổ Hóa Đơn - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); border: 1px solid #e5e7eb; }
+
+        /* Dải tổng hợp */
+        .summary-hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); border-radius: 20px; padding: 26px 30px; color: #fff; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.4); position: relative; overflow: hidden; }
+        .summary-hero::after { content: '\f571'; font-family: 'Font Awesome 6 Free'; font-weight: 900; position: absolute; right: -10px; bottom: -28px; font-size: 140px; color: rgba(255,255,255,0.07); transform: rotate(-12deg); }
+        .s-stat .s-label { font-size: 13px; opacity: 0.85; font-weight: 500; }
+        .s-stat .s-value { font-size: 26px; font-weight: 800; }
+        .s-stat .s-sub { font-size: 12px; opacity: 0.7; }
+
+        .panel { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 20px 22px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 9px 12px; font-size: 14px; }
+        .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30,58,138,0.12); }
+
+        /* Bảng nhiều cột: cho phép cuộn ngang trong khung, không đẩy cả trang */
+        .table-wrap { overflow-x: auto; }
+        table.ledger { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1500px; }
+        table.ledger thead th { background: #1e3a8a; color: #fff; font-weight: 600; font-size: 12px; padding: 11px 10px; text-align: left; white-space: nowrap; position: sticky; top: 0; }
+        table.ledger tbody td { padding: 10px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+        table.ledger tbody tr:hover { background: #f8fafc; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 700; color: #0f172a; }
+        .nowrap { white-space: nowrap; }
+        .cell-desc { min-width: 260px; }
+        .cell-vendor { min-width: 170px; }
+
+        .badge-soft { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 20px; display: inline-block; white-space: nowrap; }
+        .b-paid { background: #dcfce7; color: #15803d; }
+        .b-unpaid { background: #fee2e2; color: #b91c1c; }
+        .b-pending { background: #fef3c7; color: #b45309; }
+        .b-recurring { background: #e0e7ff; color: #3730a3; }
+        .b-once { background: #f1f5f9; color: #475569; }
+        .cat-chip { font-size: 11.5px; color: #475569; }
+        .sub-chip { font-size: 11px; font-weight: 600; color: #1e3a8a; background: #eff6ff; padding: 2px 8px; border-radius: 6px; display: inline-block; }
+
+        .btn-icon { border: 1px solid #e5e7eb; background: #fff; border-radius: 7px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; color: #64748b; }
+        .btn-icon:hover { border-color: #1e3a8a; color: #1e3a8a; }
+
+        .empty { text-align: center; padding: 45px 20px; color: #94a3b8; }
+
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('invoices')}"></div>
+
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+            <div>
+                <h4 class="mb-0 fw-bold" style="color:#1e3a8a;">Sổ Hóa Đơn</h4>
+                <div class="text-muted" style="font-size:13px;">Lưu trữ hóa đơn &amp; phiếu chi của công ty</div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
+                    <i class="fa-solid fa-file-import me-1"></i> Nhập từ Excel
+                </button>
+                <a class="btn btn-outline-success btn-sm" th:href="@{/expenses/invoices/export(period=${fPeriod},category=${fCategory},vendor=${fVendor},expenseType=${fExpenseType},paymentStatus=${fPaymentStatus},search=${fSearch})}">
+                    <i class="fa-solid fa-file-excel me-1"></i> Xuất Excel
+                </a>
+                <button class="btn btn-primary btn-sm" style="background:#1e3a8a; border:none;" data-bs-toggle="modal" data-bs-target="#addModal">
+                    <i class="fa-solid fa-plus me-1"></i> Thêm hóa đơn
+                </button>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${warningMessage}" class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i><span th:text="${warningMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- TỔNG HỢP -->
+        <div class="summary-hero mb-4">
+            <div class="row g-4 align-items-center position-relative" style="z-index:2;">
+                <div class="col-md-3 s-stat">
+                    <div class="s-label">TỔNG SỐ MỤC</div>
+                    <div class="s-value" th:text="${entryCount}">0</div>
+                    <div class="s-sub" th:text="${fPeriod != null and !fPeriod.isEmpty()} ? 'Kỳ ' + ${fPeriod} : 'Toàn bộ các kỳ'">Toàn bộ các kỳ</div>
+                </div>
+                <div class="col-md-3 s-stat">
+                    <div class="s-label">TỔNG SỐ TIỀN (VND)</div>
+                    <div class="s-value" th:text="${#numbers.formatInteger(totalAmount, 1, 'POINT')}">0</div>
+                </div>
+                <div class="col-md-3 s-stat">
+                    <div class="s-label">ĐÃ THANH TOÁN</div>
+                    <div class="s-value" style="color:#86efac;" th:text="${#numbers.formatInteger(paidAmount, 1, 'POINT')}">0</div>
+                </div>
+                <div class="col-md-3 s-stat">
+                    <div class="s-label">CHƯA THANH TOÁN</div>
+                    <div class="s-value" style="color:#fca5a5;" th:text="${#numbers.formatInteger(unpaidAmount, 1, 'POINT')}">0</div>
+                    <div class="s-sub">Định kỳ: <span th:text="${#numbers.formatInteger(recurringAmount, 1, 'POINT')}">0</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BỘ LỌC -->
+        <div class="panel mb-4">
+            <form method="get" th:action="@{/expenses/invoices}" class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label">Tháng/Kỳ</label>
+                    <select name="period" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option th:each="p : ${periods}" th:value="${p}" th:text="${p}" th:selected="${p == fPeriod}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Danh mục</label>
+                    <select name="category" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option th:each="c : ${categories}" th:value="${c}" th:text="${c}" th:selected="${c == fCategory}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Nhà cung cấp</label>
+                    <select name="vendor" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option th:each="v : ${vendors}" th:value="${v}" th:text="${v}" th:selected="${v == fVendor}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Loại chi</label>
+                    <select name="expenseType" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option value="ONE_TIME" th:selected="${fExpenseType == 'ONE_TIME'}">Một lần</option>
+                        <option value="RECURRING" th:selected="${fExpenseType == 'RECURRING'}">Định kỳ</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tìm kiếm</label>
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control" placeholder="Mô tả, NCC, số PO..." th:value="${fSearch}">
+                        <button class="btn btn-primary" style="background:#1e3a8a; border:none;"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                </div>
+                <div class="col-12 d-flex gap-2 mt-2">
+                    <select name="paymentStatus" class="form-select" style="max-width:200px;">
+                        <option value="">Mọi trạng thái TT</option>
+                        <option value="PAID" th:selected="${fPaymentStatus == 'PAID'}">Đã thanh toán</option>
+                        <option value="UNPAID" th:selected="${fPaymentStatus == 'UNPAID'}">Chưa thanh toán</option>
+                        <option value="PENDING" th:selected="${fPaymentStatus == 'PENDING'}">Chờ duyệt</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm px-3" style="background:#1e3a8a; border:none;">Lọc</button>
+                    <a th:href="@{/expenses/invoices}" class="btn btn-outline-secondary btn-sm px-3">Xóa lọc</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- BẢNG -->
+        <div class="panel">
+            <div class="table-wrap">
+                <table class="ledger">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Ngày nhập</th>
+                            <th>Tháng/Kỳ</th>
+                            <th>Ngày GD</th>
+                            <th>Số PO/Ref</th>
+                            <th>Danh mục</th>
+                            <th>Phân loại nhỏ</th>
+                            <th>NCC/Người nhận</th>
+                            <th>Mô tả chi tiết</th>
+                            <th class="text-end">Số tiền (VND)</th>
+                            <th>Loại chi</th>
+                            <th>TT Thanh toán</th>
+                            <th>Người nhập</th>
+                            <th>Ghi chú</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="e, it : ${entries}" class="ledger-row" th:attr="data-row-id=${e.id}">
+                            <td th:text="${it.count}">1</td>
+                            <td class="nowrap" th:text="${e.entryDateStr}"></td>
+                            <td class="nowrap" th:text="${e.periodLabel}"></td>
+                            <td class="nowrap" th:text="${e.transDateStr}"></td>
+                            <td class="nowrap" th:text="${e.poRef}"></td>
+                            <td><span class="cat-chip" th:text="${e.category}"></span></td>
+                            <td><span th:if="${e.subCategory != null and !e.subCategory.isEmpty()}" class="sub-chip" th:text="${e.subCategory}"></span></td>
+                            <td class="cell-vendor" th:text="${e.vendor}"></td>
+                            <td class="cell-desc">
+                                <span th:text="${e.description}"></span>
+                                <a th:if="${e.attachmentPath != null}" th:href="${e.attachmentPath}" target="_blank" class="ms-1" title="Xem chứng từ">
+                                    <i class="fa-solid fa-paperclip"></i>
+                                </a>
+                            </td>
+                            <td class="num" th:text="${#numbers.formatInteger(e.amount, 1, 'POINT')}"></td>
+                            <td>
+                                <span class="badge-soft" th:classappend="${e.expenseType == 'RECURRING'} ? 'b-recurring' : 'b-once'"
+                                      th:text="${e.expenseTypeLabel}"></span>
+                            </td>
+                            <td>
+                                <span class="badge-soft"
+                                      th:classappend="${e.paymentStatus == 'PAID'} ? 'b-paid' : (${e.paymentStatus == 'PENDING'} ? 'b-pending' : 'b-unpaid')"
+                                      th:text="${e.paymentStatusLabel}"></span>
+                            </td>
+                            <td class="nowrap" th:text="${e.enteredBy}"></td>
+                            <td th:text="${e.notes}"></td>
+                            <td class="nowrap">
+                                <button type="button" class="btn-icon" title="Sửa"
+                                        th:attr="data-id=${e.id},
+                                                 data-transdate=${e.transDate},
+                                                 data-entrydate=${e.entryDate},
+                                                 data-poref=${e.poRef},
+                                                 data-category=${e.category},
+                                                 data-subcategory=${e.subCategory},
+                                                 data-budgetitemid=${e.budgetItemId},
+                                                 data-vendor=${e.vendor},
+                                                 data-description=${e.description},
+                                                 data-amount=${e.amount},
+                                                 data-expensetype=${e.expenseType},
+                                                 data-paymentstatus=${e.paymentStatus},
+                                                 data-notes=${e.notes}"
+                                        onclick="openEdit(this)">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <form th:action="@{'/expenses/invoices/delete/' + ${e.id}}" method="post" class="d-inline"
+                                      onsubmit="return confirm('Xóa hóa đơn này?');">
+                                    <button type="submit" class="btn-icon" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(entries)}">
+                            <td colspan="15">
+                                <div class="empty">
+                                    <i class="fa-regular fa-folder-open fs-2 d-block mb-2"></i>
+                                    Chưa có hóa đơn nào. Bấm <strong>Nhập từ Excel</strong> để đưa dữ liệu cũ vào, hoặc <strong>Thêm hóa đơn</strong>.
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="ledgerPager" class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: THÊM -->
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;">
+                <form th:action="@{/expenses/invoices/add}" method="post" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold" style="color:#1e3a8a;">Thêm hóa đơn</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Ngày giao dịch *</label>
+                                <input type="date" name="transDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ngày nhập</label>
+                                <input type="date" name="entryDate" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Số PO/Ref</label>
+                                <input type="text" name="poRef" class="form-control" placeholder="PC_2425_06_2026">
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label">Danh mục</label>
+                                <input type="text" name="category" class="form-control" list="categoryList" placeholder="CAPEX — Thiết bị &amp; Bản quyền">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Phân loại nhỏ</label>
+                                <input type="text" name="subCategory" class="form-control" list="subCategoryList" placeholder="Trang Thiết Bị">
+                            </div>
+                            <!-- Gán hạng mục ngân sách: hóa đơn sẽ trừ thẳng vào % của Quỹ Chi Tiêu -->
+                            <div class="col-12">
+                                <label class="form-label">
+                                    Trừ vào hạng mục ngân sách
+                                    <span class="text-muted" style="font-weight:400;">— để hóa đơn này tính vào % đã chi của quỹ</span>
+                                </label>
+                                <select name="budgetItemId" class="form-select">
+                                    <option value="">— Chưa gán ngân sách —</option>
+                                    <option th:each="b : ${budgetItems}" th:value="${b.id}"
+                                            th:text="${b.groupCategory} + ' › ' + ${b.itemName} + ' (cấp ' + ${#numbers.formatInteger(b.allocatedAmount, 0, 'POINT')} + 'đ)'">OPEX › ChatGPT</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">NCC/Người nhận</label>
+                                <input type="text" name="vendor" class="form-control" list="vendorList">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Số tiền (VND) *</label>
+                                <input type="text" name="amount" class="form-control money-input" required placeholder="108.150.000">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Mô tả chi tiết *</label>
+                                <input type="text" name="description" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Loại chi</label>
+                                <select name="expenseType" class="form-select">
+                                    <option value="ONE_TIME">Một lần</option>
+                                    <option value="RECURRING">Định kỳ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">TT Thanh toán</label>
+                                <select name="paymentStatus" class="form-select">
+                                    <option value="PAID">Đã thanh toán</option>
+                                    <option value="UNPAID">Chưa thanh toán</option>
+                                    <option value="PENDING">Chờ duyệt</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ảnh/file chứng từ</label>
+                                <input type="file" name="attachmentFile" class="form-control" accept="image/*,application/pdf">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Ghi chú</label>
+                                <input type="text" name="notes" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-check me-1"></i> Lưu hóa đơn
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SỬA -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;">
+                <form th:action="@{/expenses/invoices/update}" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="id" id="ed-id">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold" style="color:#1e3a8a;">Sửa hóa đơn</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Ngày giao dịch *</label>
+                                <input type="date" name="transDate" id="ed-transDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ngày nhập</label>
+                                <input type="date" name="entryDate" id="ed-entryDate" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Số PO/Ref</label>
+                                <input type="text" name="poRef" id="ed-poRef" class="form-control">
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label">Danh mục</label>
+                                <input type="text" name="category" id="ed-category" class="form-control" list="categoryList">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Phân loại nhỏ</label>
+                                <input type="text" name="subCategory" id="ed-subCategory" class="form-control" list="subCategoryList">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">
+                                    Trừ vào hạng mục ngân sách
+                                    <span class="text-muted" style="font-weight:400;">— để hóa đơn này tính vào % đã chi của quỹ</span>
+                                </label>
+                                <select name="budgetItemId" id="ed-budgetItemId" class="form-select">
+                                    <option value="">— Chưa gán ngân sách —</option>
+                                    <option th:each="b : ${budgetItems}" th:value="${b.id}"
+                                            th:text="${b.groupCategory} + ' › ' + ${b.itemName} + ' (cấp ' + ${#numbers.formatInteger(b.allocatedAmount, 0, 'POINT')} + 'đ)'">OPEX › ChatGPT</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">NCC/Người nhận</label>
+                                <input type="text" name="vendor" id="ed-vendor" class="form-control" list="vendorList">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Số tiền (VND) *</label>
+                                <input type="text" name="amount" id="ed-amount" class="form-control money-input" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Mô tả chi tiết *</label>
+                                <input type="text" name="description" id="ed-description" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Loại chi</label>
+                                <select name="expenseType" id="ed-expenseType" class="form-select">
+                                    <option value="ONE_TIME">Một lần</option>
+                                    <option value="RECURRING">Định kỳ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">TT Thanh toán</label>
+                                <select name="paymentStatus" id="ed-paymentStatus" class="form-select">
+                                    <option value="PAID">Đã thanh toán</option>
+                                    <option value="UNPAID">Chưa thanh toán</option>
+                                    <option value="PENDING">Chờ duyệt</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Thay chứng từ</label>
+                                <input type="file" name="attachmentFile" class="form-control" accept="image/*,application/pdf">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Ghi chú</label>
+                                <input type="text" name="notes" id="ed-notes" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-check me-1"></i> Cập nhật
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: NHẬP EXCEL -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;">
+                <form th:action="@{/expenses/invoices/import}" method="post" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold" style="color:#1e3a8a;">Nhập từ Excel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="form-label">Chọn file .xlsx</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+
+                        <div class="alert alert-light border mt-3 mb-0" style="font-size:13px;">
+                            <div class="fw-bold mb-2" style="color:#1e3a8a;">Cách hoạt động</div>
+                            <ul class="mb-0 ps-3">
+                                <li>Nhận diện cột <strong>theo tên tiêu đề</strong>, không theo thứ tự — chèn hay đổi chỗ cột vẫn nhập được.</li>
+                                <li>Tự tìm dòng tiêu đề, nên các dòng tổng nằm phía trên không gây lỗi.</li>
+                                <li>Hiểu cả tiêu đề tiếng Việt lẫn tiếng Anh: <em>Ngày nhập / Entry Date</em>, <em>NCC / Vendor</em>, <em>Số tiền / Amount</em>...</li>
+                                <li>Dòng đã có trong sổ sẽ được <strong>bỏ qua</strong>, nhập hai lần cũng không bị nhân đôi.</li>
+                                <li>Dòng không có số tiền sẽ bỏ qua.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-file-import me-1"></i> Nhập dữ liệu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- gợi ý nhập liệu lấy từ dữ liệu đang có -->
+    <datalist id="categoryList">
+        <option th:each="c : ${categories}" th:value="${c}"></option>
+    </datalist>
+    <datalist id="subCategoryList">
+        <option th:each="s : ${subCategories}" th:value="${s}"></option>
+    </datalist>
+    <datalist id="vendorList">
+        <option th:each="v : ${vendors}" th:value="${v}"></option>
+    </datalist>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function setVal(id, v) {
+            var el = document.getElementById(id);
+            if (el) el.value = (v === null || v === undefined || v === 'null') ? '' : v;
+        }
+
+        function openEdit(btn) {
+            var d = btn.dataset;
+            if (d.id) sessionStorage.setItem('invoiceFocusId', d.id); // để sau khi lưu quay lại đúng trang
+            setVal('ed-id', d.id);
+            setVal('ed-transDate', d.transdate);
+            setVal('ed-entryDate', d.entrydate);
+            setVal('ed-poRef', d.poref);
+            setVal('ed-category', d.category);
+            setVal('ed-subCategory', d.subcategory);
+            setVal('ed-budgetItemId', d.budgetitemid || '');
+            setVal('ed-vendor', d.vendor);
+            setVal('ed-description', d.description);
+            setVal('ed-notes', d.notes);
+            setVal('ed-expenseType', d.expensetype || 'ONE_TIME');
+            setVal('ed-paymentStatus', d.paymentstatus || 'UNPAID');
+
+            var amount = d.amount ? Number(d.amount).toLocaleString('vi-VN') : '';
+            setVal('ed-amount', amount);
+
+            new bootstrap.Modal(document.getElementById('editModal')).show();
+        }
+
+        // ===== PHÂN TRANG SỔ HÓA ĐƠN =====
+        var LEDGER_PAGE_SIZE = 7;
+
+        function setupLedgerPagination() {
+            var pager = document.getElementById('ledgerPager');
+            var rows = Array.prototype.slice.call(document.querySelectorAll('tbody .ledger-row'));
+            if (!pager) return;
+            if (rows.length <= LEDGER_PAGE_SIZE) { pager.style.display = 'none'; return; }
+
+            var totalPages = Math.ceil(rows.length / LEDGER_PAGE_SIZE);
+            var page = parseInt(sessionStorage.getItem('invoiceLedgerPage') || '1', 10);
+            if (isNaN(page) || page < 1 || page > totalPages) page = 1;
+
+            // Sau khi thêm/sửa/xóa: nhảy về đúng trang chứa hóa đơn vừa thao tác
+            var focusId = sessionStorage.getItem('invoiceFocusId');
+            var focusRow = null;
+            if (focusId) {
+                sessionStorage.removeItem('invoiceFocusId');
+                focusRow = document.querySelector('tbody .ledger-row[data-row-id="' + focusId + '"]');
+                if (focusRow) {
+                    var idx = rows.indexOf(focusRow);
+                    if (idx >= 0) page = Math.floor(idx / LEDGER_PAGE_SIZE) + 1;
+                }
+            }
+
+            pager.innerHTML = '<div class="text-muted small ledger-pager-info"></div>' +
+                              '<div class="d-flex align-items-center gap-1 ledger-pager-buttons"></div>';
+            var info = pager.querySelector('.ledger-pager-info');
+            var buttons = pager.querySelector('.ledger-pager-buttons');
+
+            function goTo(p) {
+                page = Math.min(Math.max(1, p), totalPages);
+                render();
+                pager.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+
+            function makeBtn(label, target, opts) {
+                opts = opts || {};
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'btn btn-sm ' + (opts.active ? 'btn-primary' : 'btn-outline-secondary') + ' fw-semibold';
+                b.style.minWidth = '34px';
+                b.innerHTML = label;
+                if (opts.disabled) b.disabled = true;
+                else b.addEventListener('click', function () { goTo(target); });
+                return b;
+            }
+
+            function render() {
+                sessionStorage.setItem('invoiceLedgerPage', String(page));
+                var start = (page - 1) * LEDGER_PAGE_SIZE;
+                var end = start + LEDGER_PAGE_SIZE;
+                rows.forEach(function (r, i) {
+                    r.style.display = (i >= start && i < end) ? '' : 'none';
+                });
+
+                info.textContent = 'Hiển thị ' + (start + 1) + '–' + Math.min(end, rows.length) +
+                    ' trên tổng ' + rows.length + ' hóa đơn  •  Trang ' + page + '/' + totalPages;
+
+                buttons.innerHTML = '';
+                buttons.appendChild(makeBtn('<i class="fa-solid fa-angle-left"></i>', page - 1, { disabled: page === 1 }));
+                var list = [];
+                for (var p = 1; p <= totalPages; p++) {
+                    if (p === 1 || p === totalPages || Math.abs(p - page) <= 2) list.push(p);
+                    else if (list[list.length - 1] !== '...') list.push('...');
+                }
+                list.forEach(function (p) {
+                    if (p === '...') {
+                        var s = document.createElement('span');
+                        s.className = 'px-1 text-muted';
+                        s.textContent = '…';
+                        buttons.appendChild(s);
+                    } else {
+                        buttons.appendChild(makeBtn(String(p), p, { active: p === page }));
+                    }
+                });
+                buttons.appendChild(makeBtn('<i class="fa-solid fa-angle-right"></i>', page + 1, { disabled: page === totalPages }));
+            }
+
+            render();
+
+            if (focusRow) {
+                setTimeout(function () {
+                    focusRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    focusRow.style.transition = 'background-color 0.6s ease';
+                    focusRow.style.backgroundColor = '#fef9c3';
+                    setTimeout(function () { focusRow.style.backgroundColor = ''; }, 1600);
+                }, 150);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            setupLedgerPagination();
+
+            // Xóa hóa đơn: nhớ dòng để sau khi xóa vẫn ở lại trang đang xem
+            document.querySelectorAll('tbody .ledger-row form[method="post"]').forEach(function (f) {
+                f.addEventListener('submit', function () {
+                    var row = f.closest('.ledger-row');
+                    if (row) sessionStorage.setItem('invoiceFocusId', row.getAttribute('data-row-id'));
+                });
+            });
+
+            // Định dạng tiền khi gõ: chỉ giữ chữ số rồi chấm phân cách nghìn
+            document.querySelectorAll('.money-input').forEach(function (el) {
+                el.addEventListener('input', function () {
+                    var digits = el.value.replace(/[^0-9]/g, '');
+                    el.value = digits ? Number(digits).toLocaleString('vi-VN') : '';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Trình IT Staff - Midomax Helpdesk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 30px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+        .main-content.expanded {
+            margin-left: 80px;
+            width: calc(100% - 80px);
+        }
+
+        .topbar {
+            background: #ffffff;
+            padding: 15px 30px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+        }
+
+        .welcome-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            border-radius: 20px;
+            padding: 35px 40px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.25);
+            margin-bottom: 30px;
+        }
+        .welcome-banner::after {
+            content: '\f073'; /* fa-calendar-alt */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: -10px;
+            bottom: -30px;
+            font-size: 160px;
+            color: rgba(255, 255, 255, 0.08);
+            transform: rotate(-10deg);
+        }
+
+        .widget-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 35px 40px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            margin-bottom: 24px;
+            width: 100%;
+        }
+
+        .widget-card-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .widget-card-title h6 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        /* Calendar Styling - Full 100% Width */
+        .calendar-wrapper { padding-top: 15px; width: 100%; }
+        .calendar-days { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; }
+        .calendar-days span {
+            width: 14.28%;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 800;
+            color: #475569;
+            letter-spacing: 0.5px;
+        }
+        .calendar-dates { display: flex; flex-wrap: wrap; gap: 12px 0; width: 100%; }
+        .calendar-dates span {
+            width: 14.28%;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #334155;
+            padding: 22px 0;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-dates span:hover:not(.text-muted) { background: #e2e8f0; transform: translateY(-2px); }
+        .calendar-dates span.active-date { background: #2563eb; color: white; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35); }
+        .calendar-dates span.has-event::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.9);
+            z-index: 10;
+        }
+        .calendar-dates span.active-date.has-event::after {
+            background-color: #fef08a;
+            box-shadow: 0 0 6px rgba(254, 240, 138, 1);
+        }
+
+        @media (max-width: 991px) {
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 15px !important; }
+            .widget-card { padding: 20px 15px; }
+            .calendar-dates span { padding: 14px 0; font-size: 15px; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('schedule')}"></div>
+
+    <div class="main-content" id="main-content">
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display: none; cursor: pointer; font-size: 22px; color: #1e3a8a; margin-right: 15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color: #1e3a8a;">LỊCH TRÌNH LÀM VIỆC IT</h4>
+                    <small class="text-muted">Cập nhật lúc: <span id="current-time"></span></small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-bell fs-5 text-primary" style="cursor: pointer;"></i>
+            </div>
+        </div>
+
+        <!-- WELCOME BANNER -->
+        <div class="welcome-banner">
+            <h1 class="fw-bold"><i class="fa-solid fa-calendar-days me-2"></i>Lịch Trình & Phân Công Nhân Viên IT</h1>
+            <p>Theo dõi toàn bộ lịch làm việc và tiến độ xử lý ticket của nhân viên IT trong hệ thống.</p>
+        </div>
+
+        <!-- FULL WIDTH 100% CALENDAR CONTAINER -->
+        <div class="row">
+            <div class="col-12">
+                <div class="widget-card">
+                    <div class="widget-card-title mb-4">
+                        <div class="d-flex align-items-center gap-3">
+                            <button class="btn btn-light rounded-circle shadow-sm" id="prevMonthBtn" style="width:40px;height:40px;padding:0;"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="calendarMonthYear" class="fw-bold text-primary fs-4">Tháng 7 2026</span>
+                            <button class="btn btn-light rounded-circle shadow-sm" id="nextMonthBtn" style="width:40px;height:40px;padding:0;"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <!-- IT Staff Selection Dropdown -->
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-user-gear text-primary me-1"></i>Chọn Nhân Viên IT Cần Xem Lịch:</label>
+                        <select id="itStaffDropdown" class="form-select border bg-light fw-semibold text-dark shadow-sm py-3 px-3 fs-6" onchange="onItDropdownChange()" style="border-radius: 14px;">
+                            <option value="">-- Tất cả nhân viên IT --</option>
+                            <option th:each="it : ${itWorkload}" 
+                                    th:value="${it.email}" 
+                                    th:data-name="${it.name}"
+                                    th:data-status="${it.status}"
+                                    th:data-groups="${it.groupLabels}"
+                                    th:text="${it.name + ' (' + (it.groupLabels != null and !it.groupLabels.isEmpty() ? it.groupLabels : 'IT Support') + ')'}">
+                                Nguyễn Thành Tín
+                            </option>
+                        </select>
+
+                        <div id="selectedItInfoBox" class="mt-3 p-3 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 d-none">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-primary fs-6" id="selectedItName">IT Staff</span>
+                                <span class="badge bg-success fs-6" id="selectedItStatusBadge">Available</span>
+                            </div>
+                            <div class="small text-muted mt-1 fs-6" id="selectedItGroups">Danh mục hỗ trợ: Helpdesk</div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-wrapper">
+                        <div class="calendar-days">
+                            <span>Chủ Nhật</span><span>Thứ 2</span><span>Thứ 3</span><span>Thứ 4</span><span>Thứ 5</span><span>Thứ 6</span><span>Thứ 7</span>
+                        </div>
+                        <div class="calendar-dates" id="calendarDatesGrid">
+                            <!-- Injected dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- End main-content -->
+
+    <!-- IT Staff Schedule Modal -->
+    <div class="modal fade" id="itScheduleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white border-0 py-3" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+                    <h5 class="modal-title fw-bold fs-6" id="itScheduleModalTitle">
+                        <i class="fa-solid fa-calendar-check me-2"></i> Lịch Làm Việc IT Staff - <span id="modalSelectedDateStr"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="itScheduleModalBody">
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="mb-0">Đang tải lịch làm việc nhân viên IT...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unified Modals Fragment -->
+    <div th:replace="~{fragments/ticket-modals :: ticketModals}"></div>
+    <div th:replace="~{success-modal :: successModal}"></div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        document.addEventListener("DOMContentLoaded", () => {
+            const timeSpan = document.getElementById('current-time');
+            if (timeSpan) {
+                const now = new Date();
+                timeSpan.textContent = now.toLocaleDateString('vi-VN') + ' - ' + now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+            }
+
+            window.currentCalDate = new Date();
+
+            window.renderCalendar = function(date) {
+                const monthYearSpan = document.getElementById('calendarMonthYear');
+                const datesGrid = document.getElementById('calendarDatesGrid');
+                if (!monthYearSpan || !datesGrid) return;
+
+                const year = date.getFullYear();
+                const month = date.getMonth(); // 0-11
+                
+                const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+                monthYearSpan.innerText = `${monthNames[month]} ${year}`;
+
+                const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) to 6 (Sat)
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const prevMonthLastDate = new Date(year, month, 0).getDate();
+
+                const dropdown = document.getElementById('itStaffDropdown');
+                const selectedEmail = dropdown ? dropdown.value : '';
+
+                let busyApiUrl = `/api/dashboard/busy-dates?year=${year}&month=${month + 1}`;
+                if (selectedEmail) {
+                    busyApiUrl += `&email=${encodeURIComponent(selectedEmail)}`;
+                }
+
+                fetch(busyApiUrl)
+                    .then(res => res.json())
+                    .then(busyDatesList => {
+                        const busySet = new Set(busyDatesList || []);
+                        let gridHtml = '';
+
+                        // Previous month trailing days
+                        for (let i = firstDayOfMonth; i > 0; i--) {
+                            gridHtml += `<span class="text-muted">${prevMonthLastDate - i + 1}</span>`;
+                        }
+
+                        // Current month days
+                        const today = new Date();
+                        for (let day = 1; day <= daysInMonth; day++) {
+                            const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const isBusy = busySet.has(dateStr);
+                            let classes = [];
+                            if (isToday) classes.push('active-date');
+                            if (isBusy) classes.push('has-event');
+                            const classAttr = classes.length > 0 ? `class="${classes.join(' ')}"` : '';
+
+                            gridHtml += `<span ${classAttr} onclick="openItScheduleModal('${dateStr}', ${day}, ${month + 1}, ${year})">${day}</span>`;
+                        }
+
+                        // Next month leading days to complete row
+                        const totalCells = firstDayOfMonth + daysInMonth;
+                        const nextDays = (7 - (totalCells % 7)) % 7;
+                        for (let i = 1; i <= nextDays; i++) {
+                            gridHtml += `<span class="text-muted">${i}</span>`;
+                        }
+
+                        datesGrid.innerHTML = gridHtml;
+                    })
+                    .catch(() => {
+                        let gridHtml = '';
+                        for (let i = firstDayOfMonth; i > 0; i--) {
+                            gridHtml += `<span class="text-muted">${prevMonthLastDate - i + 1}</span>`;
+                        }
+                        const today = new Date();
+                        for (let day = 1; day <= daysInMonth; day++) {
+                            const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const activeClass = isToday ? 'active-date' : '';
+                            gridHtml += `<span class="${activeClass}" onclick="openItScheduleModal('${dateStr}', ${day}, ${month + 1}, ${year})">${day}</span>`;
+                        }
+                        datesGrid.innerHTML = gridHtml;
+                    });
+            };
+
+            document.getElementById('prevMonthBtn')?.addEventListener('click', () => {
+                window.currentCalDate.setMonth(window.currentCalDate.getMonth() - 1);
+                window.renderCalendar(window.currentCalDate);
+            });
+
+            document.getElementById('nextMonthBtn')?.addEventListener('click', () => {
+                window.currentCalDate.setMonth(window.currentCalDate.getMonth() + 1);
+                window.renderCalendar(window.currentCalDate);
+            });
+
+            window.renderCalendar(window.currentCalDate);
+        });
+
+        function onItDropdownChange() {
+            const dropdown = document.getElementById('itStaffDropdown');
+            const infoBox = document.getElementById('selectedItInfoBox');
+            if (!dropdown) return;
+
+            const selectedOpt = dropdown.options[dropdown.selectedIndex];
+            const email = selectedOpt.value;
+
+            if (infoBox) {
+                if (!email) {
+                    infoBox.classList.add('d-none');
+                } else {
+                    const name = selectedOpt.getAttribute('data-name') || 'IT Staff';
+                    const status = selectedOpt.getAttribute('data-status') || 'Available';
+                    const groups = selectedOpt.getAttribute('data-groups') || 'IT Support';
+
+                    document.getElementById('selectedItName').innerText = name;
+                    document.getElementById('selectedItGroups').innerText = `Danh mục hỗ trợ: ${groups}`;
+                    
+                    const badge = document.getElementById('selectedItStatusBadge');
+                    if (badge) {
+                        badge.innerText = status === 'Available' ? 'Available (Sẵn sàng)' : 'Busy (Đang bận)';
+                        badge.className = status === 'Available' ? 'badge bg-success' : 'badge bg-warning text-dark';
+                    }
+
+                    infoBox.classList.remove('d-none');
+                }
+            }
+
+            if (window.renderCalendar && window.currentCalDate) {
+                window.renderCalendar(window.currentCalDate);
+            }
+        }
+
+        function openItScheduleModal(dateStr, day, month, year) {
+            const dropdown = document.getElementById('itStaffDropdown');
+            const selectedEmail = dropdown ? dropdown.value : '';
+
+            const modalTitleStr = document.getElementById('modalSelectedDateStr');
+            if (modalTitleStr) modalTitleStr.innerText = `${day}/${month}/${year}`;
+
+            const modalBody = document.getElementById('itScheduleModalBody');
+            if (modalBody) {
+                modalBody.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="mb-0">Đang tải lịch làm việc nhân viên IT...</p>
+                    </div>
+                `;
+            }
+
+            const modalElem = document.getElementById('itScheduleModal');
+            if (modalElem) {
+                const bsModal = new bootstrap.Modal(modalElem);
+                bsModal.show();
+            }
+
+            let apiUrl = `/api/dashboard/it-schedule?date=${dateStr}`;
+            if (selectedEmail) {
+                apiUrl += `&email=${encodeURIComponent(selectedEmail)}`;
+            }
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (!modalBody) return;
+                    if (!data || data.length === 0) {
+                        modalBody.innerHTML = `<div class="text-center py-4 text-muted"><p>Không tìm thấy nhân viên IT nào phù hợp với bộ lọc trong ngày này.</p></div>`;
+                        return;
+                    }
+
+                    let html = `<div class="row g-3">`;
+                    data.forEach(it => {
+                        const statusBadge = it.status === 'Available' ? 
+                            `<span class="badge bg-success">Sẵn sàng (Available)</span>` : 
+                            `<span class="badge bg-warning text-dark">Bận (Busy)</span>`;
+                        
+                        let ticketsHtml = '';
+                        if (it.tickets && it.tickets.length > 0) {
+                            ticketsHtml = `<div class="mt-2"><strong class="small text-muted d-block mb-1">Danh mục ticket cần xử lý / lịch làm việc:</strong><ul class="list-group list-group-flush small">`;
+                            it.tickets.forEach(t => {
+                                const statusColor = t.status === 'RESOLVED' ? 'text-success' : (t.status === 'PROGRESS' ? 'text-primary' : 'text-warning');
+                                const catLabel = t.category || 'helpdesk';
+                                ticketsHtml += `<li class="list-group-item px-0 py-1 bg-transparent border-0"><i class="fa-solid fa-ticket me-1 ${statusColor}"></i> <strong>#${t.id}</strong> [${catLabel}] ${t.title} <span class="badge bg-secondary ms-1">${t.status}</span></li>`;
+                            });
+                            ticketsHtml += `</ul></div>`;
+                        } else {
+                            ticketsHtml = `<p class="small text-muted mb-0 mt-2"><i class="fa-solid fa-check-circle text-success me-1"></i> Chưa có ticket giao riêng trong ngày.</p>`;
+                        }
+
+                        html += `
+                            <div class="col-md-6">
+                                <div class="card border rounded-3 p-3 shadow-sm h-100 bg-light bg-opacity-50">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-user-gear me-2 text-primary"></i>${it.name}</h6>
+                                            <small class="text-muted d-block">${it.email}</small>
+                                            <small class="text-primary fw-semibold">Danh mục: ${it.groupLabels || 'IT Support'}</small>
+                                        </div>
+                                        <div>${statusBadge}</div>
+                                    </div>
+                                    ${ticketsHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                    modalBody.innerHTML = html;
+                })
+                .catch(err => {
+                    if (modalBody) {
+                        modalBody.innerHTML = `<div class="alert alert-danger mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi khi tải danh sách lịch làm việc IT!</div>`;
+                    }
+                });
+        }
+    </script>
+</body>
+</html>
