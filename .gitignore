@@ -49,3 +49,7 @@ Desktop.ini
 
 # ===== Du lieu van hanh (selfie cham cong, bien ban ban giao) - khong phai ma nguon =====
 data/
+
+# ===== Mat khau / khoa bi mat - tuyet doi khong dua vao git =====
+application-local.properties
+**/application-local.properties
