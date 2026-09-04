@@ -53,3 +53,7 @@ data/
 # ===== Mat khau / khoa bi mat - tuyet doi khong dua vao git =====
 application-local.properties
 **/application-local.properties
+
+# ===== File .env chua mat khau =====
+.env
+**/.env
