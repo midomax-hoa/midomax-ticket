@@ -50,6 +50,9 @@ public class WorkReport {
     @Column(name = "parent_id")
     private Long parentId; // ID của công việc cha (nếu là việc con / sub-task)
 
+    @Column(name = "created_by", nullable = false)
+    private String createdBy; // Username người tạo công việc / báo cáo
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
@@ -66,6 +69,9 @@ public class WorkReport {
         if (priority == null || priority.isEmpty()) priority = "NORMAL";
         if (loggedHours == null) loggedHours = 0.0;
         if (isTimerRunning == null) isTimerRunning = false;
+        if (createdBy == null || createdBy.trim().isEmpty()) {
+            createdBy = (assignee != null && !assignee.trim().isEmpty()) ? assignee.trim() : "system";
+        }
     }
 
     @PreUpdate
@@ -76,6 +82,9 @@ public class WorkReport {
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
     public String getProjectName() { return projectName; }
     public void setProjectName(String projectName) { this.projectName = projectName; }

@@ -26,8 +26,8 @@ public class AzureUserSyncService {
     @Value("${spring.security.oauth2.client.registration.microsoft.client-secret}")
     private String clientSecret;
 
-    @Value("${azure.graph.tenant-id:}")
-    private String tenantId;
+    // Hardcode tenant ID extracted from issuer-uri
+    private final String tenantId = "62300f55-7b0d-472e-817e-893dbce45424";
 
     public String getAppAccessToken() {
         RestTemplate restTemplate = new RestTemplate();

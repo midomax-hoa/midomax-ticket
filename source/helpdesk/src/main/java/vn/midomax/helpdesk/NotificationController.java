@@ -30,17 +30,20 @@ public class NotificationController {
         }
     }
 
-    private List<String> getRecipientKeys(Authentication auth, String paramUser) {
+    /**
+     * Danh tính người nhận LUÔN lấy từ phiên đăng nhập. Trước đây có nhận thêm tham số
+     * ?user= để thay thế khi chưa đăng nhập — cộng với việc endpoint để permitAll thì
+     * người ngoài chỉ cần đoán email là đọc được chuông của nhân viên. Đã bỏ hẳn.
+     */
+    private List<String> getRecipientKeys(Authentication auth) {
         Set<String> keys = new HashSet<>();
         keys.add("ALL");
-        
-        String username = "Guest";
-        if (auth != null && auth.getName() != null && !auth.getName().isEmpty()) {
-            username = auth.getName();
-        } else if (paramUser != null && !paramUser.trim().isEmpty()) {
-            username = paramUser.trim();
+
+        if (auth == null || auth.getName() == null || auth.getName().isEmpty()) {
+            return new ArrayList<>(keys); // chưa đăng nhập: chỉ thấy thông báo chung
         }
-        
+        String username = auth.getName();
+
         keys.add(username);
         keys.add(username.toLowerCase());
 
@@ -71,15 +74,15 @@ public class NotificationController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<List<Notification>> getNotifications(Authentication auth, @RequestParam(value = "user", required = false) String paramUser) {
-        List<String> recipients = getRecipientKeys(auth, paramUser);
+    public ResponseEntity<List<Notification>> getNotifications(Authentication auth) {
+        List<String> recipients = getRecipientKeys(auth);
         List<Notification> list = notificationRepository.findTop20ByRecipientInOrderByCreatedAtDesc(recipients);
         return ResponseEntity.ok(list);
     }
 
     @GetMapping("/unread-count")
-    public ResponseEntity<Map<String, Object>> getUnreadCount(Authentication auth, @RequestParam(value = "user", required = false) String paramUser) {
-        List<String> recipients = getRecipientKeys(auth, paramUser);
+    public ResponseEntity<Map<String, Object>> getUnreadCount(Authentication auth) {
+        List<String> recipients = getRecipientKeys(auth);
         long count = notificationRepository.countByRecipientInAndReadStatusFalse(recipients);
         Map<String, Object> res = new HashMap<>();
         res.put("count", count);
@@ -87,8 +90,8 @@ public class NotificationController {
     }
 
     @PostMapping("/mark-read")
-    public ResponseEntity<Map<String, Object>> markAllAsRead(Authentication auth, @RequestParam(value = "user", required = false) String paramUser) {
-        List<String> recipients = getRecipientKeys(auth, paramUser);
+    public ResponseEntity<Map<String, Object>> markAllAsRead(Authentication auth) {
+        List<String> recipients = getRecipientKeys(auth);
         List<Notification> unread = notificationRepository.findByRecipientInAndReadStatusFalse(recipients);
         for (Notification n : unread) {
             n.setReadStatus(true);
@@ -100,9 +103,11 @@ public class NotificationController {
     }
 
     @PostMapping("/mark-read/{id}")
-    public ResponseEntity<Map<String, Object>> markOneAsRead(@PathVariable("id") Long id) {
+    public ResponseEntity<Map<String, Object>> markOneAsRead(@PathVariable("id") Long id, Authentication auth) {
         Optional<Notification> opt = notificationRepository.findById(id);
-        if (opt.isPresent()) {
+        // Chỉ đánh dấu được thông báo gửi cho chính mình — trước đây nhận ID trần nên
+        // ai cũng tắt được chuông của người khác.
+        if (opt.isPresent() && getRecipientKeys(auth).contains(opt.get().getRecipient())) {
             Notification n = opt.get();
             n.setReadStatus(true);
             notificationRepository.save(n);

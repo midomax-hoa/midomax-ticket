@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Chấm Công - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
+        .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30,58,138,0.12); }
+
+        /* ===== LỊCH CHẤM CÔNG ===== */
+        /* Bảng rất rộng (tới 31 cột ngày) nên cuộn ngang trong khung, cột tên ghim trái. */
+        /* Nút chọn văn phòng (máy chấm công) — bấm là lọc ngay người của văn phòng đó */
+        .office-chip { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 30px;
+                       border: 1px solid #e5e7eb; background: #fff; color: #475569; font-size: 13.5px; font-weight: 600;
+                       text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+        .office-chip:hover { border-color: #99f6e4; background: #f0fdfa; color: #0d9488; }
+        .office-chip.active { background: #0d9488; border-color: #0d9488; color: #fff; box-shadow: 0 4px 10px -2px rgba(13,148,136,0.4); }
+        .office-chip .count { background: rgba(0,0,0,0.06); border-radius: 20px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; }
+        .office-chip.active .count { background: rgba(255,255,255,0.25); }
+
+        /* Khung bảng gọn trong màn hình: cuộn cả ngang lẫn dọc BÊN TRONG khung,
+           header dính trên, cột nhân viên dính trái — không kéo dài cả trang nữa */
+        .calendar-scroll { overflow: auto; max-height: calc(100vh - 330px); min-height: 320px; border: 1px solid #e5e7eb; border-radius: 10px; }
+        .calendar-table { border-collapse: separate; border-spacing: 0; font-size: 12px; margin: 0; width: auto; min-width: 100%; }
+        .calendar-table th, .calendar-table td { border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; padding: 6px 4px; text-align: center; white-space: nowrap; }
+        .calendar-table thead th { background: #f8fafc; color: #475569; font-weight: 600; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; z-index: 3; }
+        .calendar-table thead th.weekend { background: #fef2f2; color: #b91c1c; }
+
+        .col-emp { position: sticky; left: 0; z-index: 4; background: #fff; text-align: left !important; min-width: 200px; box-shadow: 2px 0 4px rgba(0,0,0,0.04); }
+        .calendar-table thead th.col-emp { z-index: 6; background: #f8fafc; }
+        .calendar-table tbody tr:hover td { background-color: #f8fafc; }
+        .calendar-table tbody tr:hover td.col-emp { background-color: #f1f5f9; }
+
+        .emp-name { font-weight: 600; color: #1e3a8a; font-size: 13px; }
+        .emp-meta { font-size: 11px; color: #6b7280; }
+
+        .day-cell { cursor: pointer; min-width: 42px; height: 44px; transition: 0.15s; }
+        .day-cell:hover { outline: 2px solid #1e3a8a; outline-offset: -2px; }
+        /* background/padding: đè lại .mark của BOOTSTRAP — nó trùng tên class và tô nền
+           vàng + đệm cho mọi phần tử .mark, làm mỗi ô lịch hiện một vạch vàng vô nghĩa. */
+        .day-cell .mark { font-weight: 700; font-size: 13px; line-height: 1.1; background: transparent; padding: 0; }
+        .day-cell .mark span { background: transparent; padding: 0; }
+        .day-cell .sub { font-size: 9px; color: #6b7280; line-height: 1.1; }
+
+        /* Màu theo trạng thái — đọc được ý nghĩa chỉ bằng cách liếc bảng. */
+        .st-OK      { background: #dcfce7; } .st-OK .mark      { color: #15803d; }
+        .st-LATE    { background: #fef9c3; } .st-LATE .mark    { color: #a16207; }
+        .st-MISSING { background: #ffedd5; } .st-MISSING .mark { color: #c2410c; }
+        /* Nửa buổi (đi công tác) — chờ Giấy bổ sung công, không tính đi trễ */
+        .st-HALF    { background: #f0fdfa; } .st-HALF .mark    { color: #0d9488; }
+        /* Dấu đơn nghỉ phép / bổ sung công trên ô ngày */
+        .req-dot { position: absolute; top: 2px; left: 3px; font-size: 9px; line-height: 1; opacity: 0.9; }
+        .req-wait { filter: grayscale(0.2); }
+        .req-no { opacity: 0.4; }
+        /* Vắng: nền rất nhạt, chỉ chữ V đỏ. Nền đậm thì vài chục ô vắng liền nhau
+           thành một mảng đỏ đặc, màu đỏ mất luôn vai trò tín hiệu ngoại lệ. */
+        .st-ABSENT  { background: #fef7f7; } .st-ABSENT .mark  { color: #dc2626; }
+        .st-LEAVE   { background: #dbeafe; } .st-LEAVE .mark   { color: #1d4ed8; }
+        .st-HOLIDAY { background: #ede9fe; } .st-HOLIDAY .mark { color: #6d28d9; }
+        .st-OFF     { background: #f8fafc; } .st-OFF .mark     { color: #cbd5e1; }
+        /* Chưa đến ngày làm việc: ô để TRỐNG hẳn. Một tháng có ~6.000 ô như vậy,
+           in số 0 vào từng ô chỉ tạo nhiễu chứ không thêm thông tin nào. */
+        .st-NONE    { background: #ffffff; } .st-NONE .mark    { color: #cbd5e1; }
+        /* Hôm nay đã vào ca, chưa quét ra */
+        .st-WORKING { background: #ecfeff; } .st-WORKING .mark { color: #0891b2; }
+        .manual-dot { position: absolute; top: 2px; right: 3px; width: 5px; height: 5px; border-radius: 50%; background: #1e3a8a; }
+        .day-cell-wrap { position: relative; }
+
+        /* Cột cuối tuần tô nhạt suốt chiều dọc cho mắt có nhịp tuần — chỉ áp lên ô
+           chưa có dữ liệu, ô có trạng thái thật vẫn giữ nguyên màu trạng thái. */
+        td.col-weekend.st-NONE, td.col-weekend.st-OFF { background: #faf6f6; }
+
+        /* Cột HÔM NAY: hai vạch xanh dọc làm mốc neo, đè được lên mọi màu nền. */
+        td.col-today { box-shadow: inset 2px 0 0 #60a5fa, inset -2px 0 0 #60a5fa; }
+        .calendar-table thead th.col-today { background: #dbeafe; color: #1d4ed8; }
+
+        /* Sọc nền xen kẽ dòng để theo hàng ngang 35 cột không bị lệch mắt.
+           Chỉ áp lên ô trống / cột tên / cột tổng — không đè màu trạng thái. */
+        .calendar-table tbody tr:nth-child(even) td.st-NONE { background: #fafbfd; }
+        .calendar-table tbody tr:nth-child(even) td.col-emp { background: #fafbfd; }
+        .calendar-table tbody tr:nth-child(even) td.col-weekend.st-NONE { background: #f8f4f5; }
+
+        .col-total { background: #f8fafc; font-weight: 700; color: #1e3a8a; min-width: 60px; }
+        /* Tổng bằng 0 thì làm mờ: liếc một phát là thấy ngay ai có muộn / tăng ca / vắng */
+        .col-total.t-zero { color: #cbd5e1; font-weight: 400; }
+        .legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #475569; margin-right: 14px; }
+        .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('attendance')}"></div>
+    <div class="main-content" id="main-content">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Lịch Chấm Công</h4>
+                    <small class="text-muted">Dữ liệu lấy từ máy chấm công, tổng hợp theo ca làm việc</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <form th:action="@{/attendance/sync}" method="post" class="d-inline">
+                    <input type="hidden" name="month" th:value="${month}">
+                    <input type="hidden" name="year" th:value="${year}">
+                    <button type="submit" class="btn btn-primary fw-semibold shadow-sm" style="background:#1e3a8a; border:none;" title="Tải dữ liệu từ tất cả máy chấm công">
+                        <i class="fa-solid fa-download"></i><span class="d-none d-md-inline ms-1"> Tải từ máy</span>
+                    </button>
+                </form>
+                <form th:action="@{/attendance/rebuild}" method="post" class="d-inline">
+                    <input type="hidden" name="month" th:value="${month}">
+                    <input type="hidden" name="year" th:value="${year}">
+                    <button type="submit" class="btn btn-outline-primary fw-semibold shadow-sm" title="Tính lại công của tháng đang xem">
+                        <i class="fa-solid fa-calculator"></i><span class="d-none d-md-inline ms-1"> Tính lại công</span>
+                    </button>
+                </form>
+                <a th:href="@{/attendance/shifts}" class="btn btn-outline-secondary fw-semibold shadow-sm" title="Ca làm việc">
+                    <i class="fa-solid fa-clock"></i><span class="d-none d-md-inline ms-1"> Ca làm việc</span>
+                </a>
+                <a th:href="@{/attendance/devices}" class="btn btn-outline-secondary fw-semibold shadow-sm" title="Máy chấm công">
+                    <i class="fa-solid fa-fingerprint"></i><span class="d-none d-md-inline ms-1"> Máy chấm công</span>
+                </a>
+                <a th:href="@{/attendance/gps-audit}" class="btn btn-outline-secondary fw-semibold shadow-sm" title="Soát các lần chấm công GPS">
+                    <i class="fa-solid fa-location-dot"></i><span class="d-none d-md-inline ms-1"> Chấm GPS</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Trạng thái tự động đồng bộ: để nhân sự biết số liệu có đang tự cập nhật không,
+             và phát hiện sớm máy chấm công mất mạng thay vì tưởng nhân viên nghỉ. -->
+        <div class="d-flex align-items-center gap-2 mb-3" style="font-size:12px; color:#64748b;">
+            <i class="fa-solid fa-rotate" style="color:#16a34a;"></i>
+            <span th:if="${autoSyncAt != null}">
+                Hệ thống tự tải dữ liệu lúc 12h trưa và 12h khuya. Lần gần nhất:
+                <b th:text="${#temporals.format(autoSyncAt,'HH:mm dd/MM')}"></b>
+                <span th:if="${autoSyncResult}" th:text="' — ' + ${autoSyncResult}"></span>
+            </span>
+            <span th:if="${autoSyncAt == null}">
+                Hệ thống tự tải dữ liệu lúc 12h trưa (chấm công sáng) và 12h khuya (chấm công chiều).
+                Chưa có lượt nào chạy kể từ lần khởi động gần nhất.
+            </span>
+        </div>
+
+        <!-- ALERTS -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- CHỌN VĂN PHÒNG: bấm một nút là ra người chấm công ở máy đó -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a th:href="@{/attendance(month=${month}, year=${year}, department=${selectedDept}, search=${searchQuery})}"
+               class="office-chip" th:classappend="${selectedDeviceId == null} ? 'active' : ''">
+                <i class="fa-solid fa-building-user"></i> Tất cả văn phòng
+                <span class="count" th:text="${totalPeople}">0</span>
+            </a>
+            <a th:each="d : ${devices}"
+               th:href="@{/attendance(month=${month}, year=${year}, department=${selectedDept}, deviceId=${d.id}, search=${searchQuery})}"
+               class="office-chip" th:classappend="${selectedDeviceId != null and selectedDeviceId == d.id} ? 'active' : ''">
+                <i class="fa-solid fa-fingerprint"></i> <span th:text="${d.name}">Kho HCM</span>
+                <span class="count" th:text="${peopleCountByDevice.get(d.id)} ?: 0">0</span>
+            </a>
+        </div>
+
+        <div class="widget-card">
+
+            <!-- CHỌN THÁNG & LỌC -->
+            <form action="/attendance" method="get" class="mb-3">
+                <!-- Giữ văn phòng đang chọn khi lọc tháng / phòng ban / tìm kiếm -->
+                <input type="hidden" name="deviceId" th:value="${selectedDeviceId}">
+                <div class="row g-2 align-items-end">
+                    <div class="col-auto">
+                        <a class="btn btn-outline-secondary"
+                           th:href="@{/attendance(month=${prevMonth.monthValue}, year=${prevMonth.year}, department=${selectedDept}, deviceId=${selectedDeviceId}, search=${searchQuery})}"
+                           title="Tháng trước"><i class="fa-solid fa-chevron-left"></i></a>
+                    </div>
+                    <div class="col-auto" style="width: 120px;">
+                        <label class="form-label">Tháng</label>
+                        <select name="month" class="form-select">
+                            <option th:each="m : ${#numbers.sequence(1,12)}" th:value="${m}" th:text="'Tháng ' + ${m}" th:selected="${m == month}"></option>
+                        </select>
+                    </div>
+                    <div class="col-auto" style="width: 110px;">
+                        <label class="form-label">Năm</label>
+                        <input type="number" name="year" class="form-control" th:value="${year}" min="2020" max="2100">
+                    </div>
+                    <div class="col-md-3">
+                        <!-- Nhãn là "Địa điểm" vì giá trị trong ô này thực chất là tên văn phòng /
+                             máy chấm công (188Bis, 40MD...): hồ sơ nhân sự chưa có phòng ban nên
+                             hệ thống rơi về tên máy. Tham số vẫn tên department để không vỡ link cũ. -->
+                        <label class="form-label">Địa điểm</label>
+                        <select name="department" class="form-select">
+                            <option value="">-- Tất cả địa điểm --</option>
+                            <option th:each="dept : ${departments}" th:value="${dept}" th:text="${dept}" th:selected="${dept == selectedDept}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Tìm nhân viên</label>
+                        <input type="text" name="search" th:value="${searchQuery}" class="form-control" placeholder="🔍 Mã NV hoặc tên...">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a;"><i class="fa-solid fa-filter"></i> Lọc</button>
+                    </div>
+                    <div class="col-auto">
+                        <a class="btn btn-outline-secondary"
+                           th:href="@{/attendance(month=${nextMonth.monthValue}, year=${nextMonth.year}, department=${selectedDept}, deviceId=${selectedDeviceId}, search=${searchQuery})}"
+                           title="Tháng sau"><i class="fa-solid fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- CHÚ THÍCH MÀU -->
+            <div class="legend mb-3">
+                <span><i style="background:#dcfce7"></i> Đủ công</span>
+                <span><i style="background:#fef9c3"></i> Muộn / về sớm</span>
+                <span><i style="background:#f0fdfa; border:1px solid #99f6e4"></i> Nửa buổi (chờ bổ sung công)</span>
+                <span><i style="background:#ffedd5"></i> Thiếu lần quét</span>
+                <span><i style="background:#fef7f7; border:1px solid #fecaca"></i> Vắng (V)</span>
+                <span><i style="background:#dbeafe"></i> Nghỉ phép</span>
+                <span><i style="background:#ede9fe"></i> Nghỉ lễ</span>
+                <span><i style="background:#f8fafc; border:1px solid #e5e7eb"></i> Ngày nghỉ</span>
+                <span><i style="background:#ffffff; border:1px dashed #cbd5e1"></i> Trống = chưa đến ngày</span>
+                <span><i style="background:#fff; border-left:2px solid #60a5fa; border-right:2px solid #60a5fa; border-radius:0;"></i> Hôm nay</span>
+                <span><i style="background:#1e3a8a; border-radius:50%; width:8px; height:8px;"></i> Đã sửa tay</span>
+            </div>
+
+            <!-- BẢNG LỊCH -->
+            <div class="calendar-scroll">
+                <table class="calendar-table">
+                    <thead>
+                        <tr>
+                            <th class="col-emp">Nhân viên</th>
+                            <th th:each="d : ${dayHeaders}"
+                                th:classappend="|${d.weekend ? 'weekend' : ''}${todayDay != null and d.day == todayDay ? ' col-today' : ''}|">
+                                <div th:text="${d.day}">1</div>
+                                <div style="font-weight:400; font-size:10px;" th:text="${d.weekdayLabel}">T2</div>
+                            </th>
+                            <th class="col-total">Công</th>
+                            <th class="col-total">Muộn<br><span style="font-weight:400;font-size:10px;">(phút)</span></th>
+                            <th class="col-total">Tăng ca<br><span style="font-weight:400;font-size:10px;">(phút)</span></th>
+                            <th class="col-total">Vắng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${rows}">
+                            <td class="col-emp">
+                                <a th:href="@{/attendance/user(employeeCode=${row.employeeCode}, deviceId=${row.deviceId}, month=${month}, year=${year})}" class="text-decoration-none">
+                                    <!-- Tên + mã trên một dòng; người chưa có tên (tên = mã) thì không in mã
+                                         lần hai — trước đây mã bị lặp ở cả hai dòng, cột tên rất rối. -->
+                                    <div class="emp-name">
+                                        <span th:text="${row.fullName}">Nguyễn Văn A</span>
+                                        <span th:if="${row.employeeCode != row.fullName}"
+                                              style="font-weight:400; color:#94a3b8;" th:text="'· ' + ${row.employeeCode}">· NV001</span>
+                                    </div>
+                                    <div class="emp-meta">
+                                        <!-- Văn phòng (máy) — phân biệt người trùng mã giữa các văn phòng -->
+                                        <span th:if="${row.deviceName != null}" style="color:#0d9488; font-weight:600;"
+                                              th:text="${row.deviceName}">188Bis</span>
+                                        <span th:if="${row.deviceName != null}"> · </span><span th:text="${row.shiftName}">Hành chính</span>
+                                    </div>
+                                </a>
+                            </td>
+
+                            <td th:each="d : ${dayHeaders}"
+                                th:with="rec=${row.days.get(d.day)},
+                                         req=${requestByPersonDay.get((row.deviceId == null ? '-' : row.deviceId) + '|' + row.employeeCode + '|' + year + '-' + (month < 10 ? '0' + month : month) + '-' + (d.day < 10 ? '0' + d.day : d.day))}"
+                                class="day-cell day-cell-wrap"
+                                th:classappend="|${rec != null ? 'st-' + rec.status : 'st-NONE'}${d.weekend ? ' col-weekend' : ''}${todayDay != null and d.day == todayDay ? ' col-today' : ''}|"
+                                th:attr="data-record-id=${rec != null} ? ${rec.id} : null,
+                                         data-employee=${row.fullName},
+                                         data-day=${d.day},
+                                         data-status=${rec != null} ? ${rec.status} : '',
+                                         data-workdays=${rec != null} ? ${rec.workDays} : '',
+                                         data-in=${rec != null and rec.firstIn != null} ? ${#temporals.format(rec.firstIn,'HH:mm')} : '',
+                                         data-out=${rec != null and rec.lastOut != null} ? ${#temporals.format(rec.lastOut,'HH:mm')} : '',
+                                         data-late=${rec != null} ? ${rec.lateMinutes} : '',
+                                         data-early=${rec != null} ? ${rec.earlyMinutes} : '',
+                                         data-ot=${rec != null} ? ${rec.otMinutes} : '',
+                                         data-note=${rec != null and rec.note != null} ? ${rec.note} : '',
+                                         data-req-type=${req != null} ? ${req.typeLabel} : '',
+                                         data-req-status=${req != null} ? ${req.statusLabel} : '',
+                                         data-req-state=${req != null} ? ${req.status} : '',
+                                         data-req-reason=${req != null} ? ${req.reason} : '',
+                                         data-req-detail=${req != null} ? (${req.type == 'SUPPLEMENT'} ? ${req.durationLabel} : ${req.leaveTypeLabel}) : '',
+                                         data-req-range=${req != null} ? (${#temporals.format(req.requestDate,'dd/MM/yyyy')} + ' → ' + ${#temporals.format(req.effectiveToDate,'dd/MM/yyyy')}) : '',
+                                         data-req-id=${req != null} ? ${req.id} : '',
+                                         data-req-who=${req != null} ? (${req.requesterFullName} ?: ${req.requesterName}) : '',
+                                         data-req-dept=${req != null and req.department != null} ? ${req.department} : '',
+                                         data-req-phone=${req != null and req.phone != null} ? ${req.phone} : '',
+                                         data-req-days=${req != null and req.totalDays != null} ? ${req.totalDays} : '',
+                                         data-req-supporter=${req != null and req.supporter != null} ? ${req.supporter} : '',
+                                         data-req-sent=${req != null and req.createdAt != null} ? ${#temporals.format(req.createdAt,'dd/MM/yyyy HH:mm')} : '',
+                                         data-req-head=${req != null and req.headBy != null} ? (${req.headBy} + (${req.headAt != null} ? ' · ' + ${#temporals.format(req.headAt,'dd/MM HH:mm')} : '')) : '',
+                                         data-req-hr=${req != null and req.hrBy != null} ? (${req.hrBy} + (${req.hrAt != null} ? ' · ' + ${#temporals.format(req.hrAt,'dd/MM HH:mm')} : '')) : '',
+                                         data-req-reject=${req != null and req.rejectBy != null} ? (${req.rejectBy} + (${req.rejectReason != null} ? ' — ' + ${req.rejectReason} : '')) : ''"
+                                th:onclick="'openDayEditor(this)'">
+
+                                <span th:if="${rec != null and rec.manualOverride}" class="manual-dot"></span>
+                                <!-- Dấu đơn: nhân sự nhìn ô là biết ngày đó có xin phép / bổ sung công -->
+                                <span th:if="${req != null}" class="req-dot"
+                                      th:classappend="${req.status == 'APPROVED'} ? 'req-ok' : (${req.status == 'REJECTED'} ? 'req-no' : 'req-wait')"
+                                      th:title="${req.typeLabel} + ' — ' + ${req.statusLabel}">📝</span>
+
+                                <div th:if="${rec != null}">
+                                    <div class="mark" th:switch="${rec.status}">
+                                        <span th:case="'LEAVE'">P</span>
+                                        <span th:case="'HOLIDAY'">L</span>
+                                        <span th:case="'ABSENT'">V</span>
+                                        <span th:case="'MISSING'">?</span>
+                                        <span th:case="'OFF'">–</span>
+                                        <!-- Chưa đến ngày làm: để TRỐNG. In 0 vào ~6.000 ô chỉ tạo nhiễu. -->
+                                        <span th:case="'NONE'"></span>
+                                        <span th:case="'WORKING'">•</span>
+                                        <span th:case="*" th:text="${#numbers.formatDecimal(rec.workDays, 1, 1)}">1.0</span>
+                                    </div>
+                                    <div class="sub" th:if="${rec.firstIn != null and rec.lastOut != null}"
+                                         th:text="${#temporals.format(rec.firstIn,'HH:mm')} + '-' + ${#temporals.format(rec.lastOut,'HH:mm')}">08:00-17:30</div>
+                                    <div class="sub" th:if="${rec.firstIn != null and rec.lastOut == null}"
+                                         th:text="${#temporals.format(rec.firstIn,'HH:mm')}">08:00</div>
+                                </div>
+                            </td>
+
+                            <!-- Tổng bằng 0 làm mờ đi — chỉ người có số liệu mới nổi lên -->
+                            <td class="col-total" th:classappend="${row.totalWorkDays == 0} ? 't-zero'"
+                                th:text="${#numbers.formatDecimal(row.totalWorkDays, 1, 1)}">22.0</td>
+                            <td class="col-total" th:classappend="${row.totalLateMinutes == 0} ? 't-zero'"
+                                th:text="${row.totalLateMinutes}">0</td>
+                            <td class="col-total" th:classappend="${row.totalOtMinutes == 0} ? 't-zero'"
+                                th:text="${row.totalOtMinutes}">0</td>
+                            <td class="col-total" th:classappend="${row.absentDays == 0} ? 't-zero'"
+                                th:text="${row.absentDays}">0</td>
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(rows)}">
+                            <td colspan="40" class="text-center text-muted py-4">
+                                Chưa có nhân viên nào khớp bộ lọc.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PHÂN TRANG PHÍA MÁY CHỦ.
+                 Trước đây phân trang bằng JavaScript: máy chủ vẫn gửi đủ 239 người
+                 (trang ~8 MB, hơn 29.000 thẻ HTML) rồi mới ẩn bớt bằng JS — nặng máy
+                 mà chẳng tiết kiệm được gì. Giờ mỗi lần chỉ gửi đúng số người của trang. -->
+            <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2"
+                 th:if="${totalPages > 1}">
+                <span class="text-muted" style="font-size:13px;">
+                    Trang <b th:text="${currentPage}">1</b>/<span th:text="${totalPages}">1</span>
+                    — nhân viên <span th:text="${fromIdx}">1</span>-<span th:text="${toIdx}">25</span>
+                    trên <span th:text="${totalRows}">0</span>
+                </span>
+                <div class="btn-group btn-group-sm">
+                    <a class="btn btn-outline-secondary"
+                       th:classappend="${currentPage <= 1} ? 'disabled' : ''"
+                       th:href="@{/attendance(month=${month}, year=${year}, department=${param.department}, deviceId=${param.deviceId}, search=${param.search}, page=${currentPage - 1})}">
+                        <i class="fa-solid fa-chevron-left me-1"></i> Trước
+                    </a>
+                    <a class="btn btn-outline-secondary"
+                       th:classappend="${currentPage >= totalPages} ? 'disabled' : ''"
+                       th:href="@{/attendance(month=${month}, year=${year}, department=${param.department}, deviceId=${param.deviceId}, search=${param.search}, page=${currentPage + 1})}">
+                        Sau <i class="fa-solid fa-chevron-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <p class="text-muted mt-3 mb-0" style="font-size:12px;">
+                Bấm vào một ô ngày để xem chi tiết hoặc sửa tay (nghỉ phép, nghỉ lễ, xác nhận công).
+                Ô đã sửa tay có chấm xanh và sẽ không bị ghi đè khi tính lại công.
+            </p>
+
+        </div>
+    </div>
+
+    <!-- MODAL SỬA MỘT NGÀY CÔNG -->
+    <div class="modal fade" id="dayModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form th:action="@{/attendance/record/save}" method="post" class="modal-content">
+                <input type="hidden" name="id" id="dm-id">
+                <input type="hidden" name="month" th:value="${month}">
+                <input type="hidden" name="year" th:value="${year}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" style="color:#1e3a8a;">
+                        <i class="fa-solid fa-pen-to-square me-2"></i>Chi tiết ngày công
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p class="mb-3">
+                        <strong id="dm-employee"></strong><br>
+                        <span class="text-muted" id="dm-date"></span>
+                    </p>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6"><small class="text-muted">Giờ vào</small><div id="dm-in" class="fw-semibold">—</div></div>
+                        <div class="col-6"><small class="text-muted">Giờ ra</small><div id="dm-out" class="fw-semibold">—</div></div>
+                        <div class="col-4"><small class="text-muted">Đi muộn</small><div id="dm-late" class="fw-semibold">—</div></div>
+                        <div class="col-4"><small class="text-muted">Về sớm</small><div id="dm-early" class="fw-semibold">—</div></div>
+                        <div class="col-4"><small class="text-muted">Tăng ca</small><div id="dm-ot" class="fw-semibold">—</div></div>
+                    </div>
+
+                    <!-- ĐƠN NHÂN VIÊN ĐÃ NỘP: gọn thành một nút, bấm mới mở nội dung form -->
+                    <div class="mb-3" id="dm-req-box" style="display:none;">
+                        <button type="button" id="dm-req-toggle" onclick="toggleReqDetail()"
+                                class="w-100 d-flex align-items-center gap-2"
+                                style="border:none; border-radius:10px; padding:10px 14px; text-align:left; font-size:13.5px; font-weight:600;">
+                            <i class="fa-solid fa-file-pen"></i>
+                            <span id="dm-req-summary">Nhân viên có đơn</span>
+                            <i class="fa-solid fa-chevron-down ms-auto" id="dm-req-caret" style="font-size:11px;"></i>
+                        </button>
+
+                        <div id="dm-req-detail-panel" style="display:none; padding:12px 14px 4px;">
+                        <div class="fw-bold mb-2" style="font-size:14px;">
+                            <span id="dm-req-type">Nghỉ phép</span>
+                            <span class="fw-normal" style="font-size:12px; opacity:.75;" id="dm-req-code"></span>
+                        </div>
+
+                        <table style="width:100%; font-size:13px;">
+                            <tr><td style="width:145px; opacity:.7; padding:2px 0;">Người đề nghị</td>
+                                <td class="fw-semibold" id="dm-req-who">—</td></tr>
+                            <tr><td style="opacity:.7; padding:2px 0;">Bộ phận</td>
+                                <td id="dm-req-dept">—</td></tr>
+                            <tr id="dm-req-phone-row"><td style="opacity:.7; padding:2px 0;">SĐT liên lạc</td>
+                                <td id="dm-req-phone">—</td></tr>
+                            <tr><td style="opacity:.7; padding:2px 0;" id="dm-req-detail-label">Loại phép</td>
+                                <td class="fw-semibold" id="dm-req-detail">—</td></tr>
+                            <tr><td style="opacity:.7; padding:2px 0;">Từ ngày → đến hết</td>
+                                <td class="fw-semibold" id="dm-req-range">—</td></tr>
+                            <tr><td style="opacity:.7; padding:2px 0;">Tổng số ngày</td>
+                                <td class="fw-semibold" id="dm-req-days">—</td></tr>
+                            <tr id="dm-req-supporter-row"><td style="opacity:.7; padding:2px 0;">Người hỗ trợ CV</td>
+                                <td id="dm-req-supporter">—</td></tr>
+                            <tr><td style="opacity:.7; padding:2px 0; vertical-align:top;">Lý do</td>
+                                <td id="dm-req-reason">—</td></tr>
+                            <tr><td style="opacity:.7; padding:2px 0;">Gửi lúc</td>
+                                <td id="dm-req-sent">—</td></tr>
+                        </table>
+
+                        <div style="font-size:13px; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.15);">
+                            <div><b>Trạng thái:</b> <span id="dm-req-status">Chờ duyệt</span></div>
+                            <div id="dm-req-head-row" style="display:none;">Trưởng bộ phận duyệt: <span id="dm-req-head"></span></div>
+                            <div id="dm-req-hr-row" style="display:none;">Phòng NSHT duyệt: <span id="dm-req-hr"></span></div>
+                            <div id="dm-req-reject-row" style="display:none;">Từ chối bởi: <span id="dm-req-reject"></span></div>
+                        </div>
+
+                        <a id="dm-req-file" href="#" target="_blank" class="btn btn-sm btn-outline-primary fw-semibold mt-2">
+                            <i class="fa-solid fa-file-word me-1"></i>Tải phiếu theo mẫu (.docx)
+                        </a>
+                        <div style="font-size:12.5px;" class="mt-2 mb-0" id="dm-req-hint"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Trạng thái</label>
+                        <select name="status" id="dm-status" class="form-select">
+                            <option value="OK">Đủ công</option>
+                            <option value="LATE">Đi muộn / về sớm</option>
+                            <option value="MISSING">Thiếu lần quét</option>
+                            <option value="HALF">Nửa buổi (chờ bổ sung công)</option>
+                            <option value="ABSENT">Vắng không phép</option>
+                            <option value="LEAVE">Nghỉ phép</option>
+                            <option value="HOLIDAY">Nghỉ lễ</option>
+                            <option value="OFF">Ngày nghỉ</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Số công</label>
+                        <select name="workDays" id="dm-workdays" class="form-select">
+                            <option value="1.0">1 công</option>
+                            <option value="0.5">0.5 công</option>
+                            <option value="0.0">0 công</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-1">
+                        <label class="form-label">Ghi chú</label>
+                        <input type="text" name="note" id="dm-note" class="form-control" placeholder="Lý do điều chỉnh...">
+                    </div>
+                    <small class="text-muted">Lưu ở đây sẽ đánh dấu ngày này là sửa tay.</small>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger me-auto" id="dm-reset">
+                        <i class="fa-solid fa-rotate-left"></i> Bỏ sửa tay
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary" style="background:#1e3a8a;">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Form phụ để bỏ đánh dấu sửa tay -->
+    <form th:action="@{/attendance/record/reset}" method="post" id="resetForm" style="display:none;">
+        <input type="hidden" name="id" id="reset-id">
+        <input type="hidden" name="month" th:value="${month}">
+        <input type="hidden" name="year" th:value="${year}">
+    </form>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        const toggleBtn = document.getElementById('toggle-btn');
+        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+
+        if (mobileToggleBtn) {
+            mobileToggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                sidebar.classList.add('active');
+            });
+        }
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (window.innerWidth > 991) {
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                } else {
+                    sidebar.classList.remove('active');
+                }
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 991 && sidebar.classList.contains('active')) {
+                if (!sidebar.contains(e.target) && e.target !== mobileToggleBtn) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+
+        /*<![CDATA[*/
+        var currentMonth = /*[[${month}]]*/ 1;
+        var currentYear  = /*[[${year}]]*/ 2026;
+
+        /** Mở/thu gọn phần nội dung đơn trong popup. */
+        function toggleReqDetail() {
+            var panel = document.getElementById('dm-req-detail-panel');
+            var caret = document.getElementById('dm-req-caret');
+            var open = panel.style.display === 'none';
+            panel.style.display = open ? '' : 'none';
+            caret.className = 'fa-solid ms-auto ' + (open ? 'fa-chevron-up' : 'fa-chevron-down');
+        }
+
+        function openDayEditor(cell) {
+            var id = cell.getAttribute('data-record-id');
+            if (!id) {
+                // Ngày chưa có dữ liệu: chưa tải log hoặc chưa tính công.
+                alert('Ngày này chưa có dữ liệu chấm công. Bấm "Tải từ máy" rồi "Tính lại công".');
+                return;
+            }
+
+            document.getElementById('dm-id').value = id;
+            document.getElementById('reset-id').value = id;
+            document.getElementById('dm-employee').textContent = cell.getAttribute('data-employee');
+            document.getElementById('dm-date').textContent =
+                'Ngày ' + cell.getAttribute('data-day') + '/' + currentMonth + '/' + currentYear;
+
+            var dash = function(v, suffix) { return (v === '' || v === null) ? '—' : v + (suffix || ''); };
+            document.getElementById('dm-in').textContent    = dash(cell.getAttribute('data-in'));
+            document.getElementById('dm-out').textContent   = dash(cell.getAttribute('data-out'));
+            document.getElementById('dm-late').textContent  = dash(cell.getAttribute('data-late'), ' phút');
+            document.getElementById('dm-early').textContent = dash(cell.getAttribute('data-early'), ' phút');
+            document.getElementById('dm-ot').textContent    = dash(cell.getAttribute('data-ot'), ' phút');
+
+            document.getElementById('dm-status').value = cell.getAttribute('data-status') || 'OK';
+            var wd = parseFloat(cell.getAttribute('data-workdays'));
+            document.getElementById('dm-workdays').value = isNaN(wd) ? '0.0' : wd.toFixed(1);
+            document.getElementById('dm-note').value = cell.getAttribute('data-note') || '';
+
+            // Đơn nghỉ phép / bổ sung công nhân viên đã nộp cho ngày này
+            var reqState = cell.getAttribute('data-req-state') || '';
+            var box = document.getElementById('dm-req-box');
+            if (reqState) {
+                box.style.display = '';
+                var g = function (name) { return cell.getAttribute('data-req-' + name) || ''; };
+                var put = function (id, value) {
+                    document.getElementById(id).textContent = value || '—';
+                };
+                // Hiện/ẩn cả dòng khi trường đó không có dữ liệu
+                var putRow = function (rowId, id, value) {
+                    document.getElementById(rowId).style.display = value ? '' : 'none';
+                    document.getElementById(id).textContent = value || '—';
+                };
+
+                var isSupplement = g('type').indexOf('Bổ sung') >= 0;
+                put('dm-req-type', g('type'));
+                document.getElementById('dm-req-code').textContent =
+                    isSupplement ? '(mẫu QĐ-NSHT.MDM-03.01)' : '(mẫu QĐ-NSHT.MDM-03.03)';
+                document.getElementById('dm-req-detail-label').textContent =
+                    isSupplement ? 'Số thời gian' : 'Loại phép';
+
+                put('dm-req-who', g('who'));
+                put('dm-req-dept', g('dept'));
+                putRow('dm-req-phone-row', 'dm-req-phone', g('phone'));
+                put('dm-req-detail', g('detail'));
+                put('dm-req-range', g('range'));
+                put('dm-req-days', g('days') ? g('days') + ' ngày' : '');
+                putRow('dm-req-supporter-row', 'dm-req-supporter', g('supporter'));
+                put('dm-req-reason', g('reason'));
+                put('dm-req-sent', g('sent'));
+                put('dm-req-status', g('status'));
+
+                putRow('dm-req-head-row', 'dm-req-head', g('head'));
+                putRow('dm-req-hr-row', 'dm-req-hr', g('hr'));
+                putRow('dm-req-reject-row', 'dm-req-reject', g('reject'));
+
+                document.getElementById('dm-req-file').href = '/attendance/requests/' + g('id') + '/file';
+
+                // Nút gọn: màu + tóm tắt theo trạng thái, chi tiết chỉ mở khi bấm
+                var btn = document.getElementById('dm-req-toggle');
+                var hint = document.getElementById('dm-req-hint');
+                var base = 'border:1px solid; border-radius:10px; padding:10px 14px; text-align:left;'
+                         + ' font-size:13.5px; font-weight:600; width:100%; display:flex; align-items:center; gap:8px;';
+                if (reqState === 'APPROVED') {
+                    btn.style.cssText = base + 'background:#dcfce7; border-color:#86efac; color:#15803d;';
+                    hint.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Đơn đã duyệt đủ 2 cấp — ngày này đã được tính <b>đủ công</b>.';
+                } else if (reqState === 'REJECTED') {
+                    btn.style.cssText = base + 'background:#fee2e2; border-color:#fca5a5; color:#b91c1c;';
+                    hint.innerHTML = '<i class="fa-solid fa-circle-xmark me-1"></i>Đơn bị từ chối — công giữ nguyên theo máy chấm công.';
+                } else {
+                    btn.style.cssText = base + 'background:#fef3c7; border-color:#fcd34d; color:#b45309;';
+                    hint.innerHTML = '<i class="fa-solid fa-hourglass-half me-1"></i>Đơn <b>chưa duyệt xong</b> — duyệt ở mục '
+                        + '<a href="/attendance/requests">Duyệt Đơn Từ</a> thì hệ thống tự tính đủ công cho ngày này.';
+                }
+                document.getElementById('dm-req-summary').textContent =
+                    'Đơn ' + g('type').toLowerCase() + ' — ' + g('status');
+
+                // Mặc định thu gọn mỗi lần mở modal
+                document.getElementById('dm-req-detail-panel').style.display = 'none';
+                document.getElementById('dm-req-caret').className = 'fa-solid fa-chevron-down ms-auto';
+            } else {
+                box.style.display = 'none';
+            }
+
+            new bootstrap.Modal(document.getElementById('dayModal')).show();
+        }
+
+        document.getElementById('dm-reset').addEventListener('click', function() {
+            document.getElementById('resetForm').submit();
+        });
+        /*]]>*/
+    </script>
+</body>
+</html>

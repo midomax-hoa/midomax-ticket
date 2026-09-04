@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chấm Công Online - Midomax IT</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #eef2f7; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #fff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 14px; padding: 22px; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .table td, .table th { vertical-align: middle; font-size: 13.5px; }
+        .row-nocode td { color: #94a3b8; }
+        .badge-gps { background: #ccfbf1; color: #0f766e; }
+        .badge-free { background: #e0f2fe; color: #0369a1; }
+        .badge-off { background: #f1f5f9; color: #94a3b8; }
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('gps-perms')}"></div>
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Chấm Công Online</h4>
+                    <small class="text-muted">Chọn nhiều người rồi cấp / bỏ quyền chấm công GPS một lượt</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-card">
+            <!-- Thanh thao tác hàng loạt -->
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <input type="text" id="qFilter" class="form-control" style="max-width:260px;"
+                       placeholder="🔍 Tìm tên / email / mã chấm công...">
+                <span class="ms-auto text-muted" style="font-size:13px;">
+                    Đã chọn <b id="selCount">0</b> người:
+                </span>
+                <button class="btn btn-sm btn-success fw-semibold" onclick="bulk('office')">
+                    <i class="fa-solid fa-building me-1"></i>Chấm tại văn phòng
+                </button>
+                <button class="btn btn-sm btn-info text-white fw-semibold" onclick="bulk('free')">
+                    <i class="fa-solid fa-plane me-1"></i>Chấm mọi nơi (công tác)
+                </button>
+                <button class="btn btn-sm btn-outline-danger fw-semibold" onclick="bulk('deny')">
+                    <i class="fa-solid fa-ban me-1"></i>Tắt chấm online
+                </button>
+            </div>
+            <div class="text-muted mb-2" style="font-size:12px;">
+                <i class="fa-solid fa-circle-info me-1"></i>
+                Mỗi người chỉ ở MỘT trong ba trạng thái: <b>Chấm tại văn phòng</b> (trong bán kính),
+                <b>Chấm mọi nơi</b> (đi công tác/du lịch — không cần bật gì thêm, vẫn lưu vị trí + selfie),
+                hoặc <b>Tắt</b>. Hết đợt công tác thì bấm lại "Chấm tại văn phòng" là về chế độ thường.
+                Người chưa gán mã chấm công + văn phòng thì cấp xong vẫn chưa chấm được — gán ở Phân Quyền User trước.
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="permTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:34px;"><input type="checkbox" class="form-check-input" id="checkAll"></th>
+                            <th>Nhân viên</th>
+                            <th>Mã CC</th>
+                            <th>Văn phòng</th>
+                            <th>Trạng thái chấm online</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="u : ${users}" th:classappend="${u.employeeCode == null or u.attendanceDeviceId == null} ? 'row-nocode' : ''"
+                            th:attr="data-search=${(u.fullName != null ? u.fullName : '') + ' ' + (u.email != null ? u.email : '') + ' ' + (u.employeeCode != null ? u.employeeCode : '')}">
+                            <td><input type="checkbox" class="form-check-input row-check" th:value="${u.id}"></td>
+                            <td>
+                                <div class="fw-semibold" th:text="${u.fullName != null ? u.fullName : u.email}">Nguyễn Văn A</div>
+                                <div class="text-muted" style="font-size:11.5px;" th:text="${u.email}">a@midomax.vn</div>
+                            </td>
+                            <td th:text="${u.employeeCode != null ? u.employeeCode : '—'}">398</td>
+                            <td th:text="${u.attendanceDeviceId != null and deviceNames.containsKey(u.attendanceDeviceId)} ? ${deviceNames.get(u.attendanceDeviceId)} : '—'">188Bis</td>
+                            <td>
+                                <!-- Một badge duy nhất cho một trạng thái — công tác đè lên chế độ văn phòng -->
+                                <span th:if="${u.gpsFreeLocation}" class="badge badge-free"><i class="fa-solid fa-plane me-1"></i>Chấm mọi nơi (công tác)</span>
+                                <span th:if="${u.gpsCheckinAllowed and !u.gpsFreeLocation}" class="badge badge-gps"><i class="fa-solid fa-building me-1"></i>Chấm tại văn phòng</span>
+                                <span th:if="${!u.gpsCheckinAllowed and !u.gpsFreeLocation}" class="badge badge-off">Tắt</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var checkAll = document.getElementById('checkAll');
+
+        function visibleChecks() {
+            return Array.prototype.filter.call(document.querySelectorAll('.row-check'), function (c) {
+                return c.closest('tr').style.display !== 'none';
+            });
+        }
+        function updateCount() {
+            var n = document.querySelectorAll('.row-check:checked').length;
+            document.getElementById('selCount').textContent = n;
+        }
+        checkAll.addEventListener('change', function () {
+            visibleChecks().forEach(function (c) { c.checked = checkAll.checked; });
+            updateCount();
+        });
+        document.getElementById('permTable').addEventListener('change', function (e) {
+            if (e.target.classList.contains('row-check')) updateCount();
+        });
+
+        // Lọc nhanh theo tên / email / mã — lọc tại chỗ, không gọi server
+        document.getElementById('qFilter').addEventListener('input', function () {
+            var q = this.value.trim().toLowerCase();
+            document.querySelectorAll('#permTable tbody tr').forEach(function (tr) {
+                tr.style.display = (tr.getAttribute('data-search') || '').toLowerCase().indexOf(q) >= 0 ? '' : 'none';
+            });
+        });
+
+        window.bulk = function (action) {
+            var ids = Array.prototype.map.call(document.querySelectorAll('.row-check:checked'), function (c) { return c.value; });
+            if (!ids.length) { alert('Chưa chọn ai — tích chọn nhân viên trong bảng trước.'); return; }
+            fetch('/attendance/gps-permissions/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: ids, action: action })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.ok) location.reload();
+                else alert('Có lỗi, thử lại.');
+            })
+            .catch(function () { alert('Gửi thất bại — kiểm tra mạng rồi thử lại.'); });
+        };
+    })();
+    </script>
+</body>
+</html>

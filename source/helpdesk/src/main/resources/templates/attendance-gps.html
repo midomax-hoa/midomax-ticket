@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chấm Công GPS - Midomax IT</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #fff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+
+        .person-item { display: block; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px;
+                       margin-bottom: 8px; text-decoration: none; color: inherit; transition: 0.15s; }
+        .person-item:hover { border-color: #99f6e4; background: #f0fdfa; color: inherit; }
+        .person-item.active { border-color: #0d9488; background: #f0fdfa; box-shadow: 0 4px 10px -4px rgba(13,148,136,0.35); }
+
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 12px 10px; white-space: nowrap; }
+        .table-custom td { padding: 10px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 13px; }
+        .selfie-thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; cursor: zoom-in; }
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('attendance')}"></div>
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Chấm Công GPS</h4>
+                    <small class="text-muted">Chọn một nhân viên để xem lịch sử chấm + selfie của người đó</small>
+                </div>
+            </div>
+            <a th:href="@{/attendance}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Về lịch công
+            </a>
+        </div>
+
+        <div class="row g-3">
+            <!-- DANH SÁCH NGƯỜI: không có ảnh nào — trang mở lên rất nhẹ -->
+            <div class="col-lg-4">
+                <div class="widget-card">
+                    <div class="fw-bold mb-2" style="font-size:14px; color:#475569;">
+                        <i class="fa-solid fa-users me-1"></i>Nhân viên đã chấm GPS
+                    </div>
+                    <a th:each="p : ${people}" class="person-item"
+                       th:href="@{/attendance/gps-audit(code=${p.employeeCode}, deviceId=${p.deviceId})}"
+                       th:classappend="${p.employeeCode == selCode and p.deviceId == selDeviceId} ? 'active' : ''">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold" style="font-size:14px; color:#1e293b;"
+                                     th:text="${personNames.get((p.deviceId == null ? '-' : p.deviceId) + '|' + p.employeeCode)} ?: ${p.employeeCode}">Tên NV</div>
+                                <div class="text-muted" style="font-size:12px;">
+                                    <span th:text="${p.employeeCode}">398</span> ·
+                                    <span th:text="${p.deviceName}">188Bis</span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold" style="color:#0d9488;" th:text="${p.count} + ' lần'">12 lần</div>
+                                <div class="text-muted" style="font-size:11px;" th:text="${p.lastPunchStr}">04/09 10:58</div>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="text-muted" style="font-size:12.5px;" th:if="${#lists.isEmpty(people)}">
+                        Chưa có ai chấm GPS.
+                    </div>
+                </div>
+            </div>
+
+            <!-- LỊCH SỬ CỦA NGƯỜI ĐƯỢC CHỌN — ảnh tải lười, cuộn tới đâu tải tới đó -->
+            <div class="col-lg-8">
+                <div class="widget-card" th:if="${selCode == null}">
+                    <div class="text-center text-muted py-5">
+                        <i class="fa-solid fa-hand-pointer fs-2 mb-2 d-block"></i>
+                        Chọn một nhân viên bên trái để xem lịch sử chấm công GPS của họ.
+                    </div>
+                </div>
+                <div class="widget-card" th:if="${selCode != null}">
+                    <div class="fw-bold mb-2" style="font-size:14px; color:#475569;">
+                        <i class="fa-solid fa-clock-rotate-left me-1"></i>
+                        100 lần gần nhất của <span style="color:#0d9488;" th:text="${selCode}">398</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Selfie</th>
+                                    <th>Thời điểm</th>
+                                    <th>Tài khoản bấm</th>
+                                    <th>Cách VP</th>
+                                    <th>Độ chính xác</th>
+                                    <th>IP</th>
+                                    <th>Vị trí</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="c : ${checkins}">
+                                    <td>
+                                        <!-- loading=lazy: cuộn tới đâu trình duyệt mới tải ảnh tới đó -->
+                                        <img th:src="@{'/attendance/gps/selfie/' + ${c.id}}" class="selfie-thumb"
+                                             loading="lazy" alt="selfie"
+                                             th:attr="onclick=|window.open('/attendance/gps/selfie/${c.id}','_blank')|">
+                                    </td>
+                                    <td th:text="${c.punchTimeStr}">04/09/2026 08:30:00</td>
+                                    <td th:text="${c.userEmail}">a@midomax.vn</td>
+                                    <td>
+                                        <!-- Công tác: hiện địa chỉ nơi chấm; trong bán kính: khoảng cách tới văn phòng -->
+                                        <span th:if="${c.freeLocation}" style="font-size:12px;"
+                                              th:text="${c.locationName != null ? c.locationName : 'Vị trí theo định vị (xem bản đồ)'}">Quận 1, TP.HCM</span>
+                                        <span th:if="${!c.freeLocation}"
+                                              th:text="${c.distanceM != null} ? ${#numbers.formatDecimal(c.distanceM,0,0)} + ' m' : '—'">25 m</span>
+                                        <span th:if="${c.freeLocation}" class="badge bg-info ms-1">Công tác</span>
+                                    </td>
+                                    <td>
+                                        <span th:text="${c.accuracyM != null} ? '±' + ${#numbers.formatDecimal(c.accuracyM,0,0)} + ' m' : '—'"
+                                              th:style="${c.accuracyM != null and c.accuracyM > 200} ? 'color:#dc2626; font-weight:700;' : ''">±15 m</span>
+                                    </td>
+                                    <td style="font-family:Consolas,monospace; font-size:12px;" th:text="${c.ipAddress}">192.168.1.5</td>
+                                    <td>
+                                        <a th:if="${c.mapUrl != null}" th:href="${c.mapUrl}" target="_blank"
+                                           class="btn btn-sm btn-outline-primary" title="Mở Google Maps">
+                                            <i class="fa-solid fa-map-location-dot"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(checkins)}">
+                                    <td colspan="7" class="text-center text-muted py-4">Người này chưa có lần chấm nào.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

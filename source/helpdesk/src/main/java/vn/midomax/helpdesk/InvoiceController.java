@@ -11,13 +11,17 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import vn.midomax.helpdesk.storage.StorageService;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Sổ Hóa Đơn: lưu trữ hóa đơn / phiếu chi của công ty.
@@ -33,14 +37,15 @@ public class InvoiceController {
     private InvoiceEntryRepository invoiceRepository;
 
     @Autowired
-    private ExcelService excelService;
+    private BudgetItemRepository budgetItemRepository;
 
     @Autowired
-    private StorageService storageService;
+    private ExcelService excelService;
 
     /** Danh sách sổ hóa đơn kèm bộ lọc và các ô tổng. */
     @GetMapping
     public String list(@RequestParam(value = "period", required = false) String period,
+                       @RequestParam(value = "budgetItemId", required = false) Long budgetItemId,
                        @RequestParam(value = "category", required = false) String category,
                        @RequestParam(value = "vendor", required = false) String vendor,
                        @RequestParam(value = "expenseType", required = false) String expenseType,
@@ -52,8 +57,20 @@ public class InvoiceController {
                 blankToNull(period), blankToNull(category), blankToNull(vendor),
                 blankToNull(expenseType), blankToNull(paymentStatus), blankToNull(search));
 
-        long total = 0, paid = 0, unpaid = 0, recurring = 0;
+        // Lọc theo hạng mục ngân sách (bấm từ Quỹ Chi Tiêu sang để xem hóa đơn của hạng mục đó)
+        if (budgetItemId != null) {
+            entries = entries.stream()
+                    .filter(e -> budgetItemId.equals(e.getBudgetItemId()))
+                    .toList();
+        }
+
+        long total = 0, paid = 0, unpaid = 0, recurring = 0, cancelled = 0;
         for (InvoiceEntry e : entries) {
+            // Đã hủy / hoàn tiền: tiền không chi ra thật -> tách riêng, không cộng vào tổng
+            if (e.isCancelled()) {
+                cancelled += e.getAmount();
+                continue;
+            }
             total += e.getAmount();
             if (InvoiceEntry.STATUS_PAID.equals(e.getPaymentStatus())) {
                 paid += e.getAmount();
@@ -64,6 +81,7 @@ public class InvoiceController {
                 recurring += e.getAmount();
             }
         }
+        model.addAttribute("cancelledAmount", cancelled);
 
         model.addAttribute("entries", entries);
         model.addAttribute("entryCount", entries.size());
@@ -73,11 +91,19 @@ public class InvoiceController {
         model.addAttribute("recurringAmount", recurring);
 
         model.addAttribute("periods", invoiceRepository.findDistinctPeriods());
-        model.addAttribute("categories", invoiceRepository.findDistinctCategories());
-        model.addAttribute("subCategories", invoiceRepository.findDistinctSubCategories());
-        model.addAttribute("vendors", invoiceRepository.findDistinctVendors());
+        // DISTINCT cua SQL van coi "A" va "a " la hai gia tri -> gop them mot lan o day
+        model.addAttribute("categories", dedupe(invoiceRepository.findDistinctCategories()));
+        model.addAttribute("subCategories", dedupe(invoiceRepository.findDistinctSubCategories()));
+        model.addAttribute("vendors", dedupe(invoiceRepository.findDistinctVendors()));
+        // Hạng mục ngân sách để gán ngay lúc nhập hóa đơn -> ăn thẳng vào % của Quỹ Chi Tiêu
+        model.addAttribute("budgetItems", budgetItemRepository.findAll());
 
         model.addAttribute("fPeriod", period);
+        model.addAttribute("fBudgetItemId", budgetItemId);
+        if (budgetItemId != null) {
+            budgetItemRepository.findById(budgetItemId).ifPresent(b ->
+                    model.addAttribute("fBudgetItemName", b.getGroupCategory() + " › " + b.getItemName()));
+        }
         model.addAttribute("fCategory", category);
         model.addAttribute("fVendor", vendor);
         model.addAttribute("fExpenseType", expenseType);
@@ -95,6 +121,7 @@ public class InvoiceController {
                       @RequestParam(value = "poRef", required = false) String poRef,
                       @RequestParam(value = "category", required = false) String category,
                       @RequestParam(value = "subCategory", required = false) String subCategory,
+                      @RequestParam(value = "budgetItemId", required = false) Long budgetItemId,
                       @RequestParam(value = "vendor", required = false) String vendor,
                       @RequestParam("description") String description,
                       @RequestParam("amount") String amountRaw,
@@ -117,6 +144,7 @@ public class InvoiceController {
         e.setPoRef(trim(poRef));
         e.setCategory(trim(category));
         e.setSubCategory(trim(subCategory));
+        e.setBudgetItemId(budgetItemId);
         e.setVendor(trim(vendor));
         e.setDescription(description.trim());
         e.setAmount(amount);
@@ -152,6 +180,7 @@ public class InvoiceController {
                          @RequestParam(value = "poRef", required = false) String poRef,
                          @RequestParam(value = "category", required = false) String category,
                          @RequestParam(value = "subCategory", required = false) String subCategory,
+                         @RequestParam(value = "budgetItemId", required = false) Long budgetItemId,
                          @RequestParam(value = "vendor", required = false) String vendor,
                          @RequestParam("description") String description,
                          @RequestParam("amount") String amountRaw,
@@ -174,6 +203,7 @@ public class InvoiceController {
         e.setPoRef(trim(poRef));
         e.setCategory(trim(category));
         e.setSubCategory(trim(subCategory));
+        e.setBudgetItemId(budgetItemId);
         e.setVendor(trim(vendor));
         if (description != null && !description.isBlank()) e.setDescription(description.trim());
         e.setExpenseType(InvoiceEntry.normalizeExpenseType(expenseType));
@@ -224,8 +254,11 @@ public class InvoiceController {
         for (InvoiceEntry e : result.getEntries()) {
             List<InvoiceEntry> existing = invoiceRepository.findByVendorAndAmountAndTransDate(
                     e.getVendor(), e.getAmount(), e.getTransDate());
+            // So khop bo qua khac biet hoa/thuong va khoang trang: hai file Excel cung mot khoan chi
+            // nhung go lech mot dau cach van phai coi la trung, neu khong se nhan doi du lieu.
+            String key = normKey(e.getDescription());
             boolean already = existing.stream()
-                    .anyMatch(x -> java.util.Objects.equals(x.getDescription(), e.getDescription()));
+                    .anyMatch(x -> java.util.Objects.equals(normKey(x.getDescription()), key));
             if (already) {
                 duplicated++;
                 continue;
@@ -281,7 +314,31 @@ public class InvoiceController {
 
     /** Lưu file chứng từ đính kèm, trả null nếu không có file. */
     private String storeAttachment(MultipartFile file) {
-        return storageService.store(file);
+        if (file == null || file.isEmpty()) return null;
+        try {
+            String original = file.getOriginalFilename();
+            String ext = "";
+            if (original != null && original.contains(".")) {
+                ext = original.substring(original.lastIndexOf("."));
+            }
+            String newFilename = UUID.randomUUID() + ext;
+
+            String uploadDirSrc = "src/main/resources/static/uploads/";
+            Path pathSrc = Paths.get(uploadDirSrc + newFilename);
+            Files.createDirectories(pathSrc.getParent());
+            Files.copy(file.getInputStream(), pathSrc, StandardCopyOption.REPLACE_EXISTING);
+
+            // Copy sang target/classes để xem được ngay không cần restart
+            String uploadDirTarget = "target/classes/static/uploads/";
+            Path pathTarget = Paths.get(uploadDirTarget + newFilename);
+            Files.createDirectories(pathTarget.getParent());
+            Files.copy(pathSrc, pathTarget, StandardCopyOption.REPLACE_EXISTING);
+
+            return "/uploads/" + newFilename;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private String blankToNull(String s) {
@@ -289,7 +346,25 @@ public class InvoiceController {
     }
 
     private String trim(String s) {
-        return s == null ? null : s.trim();
+        return ExcelService.normalizeText(s);
+    }
+
+    /** Gop cac gia tri chi khac nhau o hoa/thuong hoac khoang trang, giu ban xuat hien dau tien. */
+    private static List<String> dedupe(List<String> values) {
+        if (values == null) return java.util.Collections.emptyList();
+        java.util.LinkedHashMap<String, String> seen = new java.util.LinkedHashMap<>();
+        for (String v : values) {
+            String n = ExcelService.normalizeText(v);
+            if (n == null) continue;
+            seen.putIfAbsent(n.toLowerCase(), n);
+        }
+        return new java.util.ArrayList<>(seen.values());
+    }
+
+    /** Khoa so sanh: bo dau cach thua va khong phan biet hoa/thuong. */
+    private static String normKey(String s) {
+        String n = ExcelService.normalizeText(s);
+        return n == null ? "" : n.toLowerCase();
     }
 
     private LocalDate parseDate(String raw) {

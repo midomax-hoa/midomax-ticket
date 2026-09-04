@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sổ Hóa Đơn - Midomax IT</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; }
@@ -27,6 +27,8 @@
 
         .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
         .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 9px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
         .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30,58,138,0.12); }
 
         /* Bảng nhiều cột: cho phép cuộn ngang trong khung, không đẩy cả trang */
@@ -44,6 +46,7 @@
         .b-paid { background: #dcfce7; color: #15803d; }
         .b-unpaid { background: #fee2e2; color: #b91c1c; }
         .b-pending { background: #fef3c7; color: #b45309; }
+        .b-cancelled { background: #f1f5f9; color: #64748b; text-decoration: line-through; }
         .b-recurring { background: #e0e7ff; color: #3730a3; }
         .b-once { background: #f1f5f9; color: #475569; }
         .cat-chip { font-size: 11.5px; color: #475569; }
@@ -65,7 +68,9 @@
     <div class="main-content" id="main-content">
 
         <div class="topbar">
-            <div>
+                <!-- Nut mo menu tren dien thoai. .topbar la flex nen dat truc tiep, khong boc them the. -->
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
                 <h4 class="mb-0 fw-bold" style="color:#1e3a8a;">Sổ Hóa Đơn</h4>
                 <div class="text-muted" style="font-size:13px;">Lưu trữ hóa đơn &amp; phiếu chi của công ty</div>
             </div>
@@ -80,6 +85,19 @@
                     <i class="fa-solid fa-plus me-1"></i> Thêm hóa đơn
                 </button>
             </div>
+        </div>
+
+        <!-- Đang xem hóa đơn của một hạng mục ngân sách (bấm từ Quỹ Chi Tiêu sang) -->
+        <div th:if="${fBudgetItemId != null}" class="alert alert-primary d-flex justify-content-between align-items-center py-2" role="alert">
+            <div>
+                <i class="fa-solid fa-filter me-2"></i>
+                Đang lọc theo hạng mục ngân sách: <b th:text="${fBudgetItemName}">OPEX › Gia hạn ChatGPT</b>
+                — <span th:text="${entryCount}">0</span> hóa đơn,
+                tổng <b th:text="${#numbers.formatInteger(totalAmount, 0, 'POINT')} + ' đ'">0 đ</b>
+            </div>
+            <a href="/expenses/invoices" class="btn btn-sm btn-outline-primary fw-semibold">
+                <i class="fa-solid fa-xmark me-1"></i>Bỏ lọc
+            </a>
         </div>
 
         <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -114,6 +132,9 @@
                 <div class="col-md-3 s-stat">
                     <div class="s-label">CHƯA THANH TOÁN</div>
                     <div class="s-value" style="color:#fca5a5;" th:text="${#numbers.formatInteger(unpaidAmount, 1, 'POINT')}">0</div>
+                    <!-- Khoản đã hủy/hoàn tiền tách riêng, không nằm trong tổng số tiền -->
+                    <div class="s-sub" th:if="${cancelledAmount != null and cancelledAmount > 0}"
+                         th:text="'Đã hủy / hoàn: ' + ${#numbers.formatInteger(cancelledAmount, 1, 'POINT')} + ' đ (không tính vào tổng)'">Đã hủy</div>
                     <div class="s-sub">Định kỳ: <span th:text="${#numbers.formatInteger(recurringAmount, 1, 'POINT')}">0</span></div>
                 </div>
             </div>
@@ -164,6 +185,7 @@
                         <option value="PAID" th:selected="${fPaymentStatus == 'PAID'}">Đã thanh toán</option>
                         <option value="UNPAID" th:selected="${fPaymentStatus == 'UNPAID'}">Chưa thanh toán</option>
                         <option value="PENDING" th:selected="${fPaymentStatus == 'PENDING'}">Chờ duyệt</option>
+                        <option value="CANCELLED" th:selected="${fPaymentStatus == 'CANCELLED'}">Đã hủy / hoàn tiền</option>
                     </select>
                     <button type="submit" class="btn btn-primary btn-sm px-3" style="background:#1e3a8a; border:none;">Lọc</button>
                     <a th:href="@{/expenses/invoices}" class="btn btn-outline-secondary btn-sm px-3">Xóa lọc</a>
@@ -195,7 +217,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="e, it : ${entries}">
+                        <tr th:each="e, it : ${entries}" class="ledger-row" th:attr="data-row-id=${e.id}">
                             <td th:text="${it.count}">1</td>
                             <td class="nowrap" th:text="${e.entryDateStr}"></td>
                             <td class="nowrap" th:text="${e.periodLabel}"></td>
@@ -217,7 +239,7 @@
                             </td>
                             <td>
                                 <span class="badge-soft"
-                                      th:classappend="${e.paymentStatus == 'PAID'} ? 'b-paid' : (${e.paymentStatus == 'PENDING'} ? 'b-pending' : 'b-unpaid')"
+                                      th:classappend="${e.paymentStatus == 'PAID'} ? 'b-paid' : (${e.paymentStatus == 'PENDING'} ? 'b-pending' : (${e.paymentStatus == 'CANCELLED'} ? 'b-cancelled' : 'b-unpaid'))"
                                       th:text="${e.paymentStatusLabel}"></span>
                             </td>
                             <td class="nowrap" th:text="${e.enteredBy}"></td>
@@ -230,6 +252,7 @@
                                                  data-poref=${e.poRef},
                                                  data-category=${e.category},
                                                  data-subcategory=${e.subCategory},
+                                                 data-budgetitemid=${e.budgetItemId},
                                                  data-vendor=${e.vendor},
                                                  data-description=${e.description},
                                                  data-amount=${e.amount},
@@ -256,6 +279,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="ledgerPager" class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top"></div>
         </div>
     </div>
 
@@ -290,6 +314,18 @@
                                 <label class="form-label">Phân loại nhỏ</label>
                                 <input type="text" name="subCategory" class="form-control" list="subCategoryList" placeholder="Trang Thiết Bị">
                             </div>
+                            <!-- Gán hạng mục ngân sách: hóa đơn sẽ trừ thẳng vào % của Quỹ Chi Tiêu -->
+                            <div class="col-12">
+                                <label class="form-label">
+                                    Trừ vào hạng mục ngân sách
+                                    <span class="text-muted" style="font-weight:400;">— để hóa đơn này tính vào % đã chi của quỹ</span>
+                                </label>
+                                <select name="budgetItemId" class="form-select">
+                                    <option value="">— Chưa gán ngân sách —</option>
+                                    <option th:each="b : ${budgetItems}" th:value="${b.id}"
+                                            th:text="${b.groupCategory} + ' › ' + ${b.itemName} + ' (cấp ' + ${#numbers.formatInteger(b.allocatedAmount, 0, 'POINT')} + 'đ)'">OPEX › ChatGPT</option>
+                                </select>
+                            </div>
                             <div class="col-md-6">
                                 <label class="form-label">NCC/Người nhận</label>
                                 <input type="text" name="vendor" class="form-control" list="vendorList">
@@ -315,6 +351,7 @@
                                     <option value="PAID">Đã thanh toán</option>
                                     <option value="UNPAID">Chưa thanh toán</option>
                                     <option value="PENDING">Chờ duyệt</option>
+                                    <option value="CANCELLED">Đã hủy / hoàn tiền</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -370,6 +407,17 @@
                                 <label class="form-label">Phân loại nhỏ</label>
                                 <input type="text" name="subCategory" id="ed-subCategory" class="form-control" list="subCategoryList">
                             </div>
+                            <div class="col-12">
+                                <label class="form-label">
+                                    Trừ vào hạng mục ngân sách
+                                    <span class="text-muted" style="font-weight:400;">— để hóa đơn này tính vào % đã chi của quỹ</span>
+                                </label>
+                                <select name="budgetItemId" id="ed-budgetItemId" class="form-select">
+                                    <option value="">— Chưa gán ngân sách —</option>
+                                    <option th:each="b : ${budgetItems}" th:value="${b.id}"
+                                            th:text="${b.groupCategory} + ' › ' + ${b.itemName} + ' (cấp ' + ${#numbers.formatInteger(b.allocatedAmount, 0, 'POINT')} + 'đ)'">OPEX › ChatGPT</option>
+                                </select>
+                            </div>
                             <div class="col-md-6">
                                 <label class="form-label">NCC/Người nhận</label>
                                 <input type="text" name="vendor" id="ed-vendor" class="form-control" list="vendorList">
@@ -395,6 +443,7 @@
                                     <option value="PAID">Đã thanh toán</option>
                                     <option value="UNPAID">Chưa thanh toán</option>
                                     <option value="PENDING">Chờ duyệt</option>
+                                    <option value="CANCELLED">Đã hủy / hoàn tiền</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -464,7 +513,7 @@
         <option th:each="v : ${vendors}" th:value="${v}"></option>
     </datalist>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script>
         function setVal(id, v) {
             var el = document.getElementById(id);
@@ -473,12 +522,14 @@
 
         function openEdit(btn) {
             var d = btn.dataset;
+            if (d.id) sessionStorage.setItem('invoiceFocusId', d.id); // để sau khi lưu quay lại đúng trang
             setVal('ed-id', d.id);
             setVal('ed-transDate', d.transdate);
             setVal('ed-entryDate', d.entrydate);
             setVal('ed-poRef', d.poref);
             setVal('ed-category', d.category);
             setVal('ed-subCategory', d.subcategory);
+            setVal('ed-budgetItemId', d.budgetitemid || '');
             setVal('ed-vendor', d.vendor);
             setVal('ed-description', d.description);
             setVal('ed-notes', d.notes);
@@ -491,7 +542,108 @@
             new bootstrap.Modal(document.getElementById('editModal')).show();
         }
 
+        // ===== PHÂN TRANG SỔ HÓA ĐƠN =====
+        var LEDGER_PAGE_SIZE = 7;
+
+        function setupLedgerPagination() {
+            var pager = document.getElementById('ledgerPager');
+            var rows = Array.prototype.slice.call(document.querySelectorAll('tbody .ledger-row'));
+            if (!pager) return;
+            if (rows.length <= LEDGER_PAGE_SIZE) { pager.style.display = 'none'; return; }
+
+            var totalPages = Math.ceil(rows.length / LEDGER_PAGE_SIZE);
+            var page = parseInt(sessionStorage.getItem('invoiceLedgerPage') || '1', 10);
+            if (isNaN(page) || page < 1 || page > totalPages) page = 1;
+
+            // Sau khi thêm/sửa/xóa: nhảy về đúng trang chứa hóa đơn vừa thao tác
+            var focusId = sessionStorage.getItem('invoiceFocusId');
+            var focusRow = null;
+            if (focusId) {
+                sessionStorage.removeItem('invoiceFocusId');
+                focusRow = document.querySelector('tbody .ledger-row[data-row-id="' + focusId + '"]');
+                if (focusRow) {
+                    var idx = rows.indexOf(focusRow);
+                    if (idx >= 0) page = Math.floor(idx / LEDGER_PAGE_SIZE) + 1;
+                }
+            }
+
+            pager.innerHTML = '<div class="text-muted small ledger-pager-info"></div>' +
+                              '<div class="d-flex align-items-center gap-1 ledger-pager-buttons"></div>';
+            var info = pager.querySelector('.ledger-pager-info');
+            var buttons = pager.querySelector('.ledger-pager-buttons');
+
+            function goTo(p) {
+                page = Math.min(Math.max(1, p), totalPages);
+                render();
+                pager.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+
+            function makeBtn(label, target, opts) {
+                opts = opts || {};
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'btn btn-sm ' + (opts.active ? 'btn-primary' : 'btn-outline-secondary') + ' fw-semibold';
+                b.style.minWidth = '34px';
+                b.innerHTML = label;
+                if (opts.disabled) b.disabled = true;
+                else b.addEventListener('click', function () { goTo(target); });
+                return b;
+            }
+
+            function render() {
+                sessionStorage.setItem('invoiceLedgerPage', String(page));
+                var start = (page - 1) * LEDGER_PAGE_SIZE;
+                var end = start + LEDGER_PAGE_SIZE;
+                rows.forEach(function (r, i) {
+                    r.style.display = (i >= start && i < end) ? '' : 'none';
+                });
+
+                info.textContent = 'Hiển thị ' + (start + 1) + '–' + Math.min(end, rows.length) +
+                    ' trên tổng ' + rows.length + ' hóa đơn  •  Trang ' + page + '/' + totalPages;
+
+                buttons.innerHTML = '';
+                buttons.appendChild(makeBtn('<i class="fa-solid fa-angle-left"></i>', page - 1, { disabled: page === 1 }));
+                var list = [];
+                for (var p = 1; p <= totalPages; p++) {
+                    if (p === 1 || p === totalPages || Math.abs(p - page) <= 2) list.push(p);
+                    else if (list[list.length - 1] !== '...') list.push('...');
+                }
+                list.forEach(function (p) {
+                    if (p === '...') {
+                        var s = document.createElement('span');
+                        s.className = 'px-1 text-muted';
+                        s.textContent = '…';
+                        buttons.appendChild(s);
+                    } else {
+                        buttons.appendChild(makeBtn(String(p), p, { active: p === page }));
+                    }
+                });
+                buttons.appendChild(makeBtn('<i class="fa-solid fa-angle-right"></i>', page + 1, { disabled: page === totalPages }));
+            }
+
+            render();
+
+            if (focusRow) {
+                setTimeout(function () {
+                    focusRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    focusRow.style.transition = 'background-color 0.6s ease';
+                    focusRow.style.backgroundColor = '#fef9c3';
+                    setTimeout(function () { focusRow.style.backgroundColor = ''; }, 1600);
+                }, 150);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
+            setupLedgerPagination();
+
+            // Xóa hóa đơn: nhớ dòng để sau khi xóa vẫn ở lại trang đang xem
+            document.querySelectorAll('tbody .ledger-row form[method="post"]').forEach(function (f) {
+                f.addEventListener('submit', function () {
+                    var row = f.closest('.ledger-row');
+                    if (row) sessionStorage.setItem('invoiceFocusId', row.getAttribute('data-row-id'));
+                });
+            });
+
             // Định dạng tiền khi gõ: chỉ giữ chữ số rồi chấm phân cách nghìn
             document.querySelectorAll('.money-input').forEach(function (el) {
                 el.addEventListener('input', function () {

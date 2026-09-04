@@ -26,6 +26,8 @@ public class InvoiceEntry {
     public static final String STATUS_PAID = "PAID";
     public static final String STATUS_UNPAID = "UNPAID";
     public static final String STATUS_PENDING = "PENDING";
+    /** Đã hủy / hoàn tiền — KHÔNG tính vào tiền đã chi của quỹ. */
+    public static final String STATUS_CANCELLED = "CANCELLED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -72,6 +74,12 @@ public class InvoiceEntry {
     /** Ảnh/file chứng từ đính kèm (/uploads/...). */
     private String attachmentPath;
 
+    /**
+     * Hạng mục ngân sách mà hóa đơn này trừ vào (BudgetItem.id). Null = chưa gán.
+     * Nhờ liên kết này mới đối chiếu được kế hoạch ngân sách với thực chi.
+     */
+    private Long budgetItemId;
+
     private LocalDateTime createdAt;
 
     public InvoiceEntry() {
@@ -93,6 +101,11 @@ public class InvoiceEntry {
     public static String normalizePaymentStatus(String raw) {
         if (raw == null) return STATUS_UNPAID;
         String v = raw.toLowerCase();
+        // Hủy / hoàn tiền phải xét TRƯỚC vì chuỗi có thể kèm chữ "đã thanh toán"
+        if (v.contains("hủy") || v.contains("huy") || v.contains("hoàn tiền") || v.contains("hoan tien")
+                || v.contains("cancel") || v.contains("refund")) {
+            return STATUS_CANCELLED;
+        }
         if (v.contains("đã thanh toán") || v.contains("da thanh toan") || v.contains("paid")) {
             // "unpaid" cũng chứa "paid" nên phải loại trừ trước
             if (v.contains("chưa") || v.contains("chua") || v.contains("unpaid")) return STATUS_UNPAID;
@@ -103,6 +116,20 @@ public class InvoiceEntry {
     }
 
     /** Kỳ kế toán "yyyy-MM" lấy theo ngày giao dịch, thiếu thì lùi về ngày nhập. */
+    public Long getBudgetItemId() { return budgetItemId; }
+    public void setBudgetItemId(Long budgetItemId) { this.budgetItemId = budgetItemId; }
+
+    /** Tháng của hóa đơn (1..12) theo ngày giao dịch; không xác định được thì 0. */
+    public int getMonthOfYear() {
+        LocalDate base = transDate != null ? transDate : entryDate;
+        return base == null ? 0 : base.getMonthValue();
+    }
+
+    public int getYearOfEntry() {
+        LocalDate base = transDate != null ? transDate : entryDate;
+        return base == null ? 0 : base.getYear();
+    }
+
     public static String periodKeyOf(LocalDate transDate, LocalDate entryDate) {
         LocalDate base = transDate != null ? transDate : entryDate;
         if (base == null) return null;
@@ -118,7 +145,16 @@ public class InvoiceEntry {
     public String getPaymentStatusLabel() {
         if (STATUS_PAID.equals(paymentStatus)) return "Đã thanh toán";
         if (STATUS_PENDING.equals(paymentStatus)) return "Chờ duyệt";
+        if (STATUS_CANCELLED.equals(paymentStatus)) return "Đã hủy / hoàn tiền";
         return "Chưa thanh toán";
+    }
+
+    /**
+     * Hóa đơn đã hủy / hoàn tiền thì tiền không thực sự chi ra, nên không được
+     * cộng vào "đã chi" của quỹ, không tính vào tổng và không đối chiếu ngân sách.
+     */
+    public boolean isCancelled() {
+        return STATUS_CANCELLED.equals(paymentStatus);
     }
 
     public String getPeriodLabel() {

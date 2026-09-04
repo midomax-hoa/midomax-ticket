@@ -461,6 +461,23 @@ public class ExcelService {
         return null;
     }
 
+    /**
+     * Chuẩn hóa chuỗi đọc từ Excel: đổi mọi loại khoảng trắng lạ (non-breaking space,
+     * tab, xuống dòng...) thành dấu cách thường, gộp nhiều dấu cách liền nhau thành một,
+     * rồi cắt hai đầu. Không làm vậy thì "License Office 365" và "License  Office 365"
+     * (hoặc bản có NBSP từ Excel) bị coi là hai giá trị khác nhau -> danh sách phân loại
+     * nhỏ bị nhân đôi mỗi lần import thêm file.
+     */
+    public static String normalizeText(String s) {
+        if (s == null) return null;
+        String out = s.replace('\u00A0', ' ')   // non-breaking space
+                      .replace('\u200B', ' ')   // zero-width space
+                      .replace('\uFEFF', ' ')   // BOM
+                      .replaceAll("\s+", " ")
+                      .trim();
+        return out.isEmpty() ? null : out;
+    }
+
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
     }
@@ -473,7 +490,7 @@ public class ExcelService {
             switch (c.getCellType()) {
                 case STRING:
                     String s = c.getStringCellValue();
-                    return s == null ? null : s.trim();
+                    return s == null ? null : normalizeText(s);
                 case NUMERIC:
                     if (DateUtil.isCellDateFormatted(c)) {
                         return c.getLocalDateTimeCellValue().toLocalDate().toString();
@@ -484,7 +501,7 @@ public class ExcelService {
                     return String.valueOf(c.getBooleanCellValue());
                 case FORMULA:
                     try {
-                        return c.getStringCellValue().trim();
+                        return normalizeText(c.getStringCellValue());
                     } catch (Exception e) {
                         return String.valueOf((long) c.getNumericCellValue());
                     }
@@ -787,14 +804,33 @@ public class ExcelService {
                 return items;
             }
 
-            // Format mẫu cũ (9 cột, sheet đầu tiên)
+            // Format file mẫu của hệ thống (sheet đầu tiên).
+            // Cột A..I = thông tin hạng mục, J..U (9..20) = tiền kế hoạch tháng 1..12.
             Sheet sheet = workbook.getSheetAt(0);
             if (sheet == null) return items;
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+
+            // Tìm dòng tiêu đề thay vì mặc định dòng 0: file mẫu có thêm dòng hướng dẫn
+            // phía trên, và người dùng có thể chèn thêm dòng ghi chú của riêng họ.
+            int headerRow = 0;
+            for (int i = 0; i <= Math.min(sheet.getLastRowNum(), 10); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+                String c = getCellString(row, 2);
+                if (c != null && c.toLowerCase().contains("nội dung")) {
+                    headerRow = i;
+                    break;
+                }
+            }
+
+            for (int i = headerRow + 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
                 String itemName = getCellString(row, 2);
                 if (itemName == null || itemName.isBlank()) continue;
+                // Bỏ qua dòng hướng dẫn / dòng tổng nếu người dùng để lại trong file
+                String lower = itemName.trim().toLowerCase();
+                if (lower.startsWith("(") || lower.equals("tổng") || lower.equals("tong")
+                        || lower.startsWith("ví dụ") || lower.startsWith("vi du")) continue;
 
                 BudgetItem item = new BudgetItem();
                 item.setFundId(fundId);
@@ -805,8 +841,21 @@ public class ExcelService {
                 item.setUnitPrice(getCellLong(row, 4));
                 item.setUnit(getCellString(row, 5));
                 item.setQuantity(getCellInt(row, 6));
-                item.setAllocatedAmount(getCellLong(row, 7));
                 item.setNotes(getCellString(row, 8));
+
+                // Kế hoạch 12 tháng (cột J..U). Có điền tháng thì tổng = cộng các tháng,
+                // không điền thì lấy cột "Thành tiền"; thiếu cả hai thì đơn giá × số lượng.
+                long[] months = new long[12];
+                long monthSum = 0;
+                for (int m = 0; m < 12; m++) {
+                    months[m] = getCellLong(row, 9 + m);
+                    monthSum += months[m];
+                }
+                long total = monthSum > 0 ? monthSum : getCellLong(row, 7);
+                if (total <= 0) total = item.getUnitPrice() * item.getQuantity();
+                item.setAllocatedAmount(total);
+                if (monthSum > 0) item.setMonthlyAmountsFromArray(months);
+
                 items.add(item);
             }
         }
@@ -867,43 +916,132 @@ public class ExcelService {
     /** Tạo file Excel mẫu để nhập ngân sách. */
     public ByteArrayInputStream generateSampleBudgetExcel() throws IOException {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Sheet sheet = workbook.createSheet("Ngân sách IT");
-            CellStyle headerStyle = workbook.createCellStyle();
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
+            Sheet sheet = workbook.createSheet("Ngân sách");
 
+            // --- Kiểu ô ---
+            Font headFont = workbook.createFont();
+            headFont.setBold(true);
+            headFont.setColor(IndexedColors.WHITE.getIndex());
+
+            CellStyle headStyle = workbook.createCellStyle();
+            headStyle.setFont(headFont);
+            headStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+            headStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headStyle.setAlignment(HorizontalAlignment.CENTER);
+            headStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            headStyle.setWrapText(true);
+            setAllBorders(headStyle);
+
+            CellStyle monthHeadStyle = workbook.createCellStyle();
+            monthHeadStyle.cloneStyleFrom(headStyle);
+            monthHeadStyle.setFillForegroundColor(IndexedColors.TEAL.getIndex());
+
+            CellStyle moneyStyle = workbook.createCellStyle();
+            moneyStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
+            setAllBorders(moneyStyle);
+
+            CellStyle textStyle = workbook.createCellStyle();
+            setAllBorders(textStyle);
+
+            Font noteFont = workbook.createFont();
+            noteFont.setItalic(true);
+            noteFont.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
+            CellStyle noteStyle = workbook.createCellStyle();
+            noteStyle.setFont(noteFont);
+            noteStyle.setWrapText(true);
+
+            // --- Dòng 0: hướng dẫn ngắn gọn ---
+            Row guide = sheet.createRow(0);
+            guide.setHeightInPoints(42);
+            Cell g = guide.createCell(0);
+            g.setCellValue("HƯỚNG DẪN: Điền dữ liệu từ dòng 3 trở xuống. Bắt buộc có cột \"Nội dung\". "
+                    + "Khoản trả theo tháng (ChatGPT, cước Internet...) thì điền SỐ TIỀN vào các cột Tháng 1–12 — "
+                    + "hệ thống tự cộng thành ngân sách cấp. Khoản mua một lần chỉ cần điền Đơn giá và Số lượng. "
+                    + "Xóa dòng ví dụ màu xám trước khi import.");
+            g.setCellStyle(noteStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 20));
+
+            // --- Dòng 1: tiêu đề cột ---
             String[] headers = {
                 "Chi phí nhóm 2", "Chi phí nhóm 3", "Nội dung (*)", "Mô tả",
                 "Đơn giá", "Đơn vị", "Số lượng", "Thành tiền", "Ghi chú"
             };
-            Row headerRow = sheet.createRow(0);
+            Row headerRow = sheet.createRow(1);
+            headerRow.setHeightInPoints(32);
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerStyle);
-                sheet.setColumnWidth(i, 5000);
+                cell.setCellStyle(headStyle);
+            }
+            for (int m = 0; m < 12; m++) {
+                Cell cell = headerRow.createCell(9 + m);
+                cell.setCellValue("Tháng " + (m + 1));
+                cell.setCellStyle(monthHeadStyle);
             }
 
-            // Dòng dữ liệu mẫu
-            Object[][] sample = {
-                {"Phần cứng", "Laptop/PC", "Laptop Dell i7 16GB", "Dành cho kỹ sư", 25000000L, "Cái", 2, 50000000L, ""},
-                {"Bản quyền", "Phần mềm", "Microsoft 365 Business", "Gói 1 năm/user", 3500000L, "User", 5, 17500000L, "Gia hạn hàng năm"},
-            };
-            for (int r = 0; r < sample.length; r++) {
-                Row row = sheet.createRow(r + 1);
-                for (int c = 0; c < sample[r].length; c++) {
-                    Cell cell = row.createCell(c);
-                    Object val = sample[r][c];
-                    if (val instanceof String)  cell.setCellValue((String) val);
-                    else if (val instanceof Long)    cell.setCellValue((double)(Long) val);
-                    else if (val instanceof Integer) cell.setCellValue((Integer) val);
-                }
-            }
+            // --- Dòng 2..3: ví dụ (người dùng xóa đi) ---
+            // Ví dụ 1: mua một lần -> chỉ đơn giá × số lượng
+            Row r1 = sheet.createRow(2);
+            writeSampleRow(r1, textStyle, moneyStyle,
+                    "Phần cứng", "Laptop/PC", "Laptop Dell i7 16GB", "Dành cho kỹ sư",
+                    25_000_000L, "Cái", 2, 50_000_000L, "Mua một lần", null);
+
+            // Ví dụ 2: trả theo tháng -> điền tiền vào các tháng, để trống Thành tiền
+            long[] monthly = new long[12];
+            for (int m = 5; m < 12; m++) monthly[m] = 3_000_000L; // T6..T12
+            Row r2 = sheet.createRow(3);
+            writeSampleRow(r2, textStyle, moneyStyle,
+                    "Bản quyền", "Phần mềm", "Gia hạn ChatGPT Plus", "Trả hàng tháng",
+                    3_000_000L, "Gói", 1, 0L, "Điền tiền từng tháng, để trống Thành tiền", monthly);
+
+            // --- Độ rộng cột ---
+            int[] widths = {4200, 4200, 8000, 6000, 3600, 2400, 2200, 3800, 5000};
+            for (int i = 0; i < widths.length; i++) sheet.setColumnWidth(i, widths[i]);
+            for (int m = 0; m < 12; m++) sheet.setColumnWidth(9 + m, 3200);
+            sheet.createFreezePane(3, 2); // ghim tiêu đề + 3 cột đầu khi cuộn
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         }
+    }
+
+    /** Ghi một dòng ví dụ trong file mẫu ngân sách. */
+    private void writeSampleRow(Row row, CellStyle textStyle, CellStyle moneyStyle,
+                                String group, String sub, String name, String desc,
+                                long unitPrice, String unit, int qty, long total,
+                                String note, long[] monthly) {
+        setText(row, 0, group, textStyle);
+        setText(row, 1, sub, textStyle);
+        setText(row, 2, name, textStyle);
+        setText(row, 3, desc, textStyle);
+        setMoney(row, 4, unitPrice, moneyStyle);
+        setText(row, 5, unit, textStyle);
+        setMoney(row, 6, qty, moneyStyle);
+        setMoney(row, 7, total, moneyStyle);
+        setText(row, 8, note, textStyle);
+        for (int m = 0; m < 12; m++) {
+            long v = monthly == null ? 0L : monthly[m];
+            setMoney(row, 9 + m, v, moneyStyle);
+        }
+    }
+
+    private void setText(Row row, int col, String value, CellStyle style) {
+        Cell c = row.createCell(col);
+        if (value != null) c.setCellValue(value);
+        c.setCellStyle(style);
+    }
+
+    private void setMoney(Row row, int col, long value, CellStyle style) {
+        Cell c = row.createCell(col);
+        if (value != 0) c.setCellValue(value);
+        c.setCellStyle(style);
+    }
+
+    private void setAllBorders(CellStyle style) {
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
     }
 
     // --- Helper ---

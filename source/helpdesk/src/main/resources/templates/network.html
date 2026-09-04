@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mạng - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); border: 1px solid #e5e7eb; }
+
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
+
+        /* Trang khung: khu chờ nội dung */
+        .coming-box {
+            text-align: center;
+            padding: 70px 20px;
+            color: #64748b;
+        }
+        .coming-box .big-icon {
+            width: 90px; height: 90px; border-radius: 24px;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 38px; color: #1e3a8a; margin-bottom: 18px;
+        }
+        .placeholder-card {
+            border: 1px dashed #cbd5e1; border-radius: 12px; padding: 18px;
+            background: #f8fafc; height: 100%;
+        }
+        .placeholder-card i { color: #1e3a8a; }
+
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/sidebar :: sidebar('network')}"></div>
+
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+                <!-- Nut mo menu tren dien thoai. .topbar la flex nen dat truc tiep, khong boc them the. -->
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                <h4 class="mb-0 fw-bold" style="color:#1e3a8a;">Quản Lý Mạng</h4>
+                <div class="text-muted" style="font-size:13px;">Hạ tầng mạng, thiết bị và đường truyền các chi nhánh</div>
+            </div>
+        </div>
+
+        <div class="widget-card">
+            <div class="coming-box">
+                <div class="big-icon"><i class="fa-solid fa-network-wired"></i></div>
+                <h5 class="fw-bold mb-2" style="color:#1e3a8a;">Phân hệ Mạng đang được xây dựng</h5>
+                <p class="mb-4">Bạn đã được cấp quyền vào phân hệ này. Nội dung chi tiết sẽ bổ sung dần — dự kiến gồm các mục bên dưới.</p>
+
+                <div class="row g-3 text-start" style="max-width: 860px; margin: 0 auto;">
+                    <div class="col-md-4">
+                        <div class="placeholder-card">
+                            <i class="fa-solid fa-server me-2"></i><b>Thiết bị mạng</b>
+                            <div class="text-muted mt-1" style="font-size:13px;">Router, switch, AP wifi từng chi nhánh — vị trí, IP quản trị, tình trạng.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="placeholder-card">
+                            <i class="fa-solid fa-tower-broadcast me-2"></i><b>Đường truyền Internet</b>
+                            <div class="text-muted mt-1" style="font-size:13px;">Nhà cung cấp, gói cước, ngày gia hạn, đầu mối hỗ trợ của từng văn phòng.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="placeholder-card">
+                            <i class="fa-solid fa-diagram-project me-2"></i><b>Sơ đồ mạng</b>
+                            <div class="text-muted mt-1" style="font-size:13px;">Sơ đồ kết nối các chi nhánh, VLAN và dải IP nội bộ.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

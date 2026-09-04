@@ -1,6 +1,5 @@
 package vn.midomax.helpdesk.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -10,29 +9,26 @@ import vn.midomax.helpdesk.Asset;
 import vn.midomax.helpdesk.AssetRepository;
 import vn.midomax.helpdesk.AssetCategory;
 import vn.midomax.helpdesk.AssetCategoryRepository;
+import vn.midomax.helpdesk.Shift;
+import vn.midomax.helpdesk.ShiftRepository;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
-
-    /** Mật khẩu tài khoản admin lúc tạo mới. Production phải đặt qua biến môi trường. */
-    @Value("${app.seed.admin-password:admin123}")
-    private String adminPassword;
-
-    /** Tài khoản "user" chỉ dùng để thử nghiệm, production nên tắt đi. */
-    @Value("${app.seed.demo-user:true}")
-    private boolean seedDemoUser;
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetRepository assetRepository;
+    private final ShiftRepository shiftRepository;
 
     public DataSeeder(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder,
-                      AssetCategoryRepository assetCategoryRepository, AssetRepository assetRepository) {
+                      AssetCategoryRepository assetCategoryRepository, AssetRepository assetRepository,
+                      ShiftRepository shiftRepository) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.assetCategoryRepository = assetCategoryRepository;
         this.assetRepository = assetRepository;
+        this.shiftRepository = shiftRepository;
     }
 
     @Override
@@ -42,7 +38,7 @@ public class DataSeeder implements CommandLineRunner {
             AppUser admin = new AppUser();
             admin.setEmail("admin");
             admin.setFullName("Admin");
-            admin.setPassword(passwordEncoder.encode(adminPassword));
+            admin.setPassword(passwordEncoder.encode("admin123"));
             admin.setRole("ROLE_ADMIN");
             admin.setAuthSource(AppUser.SOURCE_LOCAL);
             appUserRepository.save(admin);
@@ -50,7 +46,7 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         // Tạo tài khoản User nếu chưa tồn tại
-        if (seedDemoUser && !appUserRepository.existsByEmail("user")) {
+        if (!appUserRepository.existsByEmail("user")) {
             AppUser user = new AppUser();
             user.setEmail("user");
             user.setFullName("User");
@@ -63,6 +59,32 @@ public class DataSeeder implements CommandLineRunner {
 
         backfillAuthSource();
         seedAssetCategories();
+        seedDefaultShift();
+    }
+
+    /**
+     * Không có ca nào thì phần chấm công không tính được công, nên tạo sẵn ca hành
+     * chính. Chỉ chạy khi bảng ca đang trống để không đè cấu hình người dùng đã sửa.
+     */
+    private void seedDefaultShift() {
+        if (shiftRepository.count() > 0) {
+            return;
+        }
+        Shift shift = new Shift();
+        shift.setCode("HC");
+        shift.setName("Hành chính");
+        shift.setStartTime(java.time.LocalTime.of(8, 0));
+        shift.setEndTime(java.time.LocalTime.of(17, 30));
+        shift.setBreakMinutes(90);
+        shift.setLateGraceMinutes(5);
+        shift.setEarlyGraceMinutes(5);
+        shift.setOtStartAfterMinutes(30);
+        shift.setCrossMidnight(false);
+        shift.setWorkingWeekdays("2,3,4,5,6,7");
+        shift.setIsDefault(true);
+        shift.setActive(true);
+        shiftRepository.save(shift);
+        System.out.println("Tạo ca làm việc mặc định 'Hành chính'.");
     }
 
     /**

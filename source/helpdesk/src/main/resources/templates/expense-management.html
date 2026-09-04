@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản Lý Tài Chính - Midomax IT</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; }
@@ -45,6 +45,8 @@
 
         .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
         .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 9px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
         .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.12); }
         .section-divider { font-weight: 700; font-size: 13px; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px; }
 
@@ -120,8 +122,16 @@
         <div class="budget-hero mb-4">
             <div class="d-flex justify-content-between align-items-start flex-wrap mb-3" style="position: relative; z-index: 2;">
                 <div class="budget-stat mb-2">
-                    <span class="label"><i class="fa-solid fa-sack-dollar me-1"></i> <span th:text="${fund.name}">Quỹ CCDC</span> · Ngân sách được cấp</span>
+                    <span class="label">
+                        <i class="fa-solid fa-sack-dollar me-1"></i> <span th:text="${fund.name}">Quỹ CCDC</span> · Ngân sách được cấp
+                        <!-- Kỳ ngân sách: cho biết đang tính hóa đơn của khoảng tháng nào -->
+                        <span class="badge bg-white text-dark ms-2" style="font-weight:700;"
+                              th:text="${fund.periodLabel}">T6–T12/2026</span>
+                    </span>
                     <span class="value" th:text="${#numbers.formatInteger(allocated, 0, 'POINT')} + ' đ'">10.000.000 đ</span>
+                    <span th:if="${outOfPeriodCount != null and outOfPeriodCount > 0}"
+                          class="d-block mt-1" style="font-size:12px; opacity:.85;"
+                          th:text="'Đã bỏ qua ' + ${outOfPeriodCount} + ' hóa đơn nằm ngoài kỳ ngân sách'">Đã bỏ qua 0 hóa đơn</span>
                 </div>
                 <button class="btn btn-sm btn-light fw-semibold" data-bs-toggle="modal" data-bs-target="#editFundModal"
                         sec:authorize="hasAnyRole('ADMIN','IT')" style="position: relative; z-index: 3;">
@@ -252,6 +262,7 @@
                                     <th class="text-end">Còn lại</th>
                                     <th style="width: 140px;">Tiến trình</th>
                                     <th class="text-center">Trạng thái</th>
+                                    <th class="text-center" style="width:60px;">Kế hoạch<br>theo tháng</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -267,7 +278,18 @@
                                     </td>
                                     <td class="text-center fw-bold" th:text="${item.quantity}">1</td>
                                     <td class="text-end fw-bold text-dark text-nowrap" th:text="${#numbers.formatInteger(item.allocatedAmount, 0, 'POINT')} + ' đ'">50.000.000 đ</td>
-                                    <td class="text-end fw-bold text-danger text-nowrap" th:text="${#numbers.formatInteger(item.spentAmount, 0, 'POINT')} + ' đ'">0 đ</td>
+                                    <td class="text-end fw-bold text-danger text-nowrap">
+                                        <span th:text="${#numbers.formatInteger(item.spentAmount, 0, 'POINT')} + ' đ'">0 đ</span>
+                                        <!-- Cho biết bao nhiêu đến từ Sổ Hóa Đơn, để đối chiếu ngay tại chỗ -->
+                                        <!-- Bấm để xem đúng các hóa đơn này trong Sổ Hóa Đơn -->
+                                        <a th:if="${invoiceCountByItem.get(item.id) != null}"
+                                           th:href="@{/expenses/invoices(budgetItemId=${item.id})}"
+                                           class="fw-normal text-decoration-none" style="font-size:11px; color:#1e3a8a;"
+                                           title="Xem các hóa đơn của hạng mục này trong Sổ Hóa Đơn">
+                                            <i class="fa-solid fa-receipt me-1"></i><span
+                                                th:text="'gồm ' + ${invoiceCountByItem.get(item.id)} + ' hóa đơn'">gồm 2 hóa đơn</span>
+                                        </a>
+                                    </td>
                                     <td class="text-end fw-bold text-success text-nowrap" th:classappend="${item.remainingAmount < 0} ? 'text-danger' : ''"
                                         th:text="${#numbers.formatInteger(item.remainingAmount, 0, 'POINT')} + ' đ'">50.000.000 đ</td>
                                     <td>
@@ -282,6 +304,19 @@
                                         <span th:if="${item.spentPercent >= 100}" class="badge bg-danger">Vượt ngân sách</span>
                                         <span th:if="${item.spentPercent >= 80 and item.spentPercent < 100}" class="badge bg-warning text-dark">Cảnh báo > 80%</span>
                                         <span th:if="${item.spentPercent < 80}" class="badge bg-success">Trong hạn</span>
+                                    </td>
+                                    <!-- Nhập ngân sách theo từng tháng (khoản trả hàng tháng: ChatGPT, cước net...) -->
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-monthly"
+                                                th:attr="data-id=${item.id}, data-name=${item.itemName},
+                                                         data-sub=${item.subCategory},
+                                                         data-months=${item.monthlyAmounts} ?: '',
+                                                         data-actual=${invoiceMonthlyCsv.get(item.id)} ?: ''"
+                                                title="Nhập ngân sách từng tháng">
+                                            <i class="fa-solid fa-calendar-days"></i>
+                                        </button>
+                                        <div th:if="${item.monthlyAmounts != null and !item.monthlyAmounts.isBlank()}"
+                                             class="text-success fw-bold" style="font-size:10px;">đã lập</div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -512,6 +547,40 @@
                             <label class="form-label">Số tiền được cấp (đ)</label>
                             <input type="text" name="allocatedAmount" class="form-control money-input" th:value="${#numbers.formatInteger(allocated, 0, 'POINT')}" required>
                         </div>
+                        <!-- Kỳ ngân sách: chỉ hóa đơn trong khoảng này mới trừ vào quỹ -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Kỳ ngân sách
+                                <span class="text-muted" style="font-weight:400;">— chỉ tính hóa đơn trong kỳ này</span>
+                            </label>
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <input type="number" name="budgetYear" class="form-control" placeholder="Năm"
+                                           th:value="${fund.budgetYear}" min="2020" max="2100">
+                                    <small class="text-muted" style="font-size:11px;">Năm (trống = mọi năm)</small>
+                                </div>
+                                <div class="col-4">
+                                    <select name="fromMonth" class="form-select">
+                                        <option value="">Từ tháng 1</option>
+                                        <option th:each="m : ${#numbers.sequence(1,12)}" th:value="${m}"
+                                                th:text="'Từ tháng ' + ${m}"
+                                                th:selected="${fund.fromMonth != null and fund.fromMonth == m}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <select name="toMonth" class="form-select">
+                                        <option value="">Đến tháng 12</option>
+                                        <option th:each="m : ${#numbers.sequence(1,12)}" th:value="${m}"
+                                                th:text="'Đến tháng ' + ${m}"
+                                                th:selected="${fund.toMonth != null and fund.toMonth == m}"></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                VD ngân sách 6 tháng cuối năm 2026: chọn <b>2026 · Từ tháng 6 · Đến tháng 12</b> —
+                                hóa đơn tháng 1–5 sẽ không bị trừ vào quỹ này.
+                            </small>
+                        </div>
                         <button type="submit" class="btn btn-primary w-100" style="background:#1e3a8a; border:none;">
                             <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi
                         </button>
@@ -534,6 +603,64 @@
     </div>
 
     <!-- MODAL IMPORT EXCEL NGÂN SÁCH -->
+    <!-- ===== MODAL: NGÂN SÁCH THEO TỪNG THÁNG =====
+         Dành cho khoản trả hàng tháng (ChatGPT, cước Internet, thuê máy photo...):
+         gõ thẳng số tiền của từng tháng, tổng 12 tháng = ngân sách cấp của hạng mục. -->
+    <div class="modal fade" id="monthlyPlanModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;">
+                <form method="post" id="monthlyPlanForm">
+                    <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius:16px 16px 0 0;">
+                        <h5 class="modal-title"><i class="fa-solid fa-calendar-days me-2"></i>Ngân sách theo tháng</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <div class="fw-bold" style="color:#1e3a8a;" id="mp-name">Gia hạn ChatGPT</div>
+                            <small class="text-muted" id="mp-sub">GIA HẠN</small>
+                        </div>
+
+                        <div class="alert alert-info py-2 small">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            Gõ <b>số tiền</b> của tháng nào có trả, tháng không trả để trống.
+                            <b>Ngân sách cấp = tổng các tháng</b> — không cần quy về đơn giá × số lượng.
+                        </div>
+
+                        <div class="row g-2" id="mp-months"><!-- 12 ô tháng dựng bằng JS --></div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3"
+                             style="border-top:1px solid #e5e7eb;">
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="mp-fill-all">
+                                    Điền đều 12 tháng
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="mp-clear">
+                                    Xóa hết
+                                </button>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold" style="font-size:16px; color:#1e3a8a;">
+                                    Kế hoạch: <span id="mp-total">0</span> đ
+                                </div>
+                                <div class="fw-bold" style="font-size:13px; color:#b45309;">
+                                    Đã chi: <span id="mp-actual-total">0</span> đ
+                                    <a id="mp-invoice-link" href="#" class="ms-1 text-decoration-none"
+                                       title="Xem các hóa đơn của hạng mục này"><i class="fa-solid fa-receipt"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Lưu kế hoạch
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="importBudgetModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 16px;">
@@ -571,7 +698,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script th:inline="javascript">
         // Animate progress bar: chạy dần từ 0 -> spentPercent
         document.addEventListener('DOMContentLoaded', function () {
@@ -593,6 +720,90 @@
             var amt = document.getElementById('amountInput');
             if (amt) formatMoney(amt);
             document.querySelectorAll('.money-input').forEach(formatMoney);
+
+            // ===== Ngân sách theo từng tháng =====
+            var MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
+                          'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+
+            function digitsOf(v) { return (v || '').toString().replace(/[^0-9]/g, ''); }
+            function group(n) { return n ? Number(n).toLocaleString('vi-VN') : ''; }
+
+            function recalcTotal() {
+                var sum = 0;
+                document.querySelectorAll('#mp-months input').forEach(function (i) {
+                    sum += parseInt(digitsOf(i.value) || '0', 10);
+                });
+                document.getElementById('mp-total').textContent = sum.toLocaleString('vi-VN');
+            }
+
+            // Dựng 12 ô nhập, đổ sẵn giá trị đã lưu (CSV "0,0,3000000,...")
+            function buildMonthInputs(csv, actualCsv) {
+                var saved = (csv || '').split(',');
+                var actual = (actualCsv || '').split(',');
+                var box = document.getElementById('mp-months');
+                box.innerHTML = '';
+                var actualSum = 0;
+                for (var i = 0; i < 12; i++) {
+                    var val = parseInt(digitsOf(saved[i]) || '0', 10);
+                    var act = parseInt(digitsOf(actual[i]) || '0', 10);
+                    actualSum += act;
+                    // Dòng thực chi lấy từ hóa đơn đã gán; đỏ khi vượt kế hoạch của chính tháng đó
+                    var actLine = act
+                        ? '<div style="font-size:11px; margin-top:2px; font-weight:700; color:'
+                            + (val > 0 && act > val ? '#b91c1c' : '#15803d') + ';">đã chi ' + group(act) + '</div>'
+                        : '<div style="font-size:11px; margin-top:2px; color:#cbd5e1;">chưa chi</div>';
+                    var col = document.createElement('div');
+                    col.className = 'col-6 col-md-3';
+                    col.innerHTML = '<label class="form-label mb-1" style="font-size:12px;">' + MONTHS[i] + '</label>'
+                        + '<input type="text" name="amounts" class="form-control form-control-sm text-end" '
+                        + 'inputmode="numeric" placeholder="0" value="' + (val ? group(val) : '') + '">'
+                        + actLine;
+                    box.appendChild(col);
+                }
+                var actEl = document.getElementById('mp-actual-total');
+                if (actEl) actEl.textContent = actualSum.toLocaleString('vi-VN');
+                box.querySelectorAll('input').forEach(function (input) {
+                    input.addEventListener('input', function () {
+                        var d = digitsOf(input.value);
+                        input.value = d ? group(d) : '';
+                        recalcTotal();
+                    });
+                });
+                recalcTotal();
+            }
+
+            document.querySelectorAll('.btn-monthly').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.getElementById('mp-name').textContent = btn.getAttribute('data-name') || '';
+                    document.getElementById('mp-sub').textContent = btn.getAttribute('data-sub') || '';
+                    document.getElementById('monthlyPlanForm').action =
+                        '/expenses/budget-item/' + btn.getAttribute('data-id') + '/monthly';
+                    buildMonthInputs(btn.getAttribute('data-months'), btn.getAttribute('data-actual'));
+                    var link = document.getElementById('mp-invoice-link');
+                    if (link) link.href = '/expenses/invoices?budgetItemId=' + btn.getAttribute('data-id');
+                    new bootstrap.Modal(document.getElementById('monthlyPlanModal')).show();
+                });
+            });
+
+            var fillAll = document.getElementById('mp-fill-all');
+            if (fillAll) {
+                fillAll.addEventListener('click', function () {
+                    var raw = prompt('Số tiền mỗi tháng (VD 3000000):');
+                    if (raw === null) return;
+                    var d = digitsOf(raw);
+                    document.querySelectorAll('#mp-months input').forEach(function (i) {
+                        i.value = d ? group(d) : '';
+                    });
+                    recalcTotal();
+                });
+            }
+            var clearAll = document.getElementById('mp-clear');
+            if (clearAll) {
+                clearAll.addEventListener('click', function () {
+                    document.querySelectorAll('#mp-months input').forEach(function (i) { i.value = ''; });
+                    recalcTotal();
+                });
+            }
         });
     </script>
 </body>

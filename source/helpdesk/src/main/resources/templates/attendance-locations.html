@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Địa Điểm Chấm Công - Midomax IT</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #fff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+
+        .office-item { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: 0.15s; margin-bottom: 10px; }
+        .office-item:hover { border-color: #99f6e4; background: #f0fdfa; }
+        .office-item.active { border-color: #0d9488; background: #f0fdfa; box-shadow: 0 4px 10px -4px rgba(13,148,136,0.35); }
+        .office-name { font-weight: 700; color: #1e293b; font-size: 14px; }
+        .office-meta { font-size: 12px; color: #64748b; }
+        .gps-on  { color: #0d9488; font-weight: 600; font-size: 12px; }
+        .gps-off { color: #94a3b8; font-weight: 600; font-size: 12px; }
+
+        #loc-map { height: calc(100vh - 300px); min-height: 420px; border-radius: 12px; border: 1px solid #d1d5db; }
+
+        @media (max-width: 991px) {
+            .main-content { margin-left: 0; width: 100%; padding: 15px; }
+            #loc-map { height: 380px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('gps-locations')}"></div>
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Địa Điểm Chấm Công GPS</h4>
+                    <small class="text-muted">Chọn văn phòng, bấm lên bản đồ để đặt vị trí và bán kính chấm công</small>
+                </div>
+            </div>
+            <a th:href="@{/attendance}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Về lịch công
+            </a>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-3">
+            <!-- Danh sách văn phòng -->
+            <div class="col-lg-4">
+                <div class="widget-card">
+                    <div class="fw-bold mb-2" style="font-size:14px; color:#475569;">
+                        <i class="fa-solid fa-building me-1"></i>Văn phòng
+                    </div>
+                    <div class="office-item" th:each="d : ${devices}"
+                         th:attr="data-id=${d.id}, data-name=${d.name},
+                                  data-lat=${d.latitude}, data-lng=${d.longitude}, data-radius=${d.radiusMeters}"
+                         onclick="locSelect(this)">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="office-name" th:text="${d.name}">188Bis</div>
+                                <div class="office-meta">
+                                    <span th:text="${peopleCount.get(d.id) != null ? peopleCount.get(d.id) : 0}">0</span> nhân viên
+                                    <span th:if="${d.location != null}" th:text="' · ' + ${d.location}"></span>
+                                </div>
+                            </div>
+                            <span th:if="${d.hasGpsLocation()}" class="gps-on">
+                                <i class="fa-solid fa-circle-check"></i> Đã đặt · <span th:text="${d.radiusMeters}">150</span>m
+                            </span>
+                            <span th:unless="${d.hasGpsLocation()}" class="gps-off">
+                                <i class="fa-regular fa-circle"></i> Chưa đặt
+                            </span>
+                        </div>
+                    </div>
+                    <div class="text-muted" style="font-size:12px;" th:if="${#lists.isEmpty(devices)}">
+                        Chưa khai báo văn phòng nào (trang Máy chấm công).
+                    </div>
+                </div>
+
+                <!-- Form lưu. Toạ độ nằm trong 2 input ẨN — nhân sự không phải thấy
+                     kinh độ/vĩ độ, chỉ gõ địa chỉ hoặc bấm bản đồ như Google Maps. -->
+                <form th:action="@{/attendance/locations/save}" method="post" class="widget-card mt-3 d-none" id="locForm">
+                    <input type="hidden" name="id" id="loc-id">
+                    <input type="hidden" name="latitude" id="loc-lat">
+                    <input type="hidden" name="longitude" id="loc-lng">
+                    <div class="fw-bold mb-2" style="color:#0d9488;" id="loc-title">—</div>
+
+                    <!-- Tìm địa chỉ kiểu Google Maps -->
+                    <div class="input-group input-group-sm mb-1">
+                        <input type="text" class="form-control" id="loc-search"
+                               placeholder="Gõ địa chỉ, hoặc dán toạ độ / link Google Maps...">
+                        <button type="button" class="btn btn-primary" style="background:#0d9488; border:none;"
+                                onclick="locSearch()" id="loc-search-btn">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+                    <div id="loc-results" class="mb-2"></div>
+                    <div class="form-text mb-2" style="font-size:11px;">
+                        Mẹo: trên Google Maps, <b>chuột phải</b> vào văn phòng → bấm dòng toạ độ để copy → dán vào ô trên.
+                    </div>
+
+                    <!-- Trạng thái ghim, thay cho 2 ô toạ độ khó hiểu -->
+                    <div id="loc-picked" class="mb-2 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0; font-size:12.5px; color:#64748b;">
+                        <i class="fa-regular fa-circle me-1"></i>Chưa ghim vị trí — gõ địa chỉ ở trên hoặc bấm thẳng lên bản đồ.
+                    </div>
+
+                    <label class="form-label mb-1">Bán kính cho phép: <b id="loc-radius-label">150</b>m</label>
+                    <input type="range" class="form-range" name="radiusMeters" id="loc-radius" min="50" max="1000" step="10" value="150">
+                    <div class="form-text mb-2">GPS điện thoại lệch 5–50m, đừng đặt bán kính dưới 100m.</div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary fw-semibold flex-fill" style="background:#0d9488; border:none;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Lưu địa điểm
+                        </button>
+                        <button type="submit" class="btn btn-outline-danger" title="Xoá vị trí — tắt chấm GPS văn phòng này"
+                                onclick="document.getElementById('loc-lat').value=''; document.getElementById('loc-lng').value='';">
+                            <i class="fa-solid fa-eraser"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Bản đồ -->
+            <div class="col-lg-8">
+                <div class="widget-card">
+                    <div id="loc-map"></div>
+                    <div class="form-text mt-2" id="loc-hint">
+                        Chọn một văn phòng bên trái, rồi <b>bấm lên bản đồ</b> để đặt vị trí — kéo ghim để chỉnh tinh.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        var locMap = L.map('loc-map').setView([16.0, 107.5], 6); // toàn Việt Nam khi chưa chọn gì
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, attribution: '© OpenStreetMap'
+        }).addTo(locMap);
+
+        var locMarker = null, locCircle = null, locSelected = null;
+
+        // Vẽ mờ các văn phòng ĐÃ đặt để nhân sự thấy toàn cảnh
+        document.querySelectorAll('.office-item').forEach(function (el) {
+            var lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                L.circle([lat, lng], { radius: parseInt(el.dataset.radius) || 150,
+                    color: '#94a3b8', fillOpacity: 0.08, weight: 1 })
+                 .addTo(locMap).bindTooltip(el.dataset.name);
+            }
+        });
+
+        function locDraw() {
+            var lat = parseFloat(document.getElementById('loc-lat').value);
+            var lng = parseFloat(document.getElementById('loc-lng').value);
+            var r = parseInt(document.getElementById('loc-radius').value) || 150;
+            document.getElementById('loc-radius-label').textContent = r;
+            if (isNaN(lat) || isNaN(lng)) {
+                if (locMarker) { locMap.removeLayer(locMarker); locMarker = null; }
+                if (locCircle) { locMap.removeLayer(locCircle); locCircle = null; }
+                return;
+            }
+            if (!locMarker) {
+                locMarker = L.marker([lat, lng], { draggable: true }).addTo(locMap);
+                locMarker.on('dragend', function () {
+                    var p = locMarker.getLatLng();
+                    locSetPoint(p.lat, p.lng);
+                });
+            } else locMarker.setLatLng([lat, lng]);
+            if (!locCircle) {
+                locCircle = L.circle([lat, lng], { radius: r, color: '#0d9488', fillOpacity: 0.15 }).addTo(locMap);
+            } else { locCircle.setLatLng([lat, lng]); locCircle.setRadius(r); }
+        }
+
+        function locSetPoint(lat, lng, label) {
+            document.getElementById('loc-lat').value = lat.toFixed(6);
+            document.getElementById('loc-lng').value = lng.toFixed(6);
+            locDraw();
+            var p = document.getElementById('loc-picked');
+            p.style.background = '#f0fdfa'; p.style.borderColor = '#99f6e4'; p.style.color = '#0d9488';
+            p.innerHTML = '<i class="fa-solid fa-location-dot me-1"></i><b>Đã ghim vị trí</b>'
+                + (label ? '<br><span style="color:#475569;">' + label + '</span>' : '')
+                + '<br><span style="font-size:11px; color:#94a3b8;">Kéo ghim trên bản đồ để chỉnh tinh nếu cần.</span>';
+        }
+
+        /* ===== TÌM ĐỊA CHỈ (Nominatim của OpenStreetMap — miễn phí, không cần key) =====
+           Gõ địa chỉ -> danh sách kết quả -> bấm chọn -> bản đồ bay tới + ghim tự cắm.
+           Nhân sự không phải đụng tới kinh độ/vĩ độ. */
+        /**
+         * Nhận diện toạ độ dán từ Google Maps trong chuỗi tìm kiếm. Bắt được:
+         *  - "21.028511, 105.804817"  (chuột phải trên Google Maps -> bấm dòng toạ độ là copy dạng này)
+         *  - link Google Maps có "@21.028511,105.804817,17z" hoặc "!3d21.02!4d105.80" hoặc "q=21.02,105.80"
+         * Trả về {lat, lng} hoặc null nếu không phải toạ độ.
+         */
+        function locParseCoords(q) {
+            var m = q.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/)      // link dạng /@lat,lng,17z
+                 || q.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/)  // link dạng !3dlat!4dlng
+                 || q.match(/[?&]q=(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/) // link dạng ?q=lat,lng
+                 || q.match(/^\s*(-?\d{1,2}\.\d+)\s*[,;\s]\s*(-?\d{1,3}\.\d+)\s*$/); // "lat, lng" thuần
+            if (!m) return null;
+            var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+            if (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+            return { lat: lat, lng: lng };
+        }
+
+        function locSearch() {
+            var q = document.getElementById('loc-search').value.trim();
+            var box = document.getElementById('loc-results');
+            if (!q) { box.innerHTML = ''; return; }
+
+            // Dán toạ độ / link Google Maps thì ghim thẳng, khỏi gọi dịch vụ tìm kiếm
+            var co = locParseCoords(q);
+            if (co) {
+                box.innerHTML = '';
+                locMap.setView([co.lat, co.lng], 17);
+                locSetPoint(co.lat, co.lng, 'Toạ độ dán từ Google Maps');
+                return;
+            }
+            box.innerHTML = '<div class="text-muted" style="font-size:12px;"><i class="fa-solid fa-spinner fa-spin me-1"></i>Đang tìm...</div>';
+            fetch('https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=vn&accept-language=vi&q='
+                    + encodeURIComponent(q))
+                .then(function (r) { return r.json(); })
+                .then(function (list) {
+                    if (!list.length) {
+                        box.innerHTML = '<div class="text-danger" style="font-size:12px;">Không tìm thấy — thử gõ thêm tên quận/thành phố, hoặc bấm thẳng lên bản đồ.</div>';
+                        return;
+                    }
+                    box.innerHTML = '';
+                    list.forEach(function (it) {
+                        var b = document.createElement('button');
+                        b.type = 'button';
+                        b.className = 'btn btn-light border w-100 text-start mb-1';
+                        b.style.cssText = 'font-size:12px; padding:6px 10px;';
+                        b.innerHTML = '<i class="fa-solid fa-location-dot me-1" style="color:#0d9488;"></i>' + it.display_name;
+                        b.onclick = function () {
+                            box.innerHTML = '';
+                            var lat = parseFloat(it.lat), lng = parseFloat(it.lon);
+                            locMap.setView([lat, lng], 17);
+                            locSetPoint(lat, lng, it.display_name);
+                        };
+                        box.appendChild(b);
+                    });
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="text-danger" style="font-size:12px;">Không kết nối được dịch vụ tìm địa chỉ — bấm thẳng lên bản đồ để chọn.</div>';
+                });
+        }
+        // Enter trong ô tìm = bấm nút tìm (và không submit form)
+        document.getElementById('loc-search').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); locSearch(); }
+        });
+
+        function locSelect(el) {
+            document.querySelectorAll('.office-item').forEach(function (x) { x.classList.remove('active'); });
+            el.classList.add('active');
+            locSelected = el;
+            document.getElementById('locForm').classList.remove('d-none');
+            document.getElementById('loc-id').value = el.dataset.id;
+            document.getElementById('loc-title').textContent = '📍 ' + el.dataset.name;
+            var lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng);
+            document.getElementById('loc-radius').value = parseInt(el.dataset.radius) || 150;
+            document.getElementById('loc-search').value = '';
+            document.getElementById('loc-results').innerHTML = '';
+            if (!isNaN(lat) && !isNaN(lng)) {
+                locMap.setView([lat, lng], 17);
+                locSetPoint(lat, lng, 'Vị trí đã lưu của ' + el.dataset.name);
+            } else {
+                document.getElementById('loc-lat').value = '';
+                document.getElementById('loc-lng').value = '';
+                var p = document.getElementById('loc-picked');
+                p.style.background = '#f8fafc'; p.style.borderColor = '#e2e8f0'; p.style.color = '#64748b';
+                p.innerHTML = '<i class="fa-regular fa-circle me-1"></i>Chưa ghim vị trí — gõ địa chỉ ở trên hoặc bấm thẳng lên bản đồ.';
+                // chưa có toạ độ: giữ khung nhìn hiện tại để nhân sự tự tìm tới văn phòng
+                if (locMap.getZoom() < 10) locMap.setView([21.0285, 105.8542], 12);
+            }
+            locDraw();
+            document.getElementById('loc-hint').innerHTML =
+                'Đang đặt cho <b>' + el.dataset.name + '</b> — bấm lên bản đồ để chọn vị trí, kéo thanh trượt đổi bán kính.';
+        }
+
+        locMap.on('click', function (e) {
+            if (!locSelected) return; // chưa chọn văn phòng thì bấm bản đồ không làm gì
+            locSetPoint(e.latlng.lat, e.latlng.lng);
+        });
+        document.getElementById('loc-radius').addEventListener('input', locDraw);
+    </script>
+</body>
+</html>

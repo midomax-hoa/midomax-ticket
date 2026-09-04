@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý User - Midomax IT</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Include Toastr for notifications -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
@@ -75,6 +75,9 @@
                 </div>
             </div>
             <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-outline-primary fw-semibold" id="btnDeptAccess" style="border-radius:8px;">
+                    <i class="fa-solid fa-table-cells me-2"></i>Phân hệ theo phòng ban
+                </button>
                 <button class="btn btn-add-local" id="btnAddLocalUser">
                     <i class="fa-solid fa-user-plus me-2"></i>Thêm user local
                 </button>
@@ -87,6 +90,18 @@
 
         <!-- TABLE CARD -->
         <div class="widget-card">
+            <!-- Lọc theo phòng ban -->
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                <label class="fw-semibold text-muted" style="font-size:13px;">
+                    <i class="fa-solid fa-building me-1"></i>Phòng ban:
+                </label>
+                <select class="form-select form-select-sm" id="deptFilter" style="max-width:320px;">
+                    <option value="">Tất cả phòng ban</option>
+                    <option th:each="d : ${departments}" th:value="${d.name()}" th:text="${d.display}">ITD</option>
+                    <option value="__NONE__">— Chưa phân phòng ban —</option>
+                </select>
+                <span class="text-muted" style="font-size:13px;" id="deptFilterCount"></span>
+            </div>
             <div class="table-responsive">
                 <table class="table table-custom">
                     <thead>
@@ -94,6 +109,7 @@
                             <th>#ID</th>
                             <th>Họ và tên</th>
                             <th>Email</th>
+                            <th>Phòng ban</th>
                             <th>Vai trò (Role)</th>
                             <th>Nhóm chuyên môn IT</th>
                             <th>Nguồn</th>
@@ -101,10 +117,20 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="user : ${users}">
+                        <!-- data-dept luôn có giá trị (NONE khi chưa phân) — attr rỗng có thể bị bỏ qua khiến bộ lọc không bắt được dòng -->
+                        <tr th:each="user : ${users}" class="user-row" th:attr="data-dept=${user.department != null and !user.department.isEmpty() ? user.department : 'NONE'}">
                             <td class="fw-medium text-muted" th:text="${user.id}">1</td>
                             <td class="fw-bold" style="color:#1e3a8a;" th:text="${user.fullName}">Nguyễn Văn A</td>
                             <td th:text="${user.email}">user@midomax.vn</td>
+                            <td>
+                                <span th:if="${user.departmentEnum != null}" class="group-badge" style="color:#1e3a8a; background:#eff6ff; border-color:#bfdbfe;"
+                                      th:title="${user.departmentEnum.label}" th:text="${user.departmentEnum.name()}">ITD</span>
+                                <span th:if="${user.deptHead}" class="group-badge" style="color:#b45309; background:#fef3c7; border-color:#fcd34d;"
+                                      title="Trưởng phòng — thấy ticket của cả phòng"><i class="fa-solid fa-user-tie me-1"></i>TP</span>
+                                <span th:if="${user.employeeCode != null and !user.employeeCode.isEmpty()}" class="group-badge" style="color:#0d9488; background:#f0fdfa; border-color:#99f6e4;"
+                                      th:title="'Mã chấm công: ' + ${user.employeeCode}"><i class="fa-solid fa-fingerprint me-1"></i><span th:text="${user.employeeCode}">101</span></span>
+                                <span th:if="${user.departmentEnum == null}" class="text-muted small">—</span>
+                            </td>
                             <td>
                                 <span th:if="${user.role == 'ROLE_ADMIN'}" class="role-badge role-admin"><i class="fa-solid fa-user-shield me-1"></i> Admin</span>
                                 <span th:if="${user.role == 'ROLE_IT'}" class="role-badge role-it"><i class="fa-solid fa-headset me-1"></i> IT Support</span>
@@ -123,7 +149,7 @@
                             </td>
                             <td class="text-center" style="white-space:nowrap;">
                                 <button class="btn btn-sm btn-outline-primary btn-edit-role" title="Phân quyền"
-                                        th:attr="data-id=${user.id}, data-fullname=${user.fullName}, data-role=${user.role != null ? user.role : 'ROLE_USER'}, data-groups=${#strings.listJoin(user.itGroups, ',')}">
+                                        th:attr="data-id=${user.id}, data-fullname=${user.fullName}, data-role=${user.role != null ? user.role : 'ROLE_USER'}, data-groups=${#strings.listJoin(user.itGroups, ',')}, data-dept=${user.department != null ? user.department : ''}, data-modules=${#strings.listJoin(user.personalModules, ',')}, data-depthead=${user.deptHead}, data-empcode=${user.employeeCode != null ? user.employeeCode : ''}, data-attdevice=${user.attendanceDeviceId != null ? user.attendanceDeviceId : ''}, data-gpsallowed=${user.gpsCheckinAllowed}, data-gpsfree=${user.gpsFreeLocation}">
                                     <i class="fa-solid fa-user-pen"></i>
                                 </button>
                                 <button th:if="${user.local}" class="btn btn-sm btn-outline-secondary btn-reset-password" title="Đặt lại mật khẩu"
@@ -137,13 +163,27 @@
                             </td>
                         </tr>
                         <tr th:if="${users.empty}">
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="8" class="text-center text-muted py-4">
                                 <i class="fa-solid fa-users-slash fs-2 mb-2 d-block"></i>
                                 Chưa có user nào trong hệ thống. Hãy thêm user local hoặc đồng bộ từ Microsoft 365.
                             </td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- PHÂN TRANG: 10 user mỗi trang, nhớ trang đang xem sau khi sửa/xóa -->
+            <div id="user-pager" class="d-none justify-content-between align-items-center mt-3 pt-3"
+                 style="border-top: 1px solid #f1f5f9;">
+                <span class="text-muted" style="font-size:13px;" id="user-pager-info"></span>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary" id="user-prev">
+                        <i class="fa-solid fa-chevron-left me-1"></i> Trước
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="user-next">
+                        Sau <i class="fa-solid fa-chevron-right ms-1"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div><!-- End main-content -->
@@ -184,8 +224,9 @@
                                         </th>
                                         <th>Họ và tên</th>
                                         <th>Email / UPN</th>
-                                        <th>Phòng ban</th>
-                                        <th style="width: 200px;">Gán Quyền</th>
+                                        <th style="width: 130px;">Trạng thái</th>
+                                        <th style="width: 210px;">Phòng ban</th>
+                                        <th style="width: 170px;">Gán Quyền</th>
                                         <th style="width: 100px;" class="text-center">Thao tác</th>
                                     </tr>
                                 </thead>
@@ -221,6 +262,38 @@
                         <input type="text" class="form-control fw-bold" id="editUserFullName" readonly style="background: #f1f5f9;">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-medium">Phòng ban</label>
+                        <select class="form-select" id="editUserDept">
+                            <option value="">— Chưa phân phòng ban —</option>
+                            <option th:each="d : ${departments}" th:value="${d.name()}" th:text="${d.display}">ITD</option>
+                        </select>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="editUserDeptHead">
+                            <label class="form-check-label" for="editUserDeptHead">
+                                <i class="fa-solid fa-user-tie me-1" style="color:#b45309;"></i><b>Trưởng phòng</b>
+                                <span class="text-muted" style="font-size:12px;">— thấy được ticket của mọi nhân viên cùng phòng ban (chỉ xem)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium"><i class="fa-solid fa-fingerprint me-1" style="color:#0d9488;"></i>Mã chấm công</label>
+                        <div class="row g-2">
+                            <div class="col-5">
+                                <input type="text" class="form-control" id="editUserEmpCode" placeholder="VD: 101">
+                            </div>
+                            <div class="col-7">
+                                <select class="form-select" id="editUserAttDevice">
+                                    <option value="">— Chọn văn phòng (máy) —</option>
+                                    <option th:each="d : ${attendanceDevices}" th:value="${d.id}" th:text="${d.name}">188Bis</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-text">Nhập mã + chọn văn phòng thì nhân viên tự xem được lịch chấm công của mình.
+                            <b>Phải chọn đúng văn phòng</b> — các văn phòng dùng chung dải mã, cùng mã khác máy là hai người khác nhau.</div>
+
+                        <!-- Quyền chấm công GPS chuyển sang trang riêng của Nhân Sự: Quản Lý Nhân Sự > Chấm Công Online -->
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-medium">Chọn quyền hạn <span class="text-danger">*</span></label>
                         <select class="form-select" id="editUserRole">
                             <option value="ROLE_USER">👤 User (Người dùng tiêu chuẩn)</option>
@@ -228,6 +301,15 @@
                             <option value="ROLE_ADMIN">🛡️ Admin (Quản trị toàn hệ thống)</option>
                         </select>
                         <div class="form-text">User: chỉ giao diện người dùng. IT Support: thêm quản lý ticket và báo cáo công việc.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Phân hệ cấp riêng cho user này</label>
+                        <div class="it-groups-box">
+                            <div id="editUserModules"><!-- checkbox dựng bằng JS từ MODULES --></div>
+                            <div class="form-text mt-2 mb-0" id="editInheritedModules">
+                                <!-- JS điền: các phân hệ đã có sẵn từ vai trò / phòng ban -->
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-2" id="editItGroupsWrapper" style="display:none;">
                         <label class="form-label fw-medium">Nhóm chuyên môn IT</label>
@@ -280,6 +362,13 @@
                         <div class="form-text">Mật khẩu hiển thị dạng chữ để anh sao chép gửi cho user. Có thể đặt lại sau bằng nút 🔑.</div>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-medium">Phòng ban</label>
+                        <select class="form-select" id="newUserDept">
+                            <option value="">— Chưa phân phòng ban —</option>
+                            <option th:each="d : ${departments}" th:value="${d.name()}" th:text="${d.display}">ITD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-medium">Chọn quyền hạn <span class="text-danger">*</span></label>
                         <select class="form-select" id="newUserRole">
                             <option value="ROLE_USER">👤 User (Người dùng tiêu chuẩn)</option>
@@ -305,6 +394,42 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                     <button type="button" class="btn btn-primary" id="btnSaveLocalUser" style="background:#1e3a8a; border:none;">
                         <i class="fa-solid fa-floppy-disk me-2"></i>Tạo tài khoản
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL PHÂN HỆ THEO PHÒNG BAN ===== -->
+    <div class="modal fade" id="deptAccessModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background: #f8fafc;">
+                    <h5 class="modal-title fw-bold" style="color:#1e3a8a;">
+                        <i class="fa-solid fa-table-cells me-2"></i>Phân hệ theo phòng ban
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 small" role="alert">
+                        <i class="fa-solid fa-circle-info me-2"></i>
+                        Tick ô nào thì user thuộc phòng ban đó <b>thấy và vào được</b> phân hệ đó
+                        (ngoài quyền có sẵn theo vai trò — Admin luôn thấy tất cả, IT luôn thấy Báo Cáo Công Việc,
+                        IT nhóm Helpdesk luôn thấy Công Cụ Dụng Cụ). Bỏ tick là mất quyền — cả menu lẫn gõ thẳng đường dẫn.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-custom align-middle mb-0" id="deptAccessTable">
+                            <thead>
+                                <tr id="deptAccessHead"><th>Phòng ban</th></tr>
+                            </thead>
+                            <tbody id="deptAccessBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveDeptAccess" style="background:#1e3a8a; border:none;">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Lưu phân hệ
                     </button>
                 </div>
             </div>
@@ -342,13 +467,157 @@
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     
+    <script th:inline="javascript">
+        // Dữ liệu server cho JS: user đã có trong hệ thống (đánh dấu khi đồng bộ 365) + 11 phòng ban
+        const EXISTING_USERS = /*[[${existingUsersJs}]]*/ [];
+        const DEPARTMENTS = /*[[${departmentsJs}]]*/ [];
+        const MODULES = /*[[${modulesJs}]]*/ [];
+    </script>
     <script>
         toastr.options = { "positionClass": "toast-top-right", "timeOut": "3000" };
 
+        /** Tìm user đã có theo cùng luật với backend: khớp email đầy đủ hoặc phần trước dấu @. */
+        function findExisting(email) {
+            if (!email) return null;
+            const e = String(email).trim().toLowerCase();
+            const p = e.split('@')[0];
+            return EXISTING_USERS.find(u => {
+                if (!u.email) return false;
+                const ue = String(u.email).trim().toLowerCase();
+                return ue === e || ue.split('@')[0] === p;
+            }) || null;
+        }
 
+        /** Đoán mã phòng ban từ chuỗi department của 365 ("IT", "Marketing"...). */
+        function guessDept(raw) {
+            if (!raw) return '';
+            const s = String(raw).trim().toLowerCase();
+            for (const d of DEPARTMENTS) {
+                if (s === d.code.toLowerCase() || s === d.label.toLowerCase()
+                    || s.includes(d.label.toLowerCase()) || d.label.toLowerCase().includes(s)) {
+                    return d.code;
+                }
+            }
+            if (s.includes('it') || s.includes('công nghệ')) return 'ITD';
+            if (s.includes('nhân sự') || s.includes('hành chính') || s.includes('hr')) return 'NSHC';
+            if (s.includes('kế toán') || s.includes('tài chính')) return 'TCKT';
+            return '';
+        }
+
+        function deptOptions(selected) {
+            let html = '<option value="">— Chưa phân —</option>';
+            for (const d of DEPARTMENTS) {
+                html += `<option value="${d.code}" ${d.code === selected ? 'selected' : ''}>${d.display}</option>`;
+            }
+            return html;
+        }
+
+        // ==========================================
+        // 0. LỌC PHÒNG BAN + PHÂN TRANG 10 USER/TRANG
+        // ==========================================
+        const USER_PAGE_SIZE = 10;
+        let userPage = parseInt(sessionStorage.getItem('userMgmtPage')) || 1;
+
+        function renderUserTable() {
+            const val = $('#deptFilter').val();
+            const rows = $('tr.user-row').toArray();
+            // Lọc theo phòng ban trước, rồi mới chia trang trên kết quả lọc
+            const matched = rows.filter(tr => {
+                const dept = tr.getAttribute('data-dept') || 'NONE';
+                return !val || (val === '__NONE__' ? dept === 'NONE' : dept === val);
+            });
+            rows.forEach(tr => tr.style.display = 'none');
+
+            const totalPages = Math.max(1, Math.ceil(matched.length / USER_PAGE_SIZE));
+            if (userPage > totalPages) userPage = totalPages;
+            if (userPage < 1) userPage = 1;
+
+            const start = (userPage - 1) * USER_PAGE_SIZE;
+            matched.slice(start, start + USER_PAGE_SIZE).forEach(tr => tr.style.display = '');
+
+            $('#deptFilterCount').text(val ? matched.length + ' user' : '');
+
+            const pager = $('#user-pager');
+            if (matched.length > USER_PAGE_SIZE) {
+                pager.removeClass('d-none').addClass('d-flex');
+                $('#user-pager-info').text('Trang ' + userPage + '/' + totalPages
+                    + ' — user ' + (start + 1) + '-' + Math.min(start + USER_PAGE_SIZE, matched.length)
+                    + ' trên ' + matched.length);
+                $('#user-prev').prop('disabled', userPage <= 1);
+                $('#user-next').prop('disabled', userPage >= totalPages);
+            } else {
+                pager.removeClass('d-flex').addClass('d-none');
+            }
+            sessionStorage.setItem('userMgmtPage', userPage);
+        }
+
+        $('#deptFilter').change(function() { userPage = 1; renderUserTable(); });
+        $('#user-prev').click(function() { userPage--; renderUserTable(); });
+        $('#user-next').click(function() { userPage++; renderUserTable(); });
+        renderUserTable();
+
+
+
+        // ==========================================
+        // 0b. MA TRẬN PHÂN HỆ THEO PHÒNG BAN
+        // ==========================================
+        $('#btnDeptAccess').click(function() {
+            // Dựng header: 1 cột phòng ban + 1 cột mỗi phân hệ
+            const head = $('#deptAccessHead');
+            head.find('th:gt(0)').remove();
+            for (const m of MODULES) {
+                head.append(`<th class="text-center"><i class="${m.icon} me-1"></i>${m.label}</th>`);
+            }
+
+            const body = $('#deptAccessBody');
+            body.html('<tr><td colspan="' + (MODULES.length + 1) + '" class="text-center py-4"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>');
+            new bootstrap.Modal(document.getElementById('deptAccessModal')).show();
+
+            $.get('/api/admin/department-access', function(matrix) {
+                body.empty();
+                for (const d of DEPARTMENTS) {
+                    const granted = matrix[d.code] || [];
+                    let row = `<tr><td class="fw-semibold" style="color:#1e3a8a;" title="${d.label}">${d.code} <span class="text-muted fw-normal" style="font-size:12px;">${d.label}</span></td>`;
+                    for (const m of MODULES) {
+                        row += `<td class="text-center"><input type="checkbox" class="form-check-input dept-access-cell"
+                                data-dept="${d.code}" data-module="${m.code}" ${granted.includes(m.code) ? 'checked' : ''}></td>`;
+                    }
+                    body.append(row + '</tr>');
+                }
+            }).fail(function() {
+                body.html('<tr><td colspan="' + (MODULES.length + 1) + '" class="text-center text-danger py-4">Không tải được cấu hình.</td></tr>');
+            });
+        });
+
+        $('#btnSaveDeptAccess').click(function() {
+            const matrix = {};
+            for (const d of DEPARTMENTS) matrix[d.code] = [];
+            $('.dept-access-cell:checked').each(function() {
+                matrix[$(this).data('dept')].push($(this).data('module'));
+            });
+
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang lưu...');
+            $.ajax({
+                url: '/api/admin/department-access',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(matrix),
+                success: function(res) {
+                    deptMatrixCache = null; // modal sửa user sẽ đọc lại ma trận mới
+                    toastr.success(res + '. Quyền áp dụng ngay cho lần tải trang kế tiếp của mỗi user.');
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk me-2"></i>Lưu phân hệ');
+                    bootstrap.Modal.getInstance(document.getElementById('deptAccessModal')).hide();
+                },
+                error: function(err) {
+                    toastr.error(err.responseText || 'Lỗi khi lưu phân hệ');
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk me-2"></i>Lưu phân hệ');
+                }
+            });
+        });
 
         // ==========================================
         // 1. DELETE USER FUNCTIONALITY
@@ -386,19 +655,81 @@
             return $(selector + ':checked').map(function() { return this.value; }).get();
         }
 
+        // Ma trận phòng ban tải một lần, để modal tính được "phân hệ đã có sẵn"
+        let deptMatrixCache = null;
+        function loadDeptMatrix(done) {
+            if (deptMatrixCache) { done(deptMatrixCache); return; }
+            $.get('/api/admin/department-access', function(m) { deptMatrixCache = m || {}; done(deptMatrixCache); })
+             .fail(function() { done({}); });
+        }
+
+        /** Phân hệ user ĐÃ có sẵn từ vai trò + phòng ban (chưa tính cấp riêng). */
+        function inheritedModules(role, dept, itGroups, matrix) {
+            const set = new Set();
+            if (role === 'ROLE_ADMIN') { MODULES.forEach(m => set.add(m.code)); return set; }
+            if (role === 'ROLE_IT') set.add('REPORTS');
+            if (itGroups.includes('HELPDESK')) set.add('ASSETS');
+            (matrix[dept] || []).forEach(c => set.add(c));
+            return set;
+        }
+
+        /** Vẽ lại khối phân hệ trong modal: checkbox cấp riêng + dòng "đã có sẵn". */
+        function renderEditModules(personal) {
+            loadDeptMatrix(function(matrix) {
+                const role = $('#editUserRole').val();
+                const dept = $('#editUserDept').val();
+                const groups = checkedGroups('.edit-it-group');
+                const inherited = inheritedModules(role, dept, groups, matrix);
+
+                let html = '';
+                for (const m of MODULES) {
+                    const isInherited = inherited.has(m.code);
+                    const isChecked = personal.includes(m.code);
+                    html += `<div class="form-check form-check-inline" style="min-width:46%;">
+                        <input class="form-check-input edit-user-module" type="checkbox" value="${m.code}"
+                               id="edit_module_${m.code}" ${isChecked ? 'checked' : ''} ${isInherited ? 'disabled' : ''}>
+                        <label class="form-check-label ${isInherited ? 'text-muted' : ''}" for="edit_module_${m.code}">
+                            <i class="${m.icon} me-1"></i>${m.label}
+                            ${isInherited ? '<span class="badge bg-success-subtle text-success ms-1" style="font-size:10px;">đã có</span>' : ''}
+                        </label>
+                    </div>`;
+                }
+                $('#editUserModules').html(html);
+
+                const names = MODULES.filter(m => inherited.has(m.code)).map(m => m.label);
+                $('#editInheritedModules').html(names.length
+                    ? '<i class="fa-solid fa-circle-check me-1 text-success"></i>Đã có sẵn từ vai trò / phòng ban: <b>' + names.join(', ') + '</b> — không cần tick lại.'
+                    : 'Chưa có phân hệ nào từ vai trò / phòng ban. Tick ô trên để cấp riêng cho user này.');
+            });
+        }
+
         $('.btn-edit-role').click(function() {
             const id = $(this).data('id');
             const fullname = $(this).data('fullname');
             const role = $(this).data('role');
             const groups = String($(this).data('groups') || '').split(',').filter(g => g);
+            const personal = String($(this).data('modules') || '').split(',').filter(m => m);
 
             $('#editUserId').val(id);
             $('#editUserFullName').val(fullname);
             $('#editUserRole').val(role);
+            $('#editUserDept').val(String($(this).data('dept') || ''));
+            $('#editUserDeptHead').prop('checked', $(this).data('depthead') === true);
+            $('#editUserEmpCode').val(String($(this).data('empcode') || ''));
+            $('#editUserAttDevice').val(String($(this).data('attdevice') || ''));
 
             $('.edit-it-group').prop('checked', false);
             groups.forEach(g => $('.edit-it-group[value="' + g + '"]').prop('checked', true));
             toggleItGroups('#editUserRole', '#editItGroupsWrapper');
+
+            renderEditModules(personal);
+            // Đổi vai trò / phòng ban / nhóm IT thì tính lại phần "đã có sẵn"
+            $('#editUserRole, #editUserDept').off('change.modules').on('change.modules', function() {
+                renderEditModules(checkedGroups('.edit-user-module'));
+            });
+            $(document).off('change.modules', '.edit-it-group').on('change.modules', '.edit-it-group', function() {
+                renderEditModules(checkedGroups('.edit-user-module'));
+            });
 
             new bootstrap.Modal(document.getElementById('editRoleModal')).show();
         });
@@ -413,7 +744,7 @@
                 url: '/api/admin/users/update-role',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ id: id, role: role, itGroups: checkedGroups('.edit-it-group') }),
+                data: JSON.stringify({ id: id, role: role, itGroups: checkedGroups('.edit-it-group'), department: $('#editUserDept').val(), modules: checkedGroups('.edit-user-module'), deptHead: $('#editUserDeptHead').prop('checked'), employeeCode: $('#editUserEmpCode').val(), attendanceDeviceId: $('#editUserAttDevice').val() }),
                 success: function(res) {
                     toastr.success(res);
                     setTimeout(() => location.reload(), 1000);
@@ -431,6 +762,7 @@
         $('#btnAddLocalUser').click(function() {
             $('#newUserFullName, #newUserEmail, #newUserPassword').val('');
             $('#newUserRole').val('ROLE_USER');
+            $('#newUserDept').val('');
             $('.new-it-group').prop('checked', false);
             toggleItGroups('#newUserRole', '#newItGroupsWrapper');
             new bootstrap.Modal(document.getElementById('addLocalModal')).show();
@@ -442,7 +774,8 @@
                 email: $('#newUserEmail').val().trim(),
                 password: $('#newUserPassword').val(),
                 role: $('#newUserRole').val(),
-                itGroups: checkedGroups('.new-it-group')
+                itGroups: checkedGroups('.new-it-group'),
+                department: $('#newUserDept').val()
             };
 
             if (!payload.fullName || !payload.email) {
@@ -542,30 +875,40 @@
             tbody.empty();
             
             if(users.length === 0) {
-                tbody.html('<tr><td colspan="6" class="text-center py-4">Không tìm thấy user nào hoặc chưa có token hợp lệ.</td></tr>');
+                tbody.html('<tr><td colspan="7" class="text-center py-4">Không tìm thấy user nào hoặc chưa có token hợp lệ.</td></tr>');
                 return;
             }
             
             users.forEach((u) => {
                 const origIndex = msUsersList.findIndex(item => item.email === u.email);
+                const existing = findExisting(u.email);
+                // Phòng ban gợi ý: ưu tiên phòng ban đã lưu trong hệ thống, sau đó đoán từ chuỗi 365
+                const dept = existing && existing.department ? existing.department : guessDept(u.department);
+                const role = existing && existing.role ? existing.role : 'ROLE_USER';
+                const statusHtml = existing
+                    ? '<span class="source-badge" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac;"><i class="fa-solid fa-circle-check me-1"></i>Đã có</span>'
+                    : '<span class="source-badge" style="background:#f8fafc; color:#94a3b8; border:1px solid #e2e8f0;">Chưa thêm</span>';
                 const tr = `
-                    <tr>
+                    <tr ${existing ? 'style="background:#f0fdf4;"' : ''} title="${existing ? 'Tài khoản này đã được thêm vào hệ thống — đồng bộ lại sẽ cập nhật quyền/phòng ban' : ''}">
                         <td>
                             <input type="checkbox" class="form-check-input user-checkbox" data-index="${origIndex}" value="${u.email}">
                         </td>
-                        <td class="fw-medium">${u.fullName}</td>
+                        <td class="fw-medium">${u.fullName}${u.department ? '<div class="text-muted" style="font-size:11px;">365: ' + u.department + '</div>' : ''}</td>
                         <td class="text-muted">${u.email}</td>
-                        <td>${u.department || '-'}</td>
+                        <td>${statusHtml}</td>
+                        <td>
+                            <select class="form-select form-select-sm" id="dept_${origIndex}">${deptOptions(dept)}</select>
+                        </td>
                         <td>
                             <select class="form-select form-select-sm user-role-select" id="role_${origIndex}">
-                                <option value="ROLE_USER">User</option>
-                                <option value="ROLE_IT">IT Support</option>
-                                <option value="ROLE_ADMIN">Admin</option>
+                                <option value="ROLE_USER" ${role === 'ROLE_USER' ? 'selected' : ''}>User</option>
+                                <option value="ROLE_IT" ${role === 'ROLE_IT' ? 'selected' : ''}>IT Support</option>
+                                <option value="ROLE_ADMIN" ${role === 'ROLE_ADMIN' ? 'selected' : ''}>Admin</option>
                             </select>
                         </td>
                         <td class="text-center">
-                            <button class="btn btn-sm btn-primary btn-sync-single" data-index="${origIndex}">
-                                Phân quyền
+                            <button class="btn btn-sm ${existing ? 'btn-outline-success' : 'btn-primary'} btn-sync-single" data-index="${origIndex}">
+                                ${existing ? 'Cập nhật' : 'Phân quyền'}
                             </button>
                         </td>
                     </tr>
@@ -573,6 +916,13 @@
                 tbody.append(tr);
             });
             updateSelectedCount();
+
+            // Tóm tắt ngay trên bảng: bao nhiêu tài khoản đã có trong hệ thống
+            const existedCount = users.filter(u => findExisting(u.email)).length;
+            $('#syncContent .alert').html(
+                '<i class="fa-solid fa-circle-info me-2"></i>Chọn các user bạn muốn đưa vào hệ thống và xác định quyền + phòng ban cho họ. '
+                + `<b>${existedCount}/${users.length}</b> tài khoản trong danh sách <span class="badge bg-success">Đã có</span> trong hệ thống (dòng nền xanh) — đồng bộ lại sẽ cập nhật chứ không tạo trùng.`
+            );
         }
 
         // Search in Modal
@@ -619,9 +969,10 @@
             const payload = {
                 email: user.email,
                 fullName: user.fullName,
-                role: role
+                role: role,
+                department: $(`#dept_${index}`).val()
             };
-            
+
             const btn = $(this);
             btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
             
@@ -654,7 +1005,7 @@
                 const user = msUsersList[index];
                 const role = $(`#role_${index}`).val();
                 
-                const payload = { email: user.email, fullName: user.fullName, role: role };
+                const payload = { email: user.email, fullName: user.fullName, role: role, department: $(`#dept_${index}`).val() };
                 
                 syncUserCall(payload, function(success) {
                     if(success) successCount++;
