@@ -199,10 +199,10 @@ public class TicketServiceImpl implements TicketService {
         String oldStatus = ticket.getStatus();
         String oldAssignee = ticket.getAssignee();
 
-        // Khi vé đã hoàn thành (RESOLVED), khóa tuyệt đối không cho phép chỉnh sửa nữa
-        if ("RESOLVED".equalsIgnoreCase(ticket.getStatus())) {
-            return ticket;
-        }
+        // KHÔNG khóa RESOLVED ở đây được: các controller nạp ticket rồi sửa TRƯỚC khi
+        // gọi hàm này, mà Hibernate (open-in-view) trả về đúng đối tượng đã sửa — nên
+        // đọc trạng thái tại đây là đọc trạng thái MỚI, không phải trạng thái đang lưu.
+        // Chốt khóa đã chuyển lên controller (xem assertEditableStatus).
 
         ticket.setTitle(updatedTicket.getTitle());
         if (updatedTicket.getDescription() != null) {
@@ -562,6 +562,25 @@ public class TicketServiceImpl implements TicketService {
         }
         Pageable pageable = PageRequest.of(page, 5);
         return ticketRepository.filterAndSearchTicketsForReporters(reporterNames, status, cleanSearch, searchId, pageable);
+    }
+
+    /** Cỡ trang đủ lớn để xuất Excel lấy hết ticket trong một lần. */
+    private static final int EXPORT_PAGE_SIZE = 10_000;
+
+    @Override
+    public List<Ticket> getAllTicketsForUser(String username, String search) {
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        return ticketRepository.filterAndSearchTicketsForUser(
+                username, null, cleanSearch, null,
+                PageRequest.of(0, EXPORT_PAGE_SIZE)).getContent();
+    }
+
+    @Override
+    public List<Ticket> getAllTicketsForDeptHead(List<String> reporterNames, String search) {
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        return ticketRepository.filterAndSearchTicketsForReporters(
+                reporterNames, null, cleanSearch, null,
+                PageRequest.of(0, EXPORT_PAGE_SIZE)).getContent();
     }
 
     @Override

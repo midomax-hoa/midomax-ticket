@@ -15,6 +15,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private ModuleAccessInterceptor moduleAccessInterceptor;
 
+    @Autowired
+    private AssetDocumentService assetDocumentService;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Map /uploads/** to the absolute path of src/main/resources/static/uploads
@@ -23,6 +26,11 @@ public class WebConfig implements WebMvcConfigurer {
 
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:/" + uploadPath + "/");
+
+        // Ảnh biên bản giao nhận/thu hồi: để ở thư mục dữ liệu riêng ngoài vùng build,
+        // nên phải khai báo resource handler riêng mới xem được ảnh trên web.
+        registry.addResourceHandler("/asset-docs/**")
+                .addResourceLocations(assetDocumentService.getStorageDir().toUri().toString());
     }
 
     @Override

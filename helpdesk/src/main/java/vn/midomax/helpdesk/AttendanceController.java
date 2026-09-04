@@ -15,6 +15,9 @@ import java.util.*;
 @RequestMapping("/attendance")
 public class AttendanceController {
 
+    /** Số người mỗi trang trên lịch chấm công. Vẽ hết một lúc thì trang nặng ~8 MB. */
+    private static final int ROWS_PER_PAGE = 25;
+
     private final AttendanceService attendanceService;
     private final AttendanceDeviceRepository deviceRepo;
     private final ShiftRepository shiftRepo;
@@ -25,6 +28,8 @@ public class AttendanceController {
     private final LeaveRequestDocService leaveRequestDocService;
     private final EmailService emailService;
     private final AttendanceDeviceUserRepository deviceUserRepo;
+    private final AttendanceSyncScheduler syncScheduler;
+    private final GpsCheckinService gpsCheckinService;
 
     public AttendanceController(AttendanceService attendanceService,
                                 AttendanceDeviceRepository deviceRepo,
@@ -35,7 +40,11 @@ public class AttendanceController {
                                 LeaveRequestRepository leaveRequestRepo,
                                 LeaveRequestDocService leaveRequestDocService,
                                 EmailService emailService,
-                                AttendanceDeviceUserRepository deviceUserRepo) {
+                                AttendanceDeviceUserRepository deviceUserRepo,
+                                AttendanceSyncScheduler syncScheduler,
+                                GpsCheckinService gpsCheckinService) {
+        this.gpsCheckinService = gpsCheckinService;
+        this.syncScheduler = syncScheduler;
         this.leaveRequestDocService = leaveRequestDocService;
         this.attendanceService = attendanceService;
         this.deviceRepo = deviceRepo;
@@ -99,6 +108,7 @@ public class AttendanceController {
                            @RequestParam(required = false) String department,
                            @RequestParam(required = false) Long deviceId,
                            @RequestParam(required = false) String search,
+                           @RequestParam(required = false) Integer page,
                            Model model) {
 
         YearMonth ym = resolveMonth(month, year);
@@ -164,7 +174,32 @@ public class AttendanceController {
         }
         rows.sort(Comparator.comparing(r -> r.fullName == null ? "" : r.fullName));
 
-        model.addAttribute("rows", rows);
+        // Phân trang danh sách người. Vẽ hết 239 người x 31 ngày là hơn 29.000 thẻ HTML,
+        // trang nặng ~8 MB — máy yếu và điện thoại tải rất lâu. Mỗi trang một số ít người
+        // thì nhẹ đi hàng chục lần mà vẫn xem đủ, vì đã có sẵn bộ lọc phòng ban / văn phòng.
+        int totalRows = rows.size();
+        int totalPages = Math.max(1, (int) Math.ceil(totalRows / (double) ROWS_PER_PAGE));
+        int currentPage = page == null ? 1 : Math.min(Math.max(page, 1), totalPages);
+        int fromIdx = (currentPage - 1) * ROWS_PER_PAGE;
+        int toIdx = Math.min(fromIdx + ROWS_PER_PAGE, totalRows);
+        List<EmployeeRow> pageRows = fromIdx >= totalRows
+                ? Collections.<EmployeeRow>emptyList() : rows.subList(fromIdx, toIdx);
+
+        // Cho nhân sự thấy hệ thống có tự tải dữ liệu không, và máy nào đang lỗi
+        model.addAttribute("autoSyncAt", syncScheduler.getLastRunAt());
+        model.addAttribute("autoSyncResult", syncScheduler.getLastResult());
+
+        // Đánh dấu cột HÔM NAY trên lịch — chỉ khi đang xem đúng tháng hiện tại
+        LocalDate today = LocalDate.now();
+        model.addAttribute("todayDay",
+                ym.equals(YearMonth.from(today)) ? today.getDayOfMonth() : null);
+
+        model.addAttribute("totalRows", totalRows);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("currentPage", currentPage);
+        model.addAttribute("fromIdx", totalRows == 0 ? 0 : fromIdx + 1);
+        model.addAttribute("toIdx", toIdx);
+        model.addAttribute("rows", pageRows);
         model.addAttribute("dayHeaders", dayHeaders);
         model.addAttribute("month", ym.getMonthValue());
         model.addAttribute("year", ym.getYear());
@@ -326,6 +361,50 @@ public class AttendanceController {
         return redirectToMonth(month, year);
     }
 
+    // --- Phân quyền chấm công online (GPS) — trang của NHÂN SỰ, nằm trong Quản Lý Nhân Sự ---
+
+    @GetMapping("/gps-permissions")
+    public String gpsPermissions(Model model) {
+        java.util.Map<Long, String> deviceNames = new java.util.HashMap<>();
+        for (AttendanceDevice d : deviceRepo.findAll()) deviceNames.put(d.getId(), d.getName());
+        java.util.List<AppUser> users = new java.util.ArrayList<>(appUserRepository.findAll());
+        users.sort(java.util.Comparator.comparing(
+                u -> u.getFullName() != null ? u.getFullName() : (u.getEmail() != null ? u.getEmail() : ""),
+                String.CASE_INSENSITIVE_ORDER));
+        model.addAttribute("users", users);
+        model.addAttribute("deviceNames", deviceNames);
+        return "attendance-gps-permissions";
+    }
+
+    /** Bật/tắt hàng loạt: action = allow | deny | free-on | free-off cho danh sách ids. */
+    @PostMapping("/gps-permissions/bulk")
+    @ResponseBody
+    public java.util.Map<String, Object> gpsPermissionsBulk(@RequestBody java.util.Map<String, Object> payload) {
+        Object idsObj = payload.get("ids");
+        String action = String.valueOf(payload.get("action"));
+        int changed = 0;
+        if (idsObj instanceof java.util.List<?> ids) {
+            for (Object o : ids) {
+                AppUser u;
+                try { u = appUserRepository.findById(Long.valueOf(String.valueOf(o))).orElse(null); }
+                catch (NumberFormatException e) { continue; }
+                if (u == null) continue;
+                // Ba trạng thái rõ ràng, không bắt nhân sự hiểu quan hệ giữa 2 cờ:
+                // office = chấm trong bán kính văn phòng; free = chấm mọi nơi (công tác,
+                // tự bao gồm quyền chấm); deny = tắt hẳn chấm online.
+                switch (action) {
+                    case "office" -> { u.setGpsCheckinAllowed(true); u.setGpsFreeLocation(false); }
+                    case "free" -> { u.setGpsCheckinAllowed(true); u.setGpsFreeLocation(true); }
+                    case "deny" -> { u.setGpsCheckinAllowed(false); u.setGpsFreeLocation(false); }
+                    default -> { continue; }
+                }
+                appUserRepository.save(u);
+                changed++;
+            }
+        }
+        return java.util.Map.of("ok", true, "changed", changed);
+    }
+
     // --- Máy chấm công ---
 
     @GetMapping("/devices")
@@ -340,6 +419,19 @@ public class AttendanceController {
         if (device.getPort() == null) device.setPort(4370);
         if (device.getCommKey() == null) device.setCommKey(0);
         if (device.getActive() == null) device.setActive(true);
+        if (device.getId() != null) {
+            // Form của IT không có các trường dưới đây — nếu lưu nguyên entity thì chúng
+            // bind null và bị GHI ĐÈ TRẮNG: mất toạ độ GPS nhân sự vừa đặt (trang Địa Điểm
+            // Chấm Công) và mất lịch sử lần tải gần nhất. Chép lại từ bản ghi hiện có.
+            AttendanceDevice existing = deviceRepo.findById(device.getId()).orElse(null);
+            if (existing != null) {
+                device.setLatitude(existing.getLatitude());
+                device.setLongitude(existing.getLongitude());
+                device.setRadiusMeters(existing.getRadiusMeters());
+                device.setLastSyncAt(existing.getLastSyncAt());
+                device.setLastSyncStatus(existing.getLastSyncStatus());
+            }
+        }
         deviceRepo.save(device);
         redirect.addFlashAttribute("successMessage", "Đã lưu thiết bị.");
         return "redirect:/attendance/devices";
@@ -471,6 +563,9 @@ public class AttendanceController {
         model.addAttribute("activePage", "my-attendance");
         model.addAttribute("selfView", true); // trang cá nhân: ẩn các nút quay về màn quản trị
         model.addAttribute("canApprove", canApproveRequests(me));
+        // Nút chấm công GPS: chỉ hiện với người được cấp quyền
+        model.addAttribute("gpsAllowed", me.isGpsCheckinAllowed() || me.isGpsFreeLocation());
+        model.addAttribute("gpsFree", me.isGpsFreeLocation());
 
         return view;
     }
@@ -909,8 +1004,10 @@ public class AttendanceController {
                     if (!isWorking) {
                         rec.setStatus(AttendanceRecord.ST_OFF);
                         rec.setWorkDays(0.0);
-                    } else if (day.isAfter(LocalDate.now())) {
-                        rec.setStatus("NONE");
+                    } else if (!day.isBefore(LocalDate.now())) {
+                        // Gồm cả HÔM NAY: ca làm chưa kết thúc thì chưa kết luận vắng được.
+                        // Trước đây dùng isAfter nên hôm nay vẫn bị ghi vắng từ sáng sớm.
+                        rec.setStatus(AttendanceRecord.ST_NONE);
                         rec.setWorkDays(0.0);
                     } else {
                         rec.setStatus(AttendanceRecord.ST_ABSENT);
@@ -932,7 +1029,7 @@ public class AttendanceController {
                 if (rec == null) {
                     rec = new AttendanceRecord();
                     rec.setWorkDate(day);
-                    rec.setStatus("NONE");
+                    rec.setStatus(AttendanceRecord.ST_NONE);
                     rec.setWorkDays(0.0);
                 }
             }
@@ -1030,5 +1127,208 @@ public class AttendanceController {
 
         public String getTimeLabel() { return timeLabel; }
         public void setTimeLabel(String timeLabel) { this.timeLabel = timeLabel; }
+    }
+
+    // ===================== CHẤM CÔNG GPS =====================
+
+    /**
+     * Trang chấm công riêng của NHÂN VIÊN (kiểu MISA/1Office): đồng hồ, nút chấm to,
+     * trạng thái hôm nay (giờ vào/ra, đã chấm mấy lần), các lần chấm GPS gần nhất.
+     * Miễn phân hệ HR trong ModuleAccessInterceptor — ai đăng nhập cũng vào được,
+     * còn được BẤM chấm hay không thì theo cờ cấp từng người.
+     */
+    @GetMapping("/checkin")
+    public String checkinPage(org.springframework.security.core.Authentication authentication, Model model) {
+        AppUser me = currentAppUser(authentication);
+        // Cờ "công tác" tự nó đã là cấp quyền chấm — khỏi phải bật thêm cờ thứ hai
+        boolean allowed = me != null && (me.isGpsCheckinAllowed() || me.isGpsFreeLocation());
+        String code = me != null ? me.getEmployeeCode() : null;
+        Long deviceId = me != null ? me.getAttendanceDeviceId() : null;
+
+        model.addAttribute("fullName", me != null && me.getFullName() != null ? me.getFullName()
+                : (authentication != null ? authentication.getName() : ""));
+        model.addAttribute("gpsAllowed", allowed);
+        model.addAttribute("gpsFree", me != null && me.isGpsFreeLocation());
+        model.addAttribute("hasCode", code != null && !code.isBlank() && deviceId != null);
+
+        AttendanceDevice device = deviceId == null ? null : deviceRepo.findById(deviceId).orElse(null);
+        model.addAttribute("officeName", device != null ? device.getName() : null);
+        model.addAttribute("officeHasGps", device != null && device.hasGpsLocation());
+        model.addAttribute("officeRadius", device != null ? device.getRadiusMeters() : null);
+
+        // Hôm nay đã chấm gì (mọi nguồn: máy vân tay + GPS)
+        LocalDateTime dayStart = LocalDate.now().atStartOfDay();
+        List<AttendanceLog> todayLogs = (code == null || code.isBlank())
+                ? Collections.emptyList()
+                : attendanceService.findLogsForPerson(code, deviceId, dayStart, dayStart.plusDays(1));
+        model.addAttribute("firstIn", todayLogs.isEmpty() ? null : todayLogs.get(0).getPunchTime());
+        model.addAttribute("lastOut", todayLogs.size() < 2 ? null
+                : todayLogs.get(todayLogs.size() - 1).getPunchTime());
+        model.addAttribute("punchCount", todayLogs.size());
+
+        // Chỉ các lần chấm HÔM NAY — đủ để tự đối chiếu hình/vị trí/giờ trong ngày;
+        // các ngày trước xem trong Lịch Công Của Tôi.
+        model.addAttribute("myCheckins", (code == null || deviceId == null)
+                ? Collections.emptyList()
+                : gpsCheckinService.todayOf(code, deviceId));
+        model.addAttribute("activePage", "my-attendance");
+        return "attendance-checkin";
+    }
+
+    /**
+     * Nhân viên bấm chấm công trên điện thoại: gửi toạ độ + selfie.
+     * Quyền kiểm ở GpsCheckinService (cờ cấp từng người); URL này được miễn phân hệ HR
+     * trong ModuleAccessInterceptor vì người dùng là nhân viên thường.
+     */
+    @PostMapping("/gps/checkin")
+    @ResponseBody
+    public Map<String, Object> gpsCheckin(@RequestParam("latitude") double latitude,
+                                          @RequestParam("longitude") double longitude,
+                                          @RequestParam(value = "accuracy", required = false) Double accuracy,
+                                          @RequestParam(value = "selfie", required = false)
+                                          org.springframework.web.multipart.MultipartFile selfie,
+                                          jakarta.servlet.http.HttpServletRequest request,
+                                          org.springframework.security.core.Authentication authentication) {
+        AppUser me = currentAppUser(authentication);
+        // Sau reverse proxy thì RemoteAddr là IP proxy; ưu tiên X-Forwarded-For nếu có
+        String ip = request.getHeader("X-Forwarded-For");
+        ip = (ip == null || ip.isBlank()) ? request.getRemoteAddr() : ip.split(",")[0].trim();
+
+        GpsCheckinService.Result r = gpsCheckinService.checkin(me, latitude, longitude, accuracy, selfie, ip);
+        Map<String, Object> res = new HashMap<>();
+        res.put("ok", r.ok());
+        res.put("message", r.message());
+        return res;
+    }
+
+    /**
+     * Các lần chấm GPS CỦA CHÍNH MÌNH trong một ngày bất kỳ — lịch cá nhân bấm ngày
+     * nào thì popup gọi endpoint này để hiện hình + giờ + vị trí ngày đó.
+     * Chỉ trả dữ liệu của người đang đăng nhập nên không lộ của ai khác.
+     */
+    @GetMapping("/gps/my-day")
+    @ResponseBody
+    public List<Map<String, Object>> gpsMyDay(@RequestParam("date") String date,
+                                              org.springframework.security.core.Authentication authentication) {
+        AppUser me = currentAppUser(authentication);
+        if (me == null || me.getEmployeeCode() == null || me.getAttendanceDeviceId() == null) {
+            return Collections.emptyList();
+        }
+        LocalDate day;
+        try { day = LocalDate.parse(date); } catch (Exception e) { return Collections.emptyList(); }
+
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (GpsCheckin c : gpsCheckinService.dayOf(me.getEmployeeCode(), me.getAttendanceDeviceId(), day)) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", c.getId());
+            m.put("time", c.getPunchTime() == null ? "" :
+                    c.getPunchTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+            m.put("deviceName", c.getDeviceName());
+            m.put("distance", c.getDistanceM() == null ? null : Math.round(c.getDistanceM()));
+            m.put("free", c.isFreeLocation());
+            m.put("location", c.getLocationName());
+            m.put("mapUrl", c.getMapUrl());
+            out.add(m);
+        }
+        return out;
+    }
+
+    /** Ảnh selfie của một lần chấm — chỉ chính chủ hoặc người có quyền duyệt xem được. */
+    @GetMapping("/gps/selfie/{id}")
+    public ResponseEntity<org.springframework.core.io.InputStreamResource> gpsSelfie(
+            @PathVariable Long id,
+            org.springframework.security.core.Authentication authentication) throws java.io.IOException {
+        GpsCheckin c = gpsCheckinService.get(id);
+        AppUser me = currentAppUser(authentication);
+        if (c == null || me == null || c.getSelfieFile() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        boolean own = c.getEmployeeCode() != null && c.getEmployeeCode().equals(me.getEmployeeCode())
+                && Objects.equals(c.getDeviceId(), me.getAttendanceDeviceId());
+        if (!own && !canApproveRequests(me)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
+        java.nio.file.Path p = gpsCheckinService.getStorageDir().resolve(c.getSelfieFile()).normalize();
+        if (!p.startsWith(gpsCheckinService.getStorageDir()) || !java.nio.file.Files.exists(p)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.IMAGE_JPEG)
+                .body(new org.springframework.core.io.InputStreamResource(java.nio.file.Files.newInputStream(p)));
+    }
+
+    /**
+     * Trang nhân sự đặt ĐỊA ĐIỂM chấm công GPS cho từng văn phòng — bản đồ to, bấm chọn
+     * điểm + bán kính. Tách khỏi form Máy chấm công (phần đó của IT: IP, cổng, khoá kết
+     * nối) vì người đặt địa điểm là nhân sự, không nên phải mò vào cấu hình kỹ thuật.
+     * URL thuộc /attendance nên phân hệ HR tự áp.
+     */
+    @GetMapping("/locations")
+    public String gpsLocations(Model model) {
+        List<AttendanceDevice> devices = deviceRepo.findAll();
+        // Số người thuộc từng văn phòng, cho nhân sự thấy phạm vi ảnh hưởng
+        Map<Long, Integer> peopleCount = new HashMap<>();
+        for (AttendanceService.Person p : attendanceService.roster()) {
+            if (p.getDeviceId() != null) peopleCount.merge(p.getDeviceId(), 1, Integer::sum);
+        }
+        model.addAttribute("devices", devices);
+        model.addAttribute("peopleCount", peopleCount);
+        model.addAttribute("activePage", "gps-locations");
+        return "attendance-locations";
+    }
+
+    /**
+     * Lưu RIÊNG toạ độ + bán kính. Không dùng /devices/save vì nó bind cả entity —
+     * form thiếu trường nào là trường đó bị ghi đè thành null (mất IP, cổng...).
+     */
+    @PostMapping("/locations/save")
+    public String saveGpsLocation(@RequestParam Long id,
+                                  @RequestParam(required = false) Double latitude,
+                                  @RequestParam(required = false) Double longitude,
+                                  @RequestParam(required = false) Integer radiusMeters,
+                                  RedirectAttributes redirect) {
+        AttendanceDevice device = deviceRepo.findById(id).orElse(null);
+        if (device == null) {
+            redirect.addFlashAttribute("errorMessage", "Không tìm thấy văn phòng.");
+            return "redirect:/attendance/locations";
+        }
+        device.setLatitude(latitude);
+        device.setLongitude(longitude);
+        device.setRadiusMeters(radiusMeters == null || radiusMeters < 30 ? 150 : radiusMeters);
+        deviceRepo.save(device);
+        redirect.addFlashAttribute("successMessage",
+                latitude == null
+                    ? "Đã tắt chấm công GPS cho " + device.getName() + "."
+                    : "Đã lưu địa điểm chấm công cho " + device.getName()
+                      + " (bán kính " + device.getRadiusMeters() + "m).");
+        return "redirect:/attendance/locations";
+    }
+
+    /**
+     * Trang nhân sự soát chấm GPS — xem THEO TỪNG NGƯỜI, không đổ cả công ty ra một
+     * bảng: mặc định chỉ hiện danh sách người (không ảnh nào — rất nhẹ), bấm chọn một
+     * người mới tải lịch sử + selfie của riêng người đó.
+     */
+    @GetMapping("/gps-audit")
+    public String gpsAudit(@RequestParam(required = false) String code,
+                           @RequestParam(required = false) Long deviceId,
+                           org.springframework.security.core.Authentication authentication, Model model) {
+        AppUser me = currentAppUser(authentication);
+        if (!canApproveRequests(me) && (me == null || !"ROLE_ADMIN".equals(me.getRole()))) {
+            return "redirect:/attendance";
+        }
+        model.addAttribute("people", gpsCheckinService.summary());
+        // Tên hiển thị theo (máy, mã) — danh sách GPS chỉ có mã, tra tên từ roster
+        Map<String, String> names = new HashMap<>();
+        for (AttendanceService.Person p : attendanceService.roster()) {
+            names.put((p.getDeviceId() == null ? "-" : p.getDeviceId()) + "|" + p.getCode(), p.getName());
+        }
+        model.addAttribute("personNames", names);
+        model.addAttribute("selCode", code);
+        model.addAttribute("selDeviceId", deviceId);
+        model.addAttribute("checkins", (code == null || deviceId == null)
+                ? Collections.emptyList() : gpsCheckinService.historyOf(code, deviceId));
+        model.addAttribute("activePage", "attendance");
+        return "attendance-gps";
     }
 }

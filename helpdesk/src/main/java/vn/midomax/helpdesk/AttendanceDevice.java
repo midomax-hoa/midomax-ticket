@@ -26,6 +26,14 @@ public class AttendanceDevice {
     private LocalDateTime lastSyncAt;
     private String lastSyncStatus; // Kết quả lần tải gần nhất, hiển thị ở bảng thiết bị
 
+    // ===== Chấm công GPS: toạ độ văn phòng + bán kính cho phép =====
+    // Khai ở đây vì mỗi máy chấm công đại diện một văn phòng — GPS chấm về "máy" nào
+    // thì so khoảng cách với toạ độ của máy đó. Chưa khai toạ độ = văn phòng chưa bật GPS.
+    private Double latitude;
+    private Double longitude;
+    /** Bán kính cho phép (mét). GPS điện thoại lệch 5-50m nên đừng đặt quá chặt. */
+    private Integer radiusMeters = 150;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -52,4 +60,16 @@ public class AttendanceDevice {
 
     public String getLastSyncStatus() { return lastSyncStatus; }
     public void setLastSyncStatus(String lastSyncStatus) { this.lastSyncStatus = lastSyncStatus; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public Integer getRadiusMeters() { return radiusMeters == null ? 150 : radiusMeters; }
+    public void setRadiusMeters(Integer radiusMeters) { this.radiusMeters = radiusMeters; }
+
+    /** Van phong da khai toa do (bat GPS) chua. */
+    public boolean hasGpsLocation() { return latitude != null && longitude != null; }
 }

@@ -45,6 +45,7 @@ public class InvoiceController {
     /** Danh sách sổ hóa đơn kèm bộ lọc và các ô tổng. */
     @GetMapping
     public String list(@RequestParam(value = "period", required = false) String period,
+                       @RequestParam(value = "budgetItemId", required = false) Long budgetItemId,
                        @RequestParam(value = "category", required = false) String category,
                        @RequestParam(value = "vendor", required = false) String vendor,
                        @RequestParam(value = "expenseType", required = false) String expenseType,
@@ -56,8 +57,20 @@ public class InvoiceController {
                 blankToNull(period), blankToNull(category), blankToNull(vendor),
                 blankToNull(expenseType), blankToNull(paymentStatus), blankToNull(search));
 
-        long total = 0, paid = 0, unpaid = 0, recurring = 0;
+        // Lọc theo hạng mục ngân sách (bấm từ Quỹ Chi Tiêu sang để xem hóa đơn của hạng mục đó)
+        if (budgetItemId != null) {
+            entries = entries.stream()
+                    .filter(e -> budgetItemId.equals(e.getBudgetItemId()))
+                    .toList();
+        }
+
+        long total = 0, paid = 0, unpaid = 0, recurring = 0, cancelled = 0;
         for (InvoiceEntry e : entries) {
+            // Đã hủy / hoàn tiền: tiền không chi ra thật -> tách riêng, không cộng vào tổng
+            if (e.isCancelled()) {
+                cancelled += e.getAmount();
+                continue;
+            }
             total += e.getAmount();
             if (InvoiceEntry.STATUS_PAID.equals(e.getPaymentStatus())) {
                 paid += e.getAmount();
@@ -68,6 +81,7 @@ public class InvoiceController {
                 recurring += e.getAmount();
             }
         }
+        model.addAttribute("cancelledAmount", cancelled);
 
         model.addAttribute("entries", entries);
         model.addAttribute("entryCount", entries.size());
@@ -85,6 +99,11 @@ public class InvoiceController {
         model.addAttribute("budgetItems", budgetItemRepository.findAll());
 
         model.addAttribute("fPeriod", period);
+        model.addAttribute("fBudgetItemId", budgetItemId);
+        if (budgetItemId != null) {
+            budgetItemRepository.findById(budgetItemId).ifPresent(b ->
+                    model.addAttribute("fBudgetItemName", b.getGroupCategory() + " › " + b.getItemName()));
+        }
         model.addAttribute("fCategory", category);
         model.addAttribute("fVendor", vendor);
         model.addAttribute("fExpenseType", expenseType);

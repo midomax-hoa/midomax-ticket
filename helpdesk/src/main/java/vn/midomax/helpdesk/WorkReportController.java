@@ -1,10 +1,12 @@
 package vn.midomax.helpdesk;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
@@ -286,6 +288,33 @@ public class WorkReportController {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * Chốt quyền cho các endpoint nhận thẳng ID báo cáo. Danh sách và /detail đã lọc
+     * đúng phạm vi, nhưng nếu các endpoint còn lại không kiểm tra thì gọi thẳng API
+     * là đọc/sửa/xoá được báo cáo của người khác — giao diện lọc đẹp cũng vô nghĩa.
+     * Dùng chung đúng luật với filterByGroupScope để hai bên không lệch nhau.
+     */
+    private WorkReport assertCanAccessReport(Long reportId, Authentication auth) {
+        WorkReport r = reportId == null ? null : workReportService.getReportById(reportId);
+        if (r == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo công việc.");
+        }
+        if (filterByGroupScope(List.of(r), auth).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Bạn không có quyền với báo cáo công việc này.");
+        }
+        return r;
+    }
+
+    /** Như trên nhưng vào từ việc con — truy ngược lên báo cáo cha rồi mới xét quyền. */
+    private void assertCanAccessSubTask(Long subTaskId, Authentication auth) {
+        WorkSubTask st = subTaskId == null ? null : workSubTaskRepository.findById(subTaskId).orElse(null);
+        if (st == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy việc con.");
+        }
+        assertCanAccessReport(st.getWorkReportId(), auth);
+    }
+
     /** Lọc danh sách theo khoảng thời gian (ALL / TODAY / YESTERDAY / WEEK). */
     private List<WorkReport> applyDateFilter(List<WorkReport> list, String dateFilter) {
         LocalDate today = LocalDate.now();
@@ -404,7 +433,7 @@ public class WorkReportController {
             } catch (Exception e) {}
         }
         // Ghi lại trạng thái CŨ trước khi cập nhật để biết cái gì thay đổi mà báo chuông
-        WorkReport before = workReportService.getReportById(id);
+        WorkReport before = assertCanAccessReport(id, authentication);
         String oldAssignee = before != null ? before.getAssignee() : null;
         String oldStatus = before != null ? before.getStatus() : null;
         Set<String> oldWatchers = before != null ? watcherSet(before.getWatchers()) : new HashSet<>();
@@ -471,6 +500,9 @@ public class WorkReportController {
             @RequestParam(value = "dueDate", required = false) String dueDateStr,
             @RequestParam(value = "delayReason", required = false) String delayReason,
             Authentication authentication) {
+        // Chốt quyền đặt NGOÀI try: nếu để trong, exception bị nuốt thành "error"
+        // và người gọi không phân biệt được "không có quyền" với "lỗi hệ thống".
+        assertCanAccessReport(id, authentication);
         try {
             Integer progress = null;
             if (progressStr != null && !progressStr.trim().isEmpty()) {
@@ -501,11 +533,13 @@ public class WorkReportController {
         }
     }
 
-    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
-    public String deleteReport(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
-        System.out.println(">>> [DELETE CONTROLLER] Bắt đầu xóa ID: " + id);
+    // Chỉ nhận POST: giao diện vốn đã submit bằng form POST, còn để hở GET thì
+    // trình duyệt/antivirus prefetch trúng link là xoá mất báo cáo.
+    @PostMapping("/delete/{id}")
+    public String deleteReport(@PathVariable("id") Long id, Authentication authentication,
+                               RedirectAttributes redirectAttributes) {
+        assertCanAccessReport(id, authentication);
         workReportService.deleteReport(id);
-        System.out.println(">>> [DELETE CONTROLLER] Đã gọi Service xóa ID: " + id);
         redirectAttributes.addFlashAttribute("successMessage", "Đã xóa hạng mục báo cáo thành công!");
         return "redirect:/work-reports";
     }
@@ -517,9 +551,9 @@ public class WorkReportController {
             @RequestParam("title") String title,
             @RequestParam(value = "assignee", required = false, defaultValue = "") String assignee,
             Authentication authentication) {
+        WorkReport parent = assertCanAccessReport(workReportId, authentication);
         WorkSubTask subTask = workReportService.addSubTask(workReportId, title, assignee);
         if (assignee != null && !assignee.isBlank()) {
-            WorkReport parent = workReportService.getReportById(workReportId);
             bell(List.of(assignee), actorOf(authentication),
                     "📌 Bạn được giao việc con: " + title,
                     parent != null ? "Thuộc công việc: " + parent.getTaskTitle() : "");
@@ -531,13 +565,17 @@ public class WorkReportController {
     @ResponseBody
     public WorkSubTask toggleSubTask(
             @RequestParam("subTaskId") Long subTaskId,
-            @RequestParam("completed") Boolean completed) {
+            @RequestParam("completed") Boolean completed,
+            Authentication authentication) {
+        assertCanAccessSubTask(subTaskId, authentication);
         return workReportService.toggleSubTask(subTaskId, completed);
     }
 
     @PostMapping("/subtasks/delete")
     @ResponseBody
-    public String deleteSubTask(@RequestParam("subTaskId") Long subTaskId) {
+    public String deleteSubTask(@RequestParam("subTaskId") Long subTaskId,
+                                Authentication authentication) {
+        assertCanAccessSubTask(subTaskId, authentication);
         try {
             workReportService.deleteSubTask(subTaskId);
             return "success";
@@ -548,7 +586,9 @@ public class WorkReportController {
 
     @GetMapping("/comments")
     @ResponseBody
-    public List<WorkComment> getComments(@RequestParam("workReportId") Long workReportId) {
+    public List<WorkComment> getComments(@RequestParam("workReportId") Long workReportId,
+                                         Authentication authentication) {
+        assertCanAccessReport(workReportId, authentication);
         return workReportService.getComments(workReportId);
     }
 
@@ -559,6 +599,7 @@ public class WorkReportController {
             @RequestParam("author") String author,
             @RequestParam("content") String content,
             Authentication auth) {
+        assertCanAccessReport(workReportId, auth);
         String commenter = (auth != null && auth.getName() != null) ? auth.getName() : author;
         if (commenter == null || commenter.trim().isEmpty()) commenter = "Anonymous";
         WorkComment comment = workReportService.addComment(workReportId, commenter, content);
@@ -647,7 +688,9 @@ public class WorkReportController {
             @RequestParam("taskTitle") String taskTitle,
             @RequestParam(value = "assignee", required = false) String assignee,
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "dueDate", required = false) String dueDateStr) {
+            @RequestParam(value = "dueDate", required = false) String dueDateStr,
+            Authentication authentication) {
+        assertCanAccessReport(parentId, authentication);
         Map<String, Object> res = new HashMap<>();
         try {
             WorkReport child = workReportService.createSubReport(parentId, taskTitle, assignee, status, dueDateStr);

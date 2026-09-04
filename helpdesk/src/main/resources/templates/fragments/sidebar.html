@@ -70,6 +70,10 @@
 
 /* SIDEBAR CSS - ORIGINAL COLORS WITH GOOEY NOTCH */
         .sidebar {
+            /* Ghim font tại đây: sidebar vốn thừa hưởng font của từng trang, nên trang
+               dùng Inter (Lịch Trình) menu nhìn đậm và bè hơn hẳn trang dùng Segoe UI —
+               cùng một menu mà mỗi trang một kiểu chữ. */
+            font-family: 'Segoe UI', sans-serif;
             width: 260px;
             background: #ffffff;
             height: 100vh;
@@ -606,6 +610,54 @@
                 left: 0 !important;
                 box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5) !important;
             }
+            
+            /* GLOBAL MOBILE RESPONSIVE FIXES */
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 15px !important;
+            }
+            
+            .topbar {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 15px;
+                padding: 15px !important;
+            }
+            
+            .topbar .d-flex {
+                flex-wrap: wrap;
+            }
+            
+            .widget-card, .stat-card-modern {
+                padding: 15px !important;
+                overflow-x: auto;
+            }
+            
+            /* Responsive tables */
+            table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Fix row constraints */
+            .row {
+                margin-left: -5px;
+                margin-right: -5px;
+            }
+            .col, [class*="col-"] {
+                padding-left: 5px;
+                padding-right: 5px;
+            }
+            
+            .welcome-banner {
+                padding: 20px !important;
+            }
+            .welcome-banner h1 {
+                font-size: 24px !important;
+            }
         }
 
         /* ============================================================
@@ -877,16 +929,36 @@
                 <div class="icon-wrapper"><i class="fa-solid fa-network-wired"></i></div>
                 <span>Mạng</span>
             </a>
-            <!-- Trong IT chỉ nhóm helpdesk thấy Công Cụ Dụng Cụ; luật này khớp với SecurityConfig. -->
-            <a href="/assets" th:classappend="${activePage == 'tools'} ? 'active' : ''" title="Công Cụ Dụng Cụ" th:if="${allowedModules != null and allowedModules.contains('ASSETS')}">
-                <div class="icon-wrapper"><i class="fa-solid fa-boxes-stacked"></i></div>
-                <span>Công Cụ Dụng Cụ</span>
+            <!-- Trong IT chỉ nhóm helpdesk thấy Công Cụ Dụng Cụ; luật này khớp với SecurityConfig.
+                 License 365 là mục CON của Công Cụ Dụng Cụ, không đặt ngang hàng. -->
+            <a href="/assets"
+               title="Công Cụ Dụng Cụ" th:if="${allowedModules != null and allowedModules.contains('ASSETS')}"
+               style="justify-content: space-between; padding-right: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-wrapper"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <span>Công Cụ Dụng Cụ</span>
+                </div>
+                <i class="fa-solid fa-chevron-down submenu-caret" data-target="assetsSubmenu"
+                   style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
+            <div class="collapse" id="assetsSubmenu"
+                 th:classappend="${activePage == 'tools' or activePage == 'licenses'} ? 'show' : ''"
+                 th:if="${allowedModules != null and allowedModules.contains('ASSETS')}">
+                <a href="/assets" th:classappend="${activePage == 'tools'} ? 'active' : ''" title="Danh Sách Tài Sản"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <span>Danh Sách Tài Sản</span>
+                </a>
+                <a href="/assets/licenses" th:classappend="${activePage == 'licenses'} ? 'active' : ''" title="License Microsoft 365"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-brands fa-microsoft"></i></div>
+                    <span>License 365</span>
+                </a>
+            </div>
             <!-- Quản Lý Tài Chính là menu cha; Sổ Hóa Đơn nằm trong nó, không đặt ngang hàng.
                  Mở sẵn submenu khi đang ở bất kỳ trang con nào của tài chính. -->
             <!-- Bấm vào tên -> đi thẳng trang Quỹ Chi Tiêu; bấm mũi tên -> chỉ xổ/thu submenu -->
             <a href="/expenses"
-               th:classappend="${activePage == 'expenses' or activePage == 'invoices' or activePage == 'reconcile'} ? 'active' : ''"
                title="Quản Lý Tài Chính" th:if="${allowedModules != null and allowedModules.contains('FINANCE')}"
                style="justify-content: space-between; padding-right: 20px;">
                 <div style="display: flex; align-items: center;">
@@ -919,11 +991,30 @@
                 <div class="icon-wrapper"><i class="fa-solid fa-calendar-check"></i></div>
                 <span>Lịch Trình</span>
             </a>
-            <!-- Lịch chấm công cá nhân: ai cũng xem được của chính mình (cần admin gán mã chấm công) -->
-            <a href="/attendance/my" th:classappend="${activePage == 'my-attendance'} ? 'active' : ''" title="Chấm Công Của Tôi">
-                <div class="icon-wrapper"><i class="fa-solid fa-fingerprint"></i></div>
-                <span>Chấm Công Của Tôi</span>
+            <!-- Chấm Công là menu CHA: bấm tên -> trang chấm công (nút chấm GPS, đồng hồ);
+                 mũi tên xổ ra 2 mục con. Ai đăng nhập cũng thấy, cần admin gán mã chấm công. -->
+            <a href="/attendance/checkin"
+               title="Chấm Công" style="justify-content: space-between; padding-right: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-wrapper"><i class="fa-solid fa-fingerprint"></i></div>
+                    <span>Chấm Công</span>
+                </div>
+                <i class="fa-solid fa-chevron-down submenu-caret" data-target="checkinSubmenu"
+                   style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
+            <div class="collapse" id="checkinSubmenu"
+                 th:classappend="${activePage == 'checkin' or activePage == 'my-attendance'} ? 'show' : ''">
+                <a href="/attendance/checkin" th:classappend="${activePage == 'checkin'} ? 'active' : ''" title="Chấm Công GPS"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-location-dot"></i></div>
+                    <span>Chấm Công GPS</span>
+                </a>
+                <a href="/attendance/my" th:classappend="${activePage == 'my-attendance'} ? 'active' : ''" title="Lịch Công Của Tôi"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-calendar-days"></i></div>
+                    <span>Lịch Công Của Tôi</span>
+                </a>
+            </div>
             <!-- Duyệt đơn nghỉ phép / bổ sung công: chỉ Admin, trưởng phòng, phòng NSHC -->
             <a href="/attendance/requests" th:if="${canApproveLeave != null and canApproveLeave}"
                th:classappend="${activePage == 'leave-requests'} ? 'active' : ''" title="Duyệt Đơn Từ">
@@ -936,7 +1027,6 @@
             </a>
             <!-- Quản Lý Nhân Sự là menu cha; Hồ Sơ Nhân Viên và Chấm Công nằm trong nó. -->
             <a href="/employees"
-               th:classappend="${activePage == 'employees' or activePage == 'attendance'} ? 'active' : ''"
                title="Quản Lý Nhân Sự" th:if="${allowedModules != null and allowedModules.contains('HR')}"
                style="justify-content: space-between; padding-right: 20px;">
                 <div style="display: flex; align-items: center;">
@@ -947,7 +1037,7 @@
                    style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
             <div class="collapse" id="hrSubmenu"
-                 th:classappend="${activePage == 'employees' or activePage == 'attendance'} ? 'show' : ''"
+                 th:classappend="${activePage == 'employees' or activePage == 'attendance' or activePage == 'gps-locations' or activePage == 'gps-perms'} ? 'show' : ''"
                  th:if="${allowedModules != null and allowedModules.contains('HR')}">
                 <a href="/employees" th:classappend="${activePage == 'employees'} ? 'active' : ''" title="Hồ Sơ Nhân Viên"
                    style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
@@ -959,11 +1049,21 @@
                     <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-fingerprint"></i></div>
                     <span>Lịch Chấm Công</span>
                 </a>
+                <a href="/attendance/locations" th:classappend="${activePage == 'gps-locations'} ? 'active' : ''" title="Địa Điểm Chấm Công GPS"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-map-location-dot"></i></div>
+                    <span>Địa Điểm Chấm Công</span>
+                </a>
+                <a href="/attendance/gps-permissions" th:classappend="${activePage == 'gps-perms'} ? 'active' : ''" title="Chấm Công Online"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                    <span>Chấm Công Online</span>
+                </a>
             </div>
 
             <div style="margin: 10px 25px; border-top: 1px solid #e5e7eb;" sec:authorize="hasRole('ADMIN')"></div>
 
-            <a href="/admin/users" th:classappend="${activePage == 'users'} ? 'active' : ''" title="Quản Lý User" sec:authorize="hasRole('ADMIN')" style="justify-content: space-between; padding-right: 20px;">
+            <a href="/admin/users" title="Quản Lý User" sec:authorize="hasRole('ADMIN')" style="justify-content: space-between; padding-right: 20px;">
                 <div style="display: flex; align-items: center;">
                     <div class="icon-wrapper"><i class="fa-solid fa-users-gear"></i></div>
                     <span>Quản Lý User</span>

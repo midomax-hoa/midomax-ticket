@@ -33,7 +33,9 @@
 
     <div class="main-content" id="main-content">
         <div class="topbar">
-            <div>
+                <!-- Nut mo menu tren dien thoai. .topbar la flex nen dat truc tiep, khong boc them the. -->
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
                 <h4 class="mb-0 fw-bold" style="color:#1e3a8a;">Duyệt Phiếu Đăng Ký Nghỉ / Giấy Bổ Sung Công</h4>
                 <div class="text-muted" style="font-size:13px;"
                      th:text="${isHr} ? 'Bạn duyệt với vai trò PHÒNG NSHT (cấp chốt)' : 'Bạn duyệt với vai trò TRƯỞNG BỘ PHẬN (cấp 1)'">Vai trò</div>

@@ -19,6 +19,8 @@
         .table-custom tbody tr:hover { background-color: #f8fafc; }
         .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
         .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
     </style>
 </head>
 
@@ -144,6 +146,14 @@
                         <label class="form-label">Khoá kết nối (comm key)</label>
                         <input type="number" name="commKey" id="dv-key" class="form-control" value="0">
                     </div>
+
+                    <!-- Toạ độ chấm công GPS đặt ở trang riêng của nhân sự (Địa Điểm Chấm Công),
+                         form này chỉ còn phần kỹ thuật của IT: IP, cổng, khoá kết nối. -->
+                    <div class="alert alert-light border mb-3 py-2" style="font-size:12px;">
+                        <i class="fa-solid fa-map-location-dot me-1" style="color:#0d9488;"></i>
+                        Vị trí + bán kính chấm công GPS đặt tại
+                        <a href="/attendance/locations" class="fw-semibold">Địa Điểm Chấm Công</a>.
+                    </div>
                     <div class="form-check">
                         <!-- Marker "_active" để Spring nhận biết checkbox bị bỏ tick (trình duyệt không gửi gì). -->
                         <input type="hidden" name="_active" value="on">
@@ -200,6 +210,7 @@
             document.getElementById('dv-active').checked = btn.getAttribute('data-active') === 'true';
             new bootstrap.Modal(document.getElementById('deviceModal')).show();
         }
+
     </script>
 </body>
 </html>

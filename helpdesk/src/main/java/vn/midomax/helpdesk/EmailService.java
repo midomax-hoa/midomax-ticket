@@ -1,6 +1,7 @@
 package vn.midomax.helpdesk;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -8,6 +9,14 @@ import java.util.Optional;
 
 @Service
 public class EmailService {
+
+    /**
+     * Địa chỉ gốc của hệ thống, dùng cho link trong email gửi ra ngoài.
+     * KHÔNG được ghi cứng localhost: người nhận bấm vào sẽ mở máy của chính họ chứ
+     * không vào được hệ thống. Đổi tên miền thì sửa app.base-url trong cấu hình.
+     */
+    @Value("${app.base-url:https://ticket.midomax.vn}")
+    private String baseUrl;
 
     @Autowired
     private GraphEmailService graphEmailService;
@@ -254,7 +263,7 @@ public class EmailService {
                 + "    </div>"
                 + "    <!-- CTA BUTTON -->"
                 + "    <div style='text-align: center; margin: 35px 0 15px;'>"
-                + "      <a href='http://localhost:8080/ticket-management' style='background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); letter-spacing: 0.3px;'>Truy Cập Helpdesk Portal &amp; Xử Lý Ngay</a>"
+                + "      <a href='" + baseUrl + "/ticket-management' style='background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); letter-spacing: 0.3px;'>Truy Cập Helpdesk Portal &amp; Xử Lý Ngay</a>"
                 + "    </div>"
                 + "  </div>"
                 + "  <!-- FOOTER -->"

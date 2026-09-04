@@ -27,6 +27,8 @@
 
         .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
         .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 9px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
         .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30,58,138,0.12); }
 
         /* Bảng nhiều cột: cho phép cuộn ngang trong khung, không đẩy cả trang */
@@ -44,6 +46,7 @@
         .b-paid { background: #dcfce7; color: #15803d; }
         .b-unpaid { background: #fee2e2; color: #b91c1c; }
         .b-pending { background: #fef3c7; color: #b45309; }
+        .b-cancelled { background: #f1f5f9; color: #64748b; text-decoration: line-through; }
         .b-recurring { background: #e0e7ff; color: #3730a3; }
         .b-once { background: #f1f5f9; color: #475569; }
         .cat-chip { font-size: 11.5px; color: #475569; }
@@ -65,7 +68,9 @@
     <div class="main-content" id="main-content">
 
         <div class="topbar">
-            <div>
+                <!-- Nut mo menu tren dien thoai. .topbar la flex nen dat truc tiep, khong boc them the. -->
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
                 <h4 class="mb-0 fw-bold" style="color:#1e3a8a;">Sổ Hóa Đơn</h4>
                 <div class="text-muted" style="font-size:13px;">Lưu trữ hóa đơn &amp; phiếu chi của công ty</div>
             </div>
@@ -80,6 +85,19 @@
                     <i class="fa-solid fa-plus me-1"></i> Thêm hóa đơn
                 </button>
             </div>
+        </div>
+
+        <!-- Đang xem hóa đơn của một hạng mục ngân sách (bấm từ Quỹ Chi Tiêu sang) -->
+        <div th:if="${fBudgetItemId != null}" class="alert alert-primary d-flex justify-content-between align-items-center py-2" role="alert">
+            <div>
+                <i class="fa-solid fa-filter me-2"></i>
+                Đang lọc theo hạng mục ngân sách: <b th:text="${fBudgetItemName}">OPEX › Gia hạn ChatGPT</b>
+                — <span th:text="${entryCount}">0</span> hóa đơn,
+                tổng <b th:text="${#numbers.formatInteger(totalAmount, 0, 'POINT')} + ' đ'">0 đ</b>
+            </div>
+            <a href="/expenses/invoices" class="btn btn-sm btn-outline-primary fw-semibold">
+                <i class="fa-solid fa-xmark me-1"></i>Bỏ lọc
+            </a>
         </div>
 
         <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -114,6 +132,9 @@
                 <div class="col-md-3 s-stat">
                     <div class="s-label">CHƯA THANH TOÁN</div>
                     <div class="s-value" style="color:#fca5a5;" th:text="${#numbers.formatInteger(unpaidAmount, 1, 'POINT')}">0</div>
+                    <!-- Khoản đã hủy/hoàn tiền tách riêng, không nằm trong tổng số tiền -->
+                    <div class="s-sub" th:if="${cancelledAmount != null and cancelledAmount > 0}"
+                         th:text="'Đã hủy / hoàn: ' + ${#numbers.formatInteger(cancelledAmount, 1, 'POINT')} + ' đ (không tính vào tổng)'">Đã hủy</div>
                     <div class="s-sub">Định kỳ: <span th:text="${#numbers.formatInteger(recurringAmount, 1, 'POINT')}">0</span></div>
                 </div>
             </div>
@@ -164,6 +185,7 @@
                         <option value="PAID" th:selected="${fPaymentStatus == 'PAID'}">Đã thanh toán</option>
                         <option value="UNPAID" th:selected="${fPaymentStatus == 'UNPAID'}">Chưa thanh toán</option>
                         <option value="PENDING" th:selected="${fPaymentStatus == 'PENDING'}">Chờ duyệt</option>
+                        <option value="CANCELLED" th:selected="${fPaymentStatus == 'CANCELLED'}">Đã hủy / hoàn tiền</option>
                     </select>
                     <button type="submit" class="btn btn-primary btn-sm px-3" style="background:#1e3a8a; border:none;">Lọc</button>
                     <a th:href="@{/expenses/invoices}" class="btn btn-outline-secondary btn-sm px-3">Xóa lọc</a>
@@ -217,7 +239,7 @@
                             </td>
                             <td>
                                 <span class="badge-soft"
-                                      th:classappend="${e.paymentStatus == 'PAID'} ? 'b-paid' : (${e.paymentStatus == 'PENDING'} ? 'b-pending' : 'b-unpaid')"
+                                      th:classappend="${e.paymentStatus == 'PAID'} ? 'b-paid' : (${e.paymentStatus == 'PENDING'} ? 'b-pending' : (${e.paymentStatus == 'CANCELLED'} ? 'b-cancelled' : 'b-unpaid'))"
                                       th:text="${e.paymentStatusLabel}"></span>
                             </td>
                             <td class="nowrap" th:text="${e.enteredBy}"></td>
@@ -329,6 +351,7 @@
                                     <option value="PAID">Đã thanh toán</option>
                                     <option value="UNPAID">Chưa thanh toán</option>
                                     <option value="PENDING">Chờ duyệt</option>
+                                    <option value="CANCELLED">Đã hủy / hoàn tiền</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -420,6 +443,7 @@
                                     <option value="PAID">Đã thanh toán</option>
                                     <option value="UNPAID">Chưa thanh toán</option>
                                     <option value="PENDING">Chờ duyệt</option>
+                                    <option value="CANCELLED">Đã hủy / hoàn tiền</option>
                                 </select>
                             </div>
                             <div class="col-md-4">

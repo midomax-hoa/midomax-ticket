@@ -45,6 +45,8 @@
 
         .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
         .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 9px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
         .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.12); }
         .section-divider { font-weight: 700; font-size: 13px; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px; }
 
@@ -279,9 +281,14 @@
                                     <td class="text-end fw-bold text-danger text-nowrap">
                                         <span th:text="${#numbers.formatInteger(item.spentAmount, 0, 'POINT')} + ' đ'">0 đ</span>
                                         <!-- Cho biết bao nhiêu đến từ Sổ Hóa Đơn, để đối chiếu ngay tại chỗ -->
-                                        <div th:if="${invoiceCountByItem.get(item.id) != null}"
-                                             class="text-muted fw-normal" style="font-size:11px;"
-                                             th:text="'gồm ' + ${invoiceCountByItem.get(item.id)} + ' hóa đơn'">gồm 2 hóa đơn</div>
+                                        <!-- Bấm để xem đúng các hóa đơn này trong Sổ Hóa Đơn -->
+                                        <a th:if="${invoiceCountByItem.get(item.id) != null}"
+                                           th:href="@{/expenses/invoices(budgetItemId=${item.id})}"
+                                           class="fw-normal text-decoration-none" style="font-size:11px; color:#1e3a8a;"
+                                           title="Xem các hóa đơn của hạng mục này trong Sổ Hóa Đơn">
+                                            <i class="fa-solid fa-receipt me-1"></i><span
+                                                th:text="'gồm ' + ${invoiceCountByItem.get(item.id)} + ' hóa đơn'">gồm 2 hóa đơn</span>
+                                        </a>
                                     </td>
                                     <td class="text-end fw-bold text-success text-nowrap" th:classappend="${item.remainingAmount < 0} ? 'text-danger' : ''"
                                         th:text="${#numbers.formatInteger(item.remainingAmount, 0, 'POINT')} + ' đ'">50.000.000 đ</td>
@@ -303,7 +310,8 @@
                                         <button type="button" class="btn btn-sm btn-outline-primary btn-monthly"
                                                 th:attr="data-id=${item.id}, data-name=${item.itemName},
                                                          data-sub=${item.subCategory},
-                                                         data-months=${item.monthlyAmounts} ?: ''"
+                                                         data-months=${item.monthlyAmounts} ?: '',
+                                                         data-actual=${invoiceMonthlyCsv.get(item.id)} ?: ''"
                                                 title="Nhập ngân sách từng tháng">
                                             <i class="fa-solid fa-calendar-days"></i>
                                         </button>
@@ -630,8 +638,15 @@
                                     Xóa hết
                                 </button>
                             </div>
-                            <div class="fw-bold" style="font-size:16px; color:#1e3a8a;">
-                                Tổng: <span id="mp-total">0</span> đ
+                            <div class="text-end">
+                                <div class="fw-bold" style="font-size:16px; color:#1e3a8a;">
+                                    Kế hoạch: <span id="mp-total">0</span> đ
+                                </div>
+                                <div class="fw-bold" style="font-size:13px; color:#b45309;">
+                                    Đã chi: <span id="mp-actual-total">0</span> đ
+                                    <a id="mp-invoice-link" href="#" class="ms-1 text-decoration-none"
+                                       title="Xem các hóa đơn của hạng mục này"><i class="fa-solid fa-receipt"></i></a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -722,19 +737,31 @@
             }
 
             // Dựng 12 ô nhập, đổ sẵn giá trị đã lưu (CSV "0,0,3000000,...")
-            function buildMonthInputs(csv) {
+            function buildMonthInputs(csv, actualCsv) {
                 var saved = (csv || '').split(',');
+                var actual = (actualCsv || '').split(',');
                 var box = document.getElementById('mp-months');
                 box.innerHTML = '';
+                var actualSum = 0;
                 for (var i = 0; i < 12; i++) {
                     var val = parseInt(digitsOf(saved[i]) || '0', 10);
+                    var act = parseInt(digitsOf(actual[i]) || '0', 10);
+                    actualSum += act;
+                    // Dòng thực chi lấy từ hóa đơn đã gán; đỏ khi vượt kế hoạch của chính tháng đó
+                    var actLine = act
+                        ? '<div style="font-size:11px; margin-top:2px; font-weight:700; color:'
+                            + (val > 0 && act > val ? '#b91c1c' : '#15803d') + ';">đã chi ' + group(act) + '</div>'
+                        : '<div style="font-size:11px; margin-top:2px; color:#cbd5e1;">chưa chi</div>';
                     var col = document.createElement('div');
                     col.className = 'col-6 col-md-3';
                     col.innerHTML = '<label class="form-label mb-1" style="font-size:12px;">' + MONTHS[i] + '</label>'
                         + '<input type="text" name="amounts" class="form-control form-control-sm text-end" '
-                        + 'inputmode="numeric" placeholder="0" value="' + (val ? group(val) : '') + '">';
+                        + 'inputmode="numeric" placeholder="0" value="' + (val ? group(val) : '') + '">'
+                        + actLine;
                     box.appendChild(col);
                 }
+                var actEl = document.getElementById('mp-actual-total');
+                if (actEl) actEl.textContent = actualSum.toLocaleString('vi-VN');
                 box.querySelectorAll('input').forEach(function (input) {
                     input.addEventListener('input', function () {
                         var d = digitsOf(input.value);
@@ -751,7 +778,9 @@
                     document.getElementById('mp-sub').textContent = btn.getAttribute('data-sub') || '';
                     document.getElementById('monthlyPlanForm').action =
                         '/expenses/budget-item/' + btn.getAttribute('data-id') + '/monthly';
-                    buildMonthInputs(btn.getAttribute('data-months'));
+                    buildMonthInputs(btn.getAttribute('data-months'), btn.getAttribute('data-actual'));
+                    var link = document.getElementById('mp-invoice-link');
+                    if (link) link.href = '/expenses/invoices?budgetItemId=' + btn.getAttribute('data-id');
                     new bootstrap.Modal(document.getElementById('monthlyPlanModal')).show();
                 });
             });

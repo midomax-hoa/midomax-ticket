@@ -42,6 +42,12 @@ public class ModuleAccessInterceptor implements HandlerInterceptor {
         // Trang duyệt đơn nghỉ/đi trễ: trưởng phòng + nhân sự vào được dù không có phân hệ HR
         // (AttendanceController tự kiểm tra quyền duyệt bên trong)
         if (uri.startsWith("/attendance/requests")) return null;
+        // Chấm công GPS + xem selfie: nhân viên thường dùng, quyền do controller tự kiểm
+        // (cờ gps_checkin_allowed từng người; selfie chỉ chính chủ hoặc người duyệt xem được)
+        if (uri.startsWith("/attendance/gps/")) return null;
+        // Trang chấm công cá nhân (kiểu MISA): mọi nhân viên vào được, quyền bấm chấm
+        // do cờ cấp từng người quyết định bên trong
+        if (uri.startsWith("/attendance/checkin")) return null;
         if (uri.startsWith("/network")) return AppModule.NETWORK;
         if (uri.startsWith("/assets")) return AppModule.ASSETS;
         if (uri.startsWith("/expenses")) return AppModule.FINANCE;

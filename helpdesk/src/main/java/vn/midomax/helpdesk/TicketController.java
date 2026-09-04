@@ -151,7 +151,15 @@ public class TicketController {
                     filterPriority, filterCategory, filterAssignee, from, to, search);
         } else {
             String username = resolveReporterIdentity(authentication);
-            tickets = ticketService.getTicketsForUser(username, "all", search, 0).getContent();
+            List<String> deptIdentities = deptHeadReporterIdentities(authentication, username);
+            if (deptIdentities != null) {
+                // Trưởng phòng xuất được ticket cả phòng, khớp với những gì họ thấy trên màn hình
+                tickets = ticketService.getAllTicketsForDeptHead(deptIdentities, search);
+            } else {
+                // Dùng cỡ trang lớn: getTicketsForUser mặc định 5 dòng/trang nên
+                // trước đây file xuất ra của người dùng thường chỉ có tối đa 5 ticket.
+                tickets = ticketService.getAllTicketsForUser(username, search);
+            }
         }
 
         ByteArrayInputStream excelStream = excelService.exportTicketsToExcel(tickets);
@@ -215,13 +223,9 @@ public class TicketController {
             String reporterName = defaultReporter;
             String reporterDept = "IT";
 
-            if ("user1".equals(reporterSelect)) {
-                reporterName = "A";
-                reporterDept = "Kế toán";
-            } else if ("user2".equals(reporterSelect)) {
-                reporterName = "B";
-                reporterDept = "Nhân sự";
-            } else if ("other".equals(reporterSelect) && customRequester != null && !customRequester.trim().isEmpty()) {
+            // (Đã bỏ 2 lựa chọn demo "Nguyễn Văn A / Trần Thị B" — chúng lưu người gửi
+            //  thành "A"/"B" nên tạo dữ liệu rác. Cần gửi hộ ai thì dùng "Nhập tên khác".)
+            if ("other".equals(reporterSelect) && customRequester != null && !customRequester.trim().isEmpty()) {
                 reporterName = customRequester.trim();
                 reporterDept = "Yêu cầu bên ngoài";
             } else if ("self".equals(reporterSelect)) {
@@ -309,7 +313,8 @@ public class TicketController {
 
         Ticket existing = ticketService.getTicketById(id);
         assertCanAccess(authentication, existing, true); // chỉ người trong phạm vi mới được sửa
-        
+        assertEditableStatus(existing, status);          // ticket đã RESOLVED thì khóa nội dung
+
         if (status != null && !status.isBlank()) {
             existing.setStatus(status.toUpperCase());
         }
@@ -429,6 +434,7 @@ public class TicketController {
 
         Ticket existing = ticketService.getTicketById(id);
         assertCanAccess(authentication, existing, true);
+        assertEditableStatus(existing, status);
 
         if (priority != null && !priority.isBlank()) {
             existing.setPriority(priority.toUpperCase());
@@ -486,6 +492,9 @@ public class TicketController {
             RedirectAttributes redirectAttributes) {
 
         Ticket ticket = ticketService.getTicketById(id);
+        // Chỉ người trong phạm vi ticket (người gửi / IT phụ trách / Admin) mới được
+        // xác nhận. Thiếu chốt này thì ai đăng nhập cũng đóng được ticket của người khác.
+        assertCanAccess(authentication, ticket, false);
         if (ticket != null) {
             String username = resolveReporterIdentity(authentication);
             ticket.setStatus("CLOSED");
@@ -510,6 +519,8 @@ public class TicketController {
             RedirectAttributes redirectAttributes) {
 
         Ticket ticket = ticketService.getTicketById(id);
+        // Chỉ người trong phạm vi ticket mới được báo còn lỗi / mở lại
+        assertCanAccess(authentication, ticket, false);
         if (ticket != null) {
             String username = resolveReporterIdentity(authentication);
             ticket.setStatus("PROGRESS");
@@ -613,13 +624,35 @@ public class TicketController {
             boolean inGroup = ticket.getCategory() != null && groups.stream().anyMatch(g -> g.equalsIgnoreCase(ticket.getCategory()) || ticket.getCategory().toUpperCase().contains(g.toUpperCase()));
             boolean assigned = ticket.getAssignee() != null && ticket.getAssignee().equalsIgnoreCase(identity);
             boolean reported = ticket.getReporterName() != null && ticket.getReporterName().equalsIgnoreCase(identity);
-            return inGroup || assigned || reported || groups.contains("HELPDESK");
+            // Không cấp đặc quyền riêng cho nhóm HELPDESK: trước đây có thêm
+            // "|| groups.contains(\"HELPDESK\")" khiến IT nhóm Helpdesk sửa được MỌI ticket,
+            // trong khi danh sách lại không cho họ thấy ticket nhóm khác — hai bên mâu thuẫn.
+            return inGroup || assigned || reported;
         }
         // ROLE_USER / Người gửi: tạo xong CHỈ ĐƯỢC XEM (forWrite = false), KHÔNG ĐƯỢC CHỈNH SỬA/XÓA (forWrite = true).
         if (forWrite) {
             return false;
         }
         return ticket.getReporterName() != null && ticket.getReporterName().equalsIgnoreCase(identity);
+    }
+
+    /**
+     * Ticket đã RESOLVED (IT báo xong, chờ người dùng xác nhận) thì không cho sửa nội
+     * dung nữa — chỉ cho chuyển trạng thái sang CLOSED (đóng) hoặc PROGRESS (báo còn lỗi).
+     *
+     * Phải kiểm tra Ở ĐÂY, trước khi sửa đối tượng: xuống tới service thì trạng thái
+     * trong bộ nhớ đã bị ghi đè nên không còn biết trạng thái gốc.
+     */
+    private void assertEditableStatus(Ticket ticket, String newStatus) {
+        if (ticket == null || !"RESOLVED".equalsIgnoreCase(ticket.getStatus())) {
+            return;
+        }
+        String next = newStatus == null ? "" : newStatus.trim().toUpperCase();
+        if (next.equals("CLOSED") || next.equals("PROGRESS")) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Ticket đã hoàn thành, chỉ có thể đóng hoặc mở lại khi người dùng báo còn lỗi.");
     }
 
     /** Ném 403 nếu người dùng thao tác ngoài phạm vi cho phép. */
@@ -629,8 +662,9 @@ public class TicketController {
         }
     }
 
-    // API Xóa ticket
-    @GetMapping("/ticket/delete/{id}")
+    // API Xóa ticket — dùng POST, không dùng GET: CSRF đang tắt nên một đường link
+    // GET bị trình duyệt tải trước (prefetch) hoặc bị nhúng vào ảnh là ticket biến mất.
+    @PostMapping("/ticket/delete/{id}")
     public String deleteTicket(@PathVariable("id") Long id, RedirectAttributes redirectAttributes,
                                Authentication authentication) {
         Ticket existing = ticketService.getTicketById(id);
@@ -681,6 +715,11 @@ public class TicketController {
         if (itName != null && !itName.trim().isEmpty()) {
             tickets = ticketService.getTickets("all", "", 0, username).getContent().stream()
                     .filter(t -> itName.equals(t.getAssignee()) && "PROGRESS".equals(t.getStatus()))
+                    // Người dùng thường chỉ được xem lịch của chính ticket mình gửi.
+                    // Trước đây cờ isManagerOrIT được tính nhưng không dùng, nên ai cũng
+                    // xem được toàn bộ đầu việc của một nhân viên IT bất kỳ.
+                    .filter(t -> isManagerOrIT
+                            || (t.getReporterName() != null && t.getReporterName().equalsIgnoreCase(username)))
                     .collect(java.util.stream.Collectors.toList());
         } else {
             tickets = new java.util.ArrayList<>();
@@ -712,10 +751,19 @@ public class TicketController {
     // API lấy lịch bận của nhân viên IT hỗ trợ
     @GetMapping("/api/tickets/schedule/{assignee}")
     @ResponseBody
-    public List<Map<String, Object>> getSchedule(@PathVariable("assignee") String assignee) {
+    public List<Map<String, Object>> getSchedule(@PathVariable("assignee") String assignee,
+                                                 Authentication authentication) {
+        // Lịch làm việc chứa tiêu đề ticket -> chỉ người trong phạm vi mới được xem,
+        // nếu không ai cũng dò được toàn bộ đầu việc của một nhân viên IT bất kỳ.
+        boolean canSeeAll = isAdminOrManager(authentication) || isIt(authentication);
         List<Ticket> tickets = ticketService.getTicketsByAssignee(assignee);
         List<Map<String, Object>> schedule = new java.util.ArrayList<>();
+        String identity = resolveReporterIdentity(authentication);
         for (Ticket t : tickets) {
+            // Người dùng thường chỉ thấy khung giờ của chính ticket mình đã gửi
+            if (!canSeeAll && !(t.getReporterName() != null && t.getReporterName().equalsIgnoreCase(identity))) {
+                continue;
+            }
             if (t.getSlaDeadline() != null && !"RESOLVED".equals(t.getStatus())) {
                 String startTime = t.getSlaDeadline().toString();
                 String endTime = t.getEstimatedCompletionTime() != null ? t.getEstimatedCompletionTime().toString() : t.getSlaDeadline().plusHours(1).toString();

@@ -39,6 +39,8 @@
         /* ===== FORM ===== */
         .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
         .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
         .form-control:focus, .form-select:focus { border-color: #1e3a8a; box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.12); }
         .section-divider { font-weight: 700; font-size: 13px; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px; margin-top: 4px; }
 
@@ -280,6 +282,14 @@
                                             th:attr="onclick=|openInventoryModal('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode != null ? a.inventoryCode : '')}')|">
                                         <i class="fa-solid fa-clipboard-check"></i>
                                     </button>
+                                    <button class="btn btn-outline-warning position-relative" title="Ảnh biên bản giao nhận / thu hồi"
+                                            th:attr="onclick=|openAssetDocs('${a.id}', '${#strings.escapeJavaScript(a.inventoryCode != null ? a.inventoryCode : '')}')|">
+                                        <i class="fa-solid fa-camera"></i>
+                                        <span th:if="${docCounts != null and docCounts.containsKey(a.id)}"
+                                              class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle"
+                                              style="font-size:9px;"
+                                              th:text="${docCounts.get(a.id)}">0</span>
+                                    </button>
                                     <button th:if="${cat != null and cat.itEquipment}" type="button"
                                             class="btn btn-outline-success" title="Lập biên bản bàn giao (.docx)"
                                             onclick="openHandoverModal(this.closest('tr'))">
@@ -327,7 +337,7 @@
     <div class="modal fade" id="assetModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 16px;">
-                <form th:action="@{/assets/save}" method="post" id="assetForm">
+                <form th:action="@{/assets/save}" method="post" id="assetForm" enctype="multipart/form-data">
                     <input type="hidden" name="id" id="f-id">
                     <div class="modal-header" style="background:#1e3a8a; color:#fff; border-radius: 16px 16px 0 0;">
                         <h5 class="modal-title" id="assetModalTitle"><i class="fa-solid fa-box me-2"></i>Thêm tài sản</h5>
@@ -379,9 +389,24 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Trạng thái</label>
-                                <select name="status" id="f-status" class="form-select">
+                                <select name="status" id="f-status" class="form-select" onchange="syncStatusDocBlock()">
                                     <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"></option>
                                 </select>
+                            </div>
+
+                            <!-- Chọn "Đang sửa" / "Hỏng" thì hiện ô đính kèm ảnh biên bản ngay tại đây,
+                                 lưu cùng lúc với tài sản — không phải mở hộp biên bản riêng nữa. -->
+                            <div class="col-12 d-none" id="statusDocBlock"
+                                 style="background:#fffbeb; border:1px dashed #f59e0b; border-radius:10px; padding:12px 14px;">
+                                <label class="form-label fw-semibold" id="statusDocLabel">
+                                    <i class="fa-solid fa-camera me-1" style="color:#b45309;"></i>Ảnh biên bản sửa chữa
+                                </label>
+                                <input type="file" name="statusDocFiles" id="f-statusDocFiles" class="form-control"
+                                       accept="image/*,application/pdf" multiple>
+                                <div class="form-text">
+                                    Chụp/chọn ảnh phiếu (được nhiều tờ, mỗi tệp tối đa 15 MB). Ảnh sẽ lưu vào mục
+                                    Biên bản của tài sản này. Bỏ trống thì sau khi lưu hệ thống sẽ mở hộp biên bản nhắc bạn tải.
+                                </div>
                             </div>
 
                             <div class="col-12">
@@ -635,6 +660,100 @@
         </div>
     </div>
 
+    <!-- ===== MODAL: ẢNH BIÊN BẢN GIAO NHẬN / THU HỒI ===== -->
+    <div class="modal fade" id="assetDocsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header text-white py-3" style="background:#b45309; border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title fs-6 fw-bold">
+                        <i class="fa-solid fa-camera me-2"></i> Biên Bản Giao Nhận / Thu Hồi - <span id="docCodeStr"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Khu vực chụp / chọn ảnh -->
+                    <form th:action="@{/assets/documents/upload}" method="post" enctype="multipart/form-data"
+                          id="docUploadForm" class="mb-4 p-3" style="background:#fffbeb; border:1px dashed #f59e0b; border-radius:12px;">
+                        <input type="hidden" name="assetId" id="docAssetId">
+
+                        <div class="row g-2">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Loại biên bản</label>
+                                <select class="form-select form-select-sm" name="docType" id="docTypeSelect">
+                                    <option value="HANDOVER">Biên bản giao nhận</option>
+                                    <option value="RECLAIM">Biên bản thu hồi</option>
+                                    <option value="REPAIR">Biên bản sửa chữa</option>
+                                    <option value="BROKEN">Biên bản báo hỏng</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Ngày trên biên bản</label>
+                                <input type="date" class="form-control form-control-sm" name="docDate">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Người nhận / trả</label>
+                                <input type="text" class="form-control form-control-sm" name="personName" placeholder="Họ tên">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold mb-1">Ghi chú</label>
+                                <input type="text" class="form-control form-control-sm" name="note" placeholder="VD: bàn giao kèm chuột, phím">
+                            </div>
+                        </div>
+
+                        <!-- capture=environment: mở thẳng camera sau khi bấm trên điện thoại.
+                             multiple: biên bản nhiều tờ thì chụp/chọn một lượt. -->
+                        <div class="mt-3 d-flex flex-wrap gap-2">
+                            <label class="btn btn-warning btn-sm fw-semibold mb-0" style="color:#fff;">
+                                <i class="fa-solid fa-camera me-1"></i> Chụp ảnh biên bản
+                                <input type="file" name="files" accept="image/*" capture="environment" multiple
+                                       hidden onchange="showDocPreview(this)">
+                            </label>
+                            <label class="btn btn-outline-secondary btn-sm fw-semibold mb-0">
+                                <i class="fa-solid fa-folder-open me-1"></i> Chọn từ máy
+                                <input type="file" name="files" accept="image/*,application/pdf" multiple
+                                       hidden onchange="showDocPreview(this)">
+                            </label>
+                            <button type="submit" class="btn btn-primary btn-sm fw-semibold ms-auto"
+                                    style="background:#1e3a8a; border:none;" id="docUploadBtn" disabled>
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i> Tải lên
+                            </button>
+                        </div>
+                        <div id="docPreview" class="mt-3 d-flex flex-wrap gap-2"></div>
+                        <div class="form-text mt-2">
+                            Nhận ảnh (jpg, png, webp, heic) hoặc PDF, mỗi tệp tối đa 15 MB.
+                        </div>
+                    </form>
+
+                    <!-- Danh sách biên bản đã có -->
+                    <div id="assetDocsList">
+                        <div class="text-center py-4 text-muted">
+                            <div class="spinner-border text-warning mb-2" role="status"></div>
+                            <p class="mb-0">Đang tải biên bản...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Xem ảnh biên bản cỡ lớn -->
+    <div class="modal fade" id="docViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0" style="border-radius:16px; background:#111;">
+                <div class="modal-header border-0 py-2">
+                    <span class="text-white small" id="docViewerTitle"></span>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-2">
+                    <img id="docViewerImg" src="" alt="Biên bản" style="max-width:100%; max-height:80vh; border-radius:8px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== MODAL: LỊCH SỬ NGƯỜI SỬ DỤNG TÀI SẢN ===== -->
     <div class="modal fade" id="assetHistoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -860,6 +979,162 @@
             const d = document.createElement('div');
             d.textContent = s === null || s === undefined ? '' : s;
             return d.innerHTML;
+        }
+
+        // ===== ẢNH BIÊN BẢN GIAO NHẬN / THU HỒI =====
+
+        function escDoc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        function openAssetDocs(assetId, code) {
+            document.getElementById('docCodeStr').innerText = code || 'Tài sản';
+            document.getElementById('docAssetId').value = assetId;
+            document.getElementById('docPreview').innerHTML = '';
+            document.getElementById('docUploadBtn').disabled = true;
+            document.querySelectorAll('#docUploadForm input[type=file]').forEach(function (i) { i.value = ''; });
+
+            var list = document.getElementById('assetDocsList');
+            list.innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border text-warning mb-2"></div><p class="mb-0">Đang tải biên bản...</p></div>';
+            new bootstrap.Modal(document.getElementById('assetDocsModal')).show();
+
+            fetch('/assets/documents/' + assetId)
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(function (data) {
+                    var items = data.items || [];
+                    // Không có quyền sửa thì giấu luôn khu vực tải lên cho gọn
+                    document.getElementById('docUploadForm').style.display = data.canEdit ? '' : 'none';
+
+                    if (!items.length) {
+                        list.innerHTML = '<div class="text-center py-4 text-muted">'
+                            + '<i class="fa-solid fa-file-circle-question fs-2 mb-2 d-block"></i>'
+                            + 'Chưa có ảnh biên bản nào cho tài sản này.</div>';
+                        return;
+                    }
+                    list.innerHTML = '<h6 class="fw-bold mb-3">Đã có ' + items.length + ' biên bản</h6>'
+                        + '<div class="row g-3">' + items.map(function (d) {
+                        var thumb = d.image
+                            ? '<img src="' + escDoc(d.filePath) + '" alt="" style="width:100%; height:130px; object-fit:cover; cursor:zoom-in;"'
+                              + ' onclick="openDocViewer(\'' + escDoc(d.filePath) + '\', \'' + escDoc(d.typeLabel + ' ' + (d.docDate || '')) + '\')">'
+                            : '<a href="' + escDoc(d.filePath) + '" target="_blank" class="d-flex align-items-center justify-content-center text-danger"'
+                              + ' style="height:130px; background:#fef2f2; text-decoration:none;">'
+                              + '<i class="fa-solid fa-file-pdf fs-1"></i></a>';
+
+                        var badge = d.docType === 'RECLAIM'
+                            ? '<span class="badge bg-danger">Thu hồi</span>'
+                            : d.docType === 'REPAIR'
+                            ? '<span class="badge bg-warning text-dark">Sửa chữa</span>'
+                            : d.docType === 'BROKEN'
+                            ? '<span class="badge bg-dark">Báo hỏng</span>'
+                            : '<span class="badge bg-success">Giao nhận</span>';
+
+                        var del = data.canEdit
+                            ? '<form action="/assets/documents/delete/' + d.id + '" method="post" class="d-inline"'
+                              + ' onsubmit="return confirm(\'Xoá ảnh biên bản này?\');">'
+                              + '<button class="btn btn-sm btn-outline-danger py-0 px-1" title="Xoá">'
+                              + '<i class="fa-solid fa-trash" style="font-size:11px;"></i></button></form>'
+                            : '';
+
+                        return '<div class="col-6 col-md-4"><div class="border rounded overflow-hidden h-100" style="border-color:#e5e7eb;">'
+                            + thumb
+                            + '<div class="p-2" style="font-size:12px;">'
+                            + '<div class="d-flex justify-content-between align-items-center mb-1">' + badge + del + '</div>'
+                            + (d.docDate ? '<div><i class="fa-solid fa-calendar-day me-1 text-muted"></i>' + escDoc(d.docDate) + '</div>' : '')
+                            + (d.personName ? '<div><i class="fa-solid fa-user me-1 text-muted"></i>' + escDoc(d.personName) + '</div>' : '')
+                            + (d.note ? '<div class="text-muted">' + escDoc(d.note) + '</div>' : '')
+                            + '<div class="text-muted mt-1" style="font-size:11px;">'
+                            + escDoc(d.uploadedAt) + (d.size ? ' · ' + escDoc(d.size) : '') + '</div>'
+                            + '</div></div></div>';
+                    }).join('') + '</div>';
+                })
+                .catch(function () {
+                    list.innerHTML = '<div class="text-danger text-center py-4">Không tải được danh sách biên bản.</div>';
+                });
+        }
+
+        // Xem trước ảnh vừa chọn, để biết chụp có bị mờ/thiếu tờ nào không rồi mới tải lên
+        function showDocPreview(input) {
+            var box = document.getElementById('docPreview');
+            box.innerHTML = '';
+            var files = Array.prototype.slice.call(input.files || []);
+            // Chọn ở ô này thì bỏ ô kia, tránh gửi nhầm cả hai nguồn
+            document.querySelectorAll('#docUploadForm input[type=file]').forEach(function (i) {
+                if (i !== input) i.value = '';
+            });
+            document.getElementById('docUploadBtn').disabled = files.length === 0;
+
+            files.forEach(function (f) {
+                var wrap = document.createElement('div');
+                wrap.style.cssText = 'width:74px; text-align:center; font-size:10px; color:#78716c;';
+                if (f.type && f.type.indexOf('image/') === 0) {
+                    var img = document.createElement('img');
+                    img.style.cssText = 'width:74px; height:74px; object-fit:cover; border-radius:6px; border:1px solid #e7e5e4;';
+                    img.src = URL.createObjectURL(f);
+                    img.onload = function () { URL.revokeObjectURL(img.src); };
+                    wrap.appendChild(img);
+                } else {
+                    var ic = document.createElement('div');
+                    ic.style.cssText = 'width:74px; height:74px; display:flex; align-items:center; justify-content:center; background:#fef2f2; border-radius:6px;';
+                    ic.innerHTML = '<i class="fa-solid fa-file-pdf fs-3 text-danger"></i>';
+                    wrap.appendChild(ic);
+                }
+                var mb = (f.size / 1024 / 1024).toFixed(1);
+                var cap = document.createElement('div');
+                cap.textContent = mb + ' MB';
+                if (f.size > 15 * 1024 * 1024) {
+                    cap.textContent = mb + ' MB - quá nặng';
+                    cap.style.color = '#dc2626';
+                }
+                wrap.appendChild(cap);
+                box.appendChild(wrap);
+            });
+        }
+
+        // Ô đính kèm biên bản trong form tài sản: chỉ hiện khi trạng thái là
+        // "Đang sửa" (biên bản sửa chữa) hoặc "Hỏng" (biên bản báo hỏng).
+        function syncStatusDocBlock() {
+            var st = (document.getElementById('f-status') || {}).value || '';
+            var block = document.getElementById('statusDocBlock');
+            var label = document.getElementById('statusDocLabel');
+            if (!block) return;
+            var need = (st === 'Đang sửa' || st === 'Hỏng');
+            block.classList.toggle('d-none', !need);
+            if (!need) {
+                var f = document.getElementById('f-statusDocFiles');
+                if (f) f.value = ''; // đổi ý sang trạng thái khác thì bỏ file đã chọn
+            } else if (label) {
+                label.innerHTML = '<i class="fa-solid fa-camera me-1" style="color:#b45309;"></i>'
+                    + (st === 'Hỏng' ? 'Ảnh biên bản báo hỏng' : 'Ảnh biên bản sửa chữa');
+            }
+        }
+        // Mở form sửa (openAssetModal đổ dữ liệu vào f-status) cũng phải đồng bộ lại ô này
+        document.addEventListener('shown.bs.modal', function (e) {
+            if (e.target && e.target.id === 'assetModal') syncStatusDocBlock();
+        });
+
+        // Đổi trạng thái sang Đang sửa / Hỏng mà CHƯA đính kèm ảnh thì server chuyển
+        // hướng về ?statusDoc=<id>&docType=<loại>: tự mở hộp biên bản của đúng tài sản,
+        // chọn sẵn đúng loại để người dùng chỉ việc chụp/dán ảnh phiếu.
+        document.addEventListener('DOMContentLoaded', function () {
+            var q = new URLSearchParams(location.search);
+            var docAssetId = q.get('statusDoc');
+            if (!docAssetId) return;
+            var code = '';
+            document.querySelectorAll('button[onclick^="openAssetDocs("]').forEach(function (b) {
+                var m = b.getAttribute('onclick').match(/openAssetDocs\('(\d+)',\s*'([^']*)'/);
+                if (m && m[1] === docAssetId) code = m[2];
+            });
+            openAssetDocs(docAssetId, code);
+            var sel = document.getElementById('docTypeSelect');
+            if (sel) sel.value = q.get('docType') === 'BROKEN' ? 'BROKEN' : 'REPAIR';
+        });
+
+        function openDocViewer(src, title) {
+            document.getElementById('docViewerImg').src = src;
+            document.getElementById('docViewerTitle').textContent = title || '';
+            new bootstrap.Modal(document.getElementById('docViewerModal')).show();
         }
 
         function showAssetHistory(assetId, code) {

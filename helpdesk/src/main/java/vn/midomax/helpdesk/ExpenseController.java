@@ -105,10 +105,14 @@ public class ExpenseController {
         // Không cộng hóa đơn vào đây thì phần trăm ngân sách luôn bằng 0 dù tiền đã chi thật.
         java.util.Map<Long, Long> invoiceSpentByItem = new java.util.HashMap<>();
         java.util.Map<Long, Integer> invoiceCountByItem = new java.util.HashMap<>();
+        // Thực chi TỪNG THÁNG của mỗi hạng mục, để popup kế hoạch tháng đối chiếu ngay
+        java.util.Map<Long, long[]> invoiceMonthlyByItem = new java.util.HashMap<>();
         List<Long> itemIds = budgetItems.stream().map(BudgetItem::getId).toList();
         int outOfPeriod = 0;
         if (!itemIds.isEmpty()) {
             for (InvoiceEntry inv : invoiceRepository.findByBudgetItemIdIn(itemIds)) {
+                // Hóa đơn đã hủy / hoàn tiền: tiền không chi ra thật nên bỏ qua hoàn toàn
+                if (inv.isCancelled()) continue;
                 // Chỉ tính hóa đơn nằm trong KỲ NGÂN SÁCH của quỹ.
                 // Quỹ "6 tháng cuối năm" đặt T6–T12 thì hóa đơn tháng 1–5 không bị trừ vào đây.
                 if (!current.covers(inv.getYearOfEntry(), inv.getMonthOfYear())) {
@@ -117,6 +121,10 @@ public class ExpenseController {
                 }
                 invoiceSpentByItem.merge(inv.getBudgetItemId(), inv.getAmount(), Long::sum);
                 invoiceCountByItem.merge(inv.getBudgetItemId(), 1, Integer::sum);
+                int mIdx = inv.getMonthOfYear() - 1;
+                if (mIdx >= 0 && mIdx < 12) {
+                    invoiceMonthlyByItem.computeIfAbsent(inv.getBudgetItemId(), k -> new long[12])[mIdx] += inv.getAmount();
+                }
             }
         }
         model.addAttribute("outOfPeriodCount", outOfPeriod);
@@ -133,6 +141,18 @@ public class ExpenseController {
             item.setSpentAmount(fromExpenses + fromInvoices);
             budgetItemNameMap.put(item.getId(), item.getItemName() + " (" + item.getSubCategory() + ")");
         }
+        // Chuỗi CSV "0,0,3000000,..." cho từng hạng mục — template gắn vào nút mở popup
+        java.util.Map<Long, String> invoiceMonthlyCsv = new java.util.HashMap<>();
+        for (var e : invoiceMonthlyByItem.entrySet()) {
+            StringBuilder sb = new StringBuilder();
+            long[] arr = e.getValue();
+            for (int i = 0; i < 12; i++) {
+                if (i > 0) sb.append(",");
+                sb.append(arr[i]);
+            }
+            invoiceMonthlyCsv.put(e.getKey(), sb.toString());
+        }
+        model.addAttribute("invoiceMonthlyCsv", invoiceMonthlyCsv);
         model.addAttribute("invoiceSpentByItem", invoiceSpentByItem);
         model.addAttribute("invoiceCountByItem", invoiceCountByItem);
         model.addAttribute("invoiceSpentTotal", invoiceSpentTotal);
@@ -470,6 +490,7 @@ public class ExpenseController {
             java.util.Map<Long, List<InvoiceEntry>> invoicesByItem = new java.util.HashMap<>();
             for (InvoiceEntry inv : invoiceRepository.findAll()) {
                 if (inv.getYearOfEntry() != targetYear) continue;
+                if (inv.isCancelled()) continue; // đã hủy / hoàn tiền: không đối chiếu
                 // Ngoài kỳ ngân sách của quỹ (VD quỹ 6 tháng cuối năm: bỏ qua T1–T5)
                 if (!current.covers(inv.getYearOfEntry(), inv.getMonthOfYear())) continue;
                 if (inv.getBudgetItemId() == null) {

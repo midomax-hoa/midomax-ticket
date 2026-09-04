@@ -24,10 +24,17 @@ public class TicketAutoCloseScheduler {
             List<Ticket> resolvedTickets = ticketRepository.findByStatus("RESOLVED");
 
             for (Ticket t : resolvedTickets) {
-                LocalDateTime refTime = t.getItCompletedAt() != null ? t.getItCompletedAt() : t.getCompletedAt();
+                // Mốc tính 3 ngày: ưu tiên giờ IT hoàn thành, rồi giờ hoàn thành.
+                // Ticket cũ thiếu cả hai (dữ liệu trước khi có 2 cột này) thì lùi về
+                // ngày tạo — nếu không sẽ nằm ở RESOLVED vĩnh viễn, không bao giờ đóng.
+                LocalDateTime refTime = t.getItCompletedAt() != null ? t.getItCompletedAt()
+                        : (t.getCompletedAt() != null ? t.getCompletedAt() : t.getCreatedAt());
                 if (refTime != null && refTime.isBefore(threeDaysAgo)) {
                     t.setStatus("CLOSED");
                     t.setClosedAt(LocalDateTime.now());
+                    // Bổ sung mốc hoàn thành cho ticket cũ còn thiếu, để báo cáo không rỗng
+                    if (t.getItCompletedAt() == null) t.setItCompletedAt(refTime);
+                    if (t.getCompletedAt() == null) t.setCompletedAt(refTime);
                     String completedStr = !t.getItCompletedAtStr().isEmpty() ? t.getItCompletedAtStr() : t.getCompletedAtStr();
                     t.setCloseReason("Tự động đóng do người dùng không phản hồi sau 3 ngày kể từ khi IT hoàn thành (IT hoàn thành lúc: " + completedStr + ")");
                     ticketRepository.save(t);

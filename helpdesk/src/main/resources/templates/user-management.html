@@ -149,7 +149,7 @@
                             </td>
                             <td class="text-center" style="white-space:nowrap;">
                                 <button class="btn btn-sm btn-outline-primary btn-edit-role" title="Phân quyền"
-                                        th:attr="data-id=${user.id}, data-fullname=${user.fullName}, data-role=${user.role != null ? user.role : 'ROLE_USER'}, data-groups=${#strings.listJoin(user.itGroups, ',')}, data-dept=${user.department != null ? user.department : ''}, data-modules=${#strings.listJoin(user.personalModules, ',')}, data-depthead=${user.deptHead}, data-empcode=${user.employeeCode != null ? user.employeeCode : ''}, data-attdevice=${user.attendanceDeviceId != null ? user.attendanceDeviceId : ''}">
+                                        th:attr="data-id=${user.id}, data-fullname=${user.fullName}, data-role=${user.role != null ? user.role : 'ROLE_USER'}, data-groups=${#strings.listJoin(user.itGroups, ',')}, data-dept=${user.department != null ? user.department : ''}, data-modules=${#strings.listJoin(user.personalModules, ',')}, data-depthead=${user.deptHead}, data-empcode=${user.employeeCode != null ? user.employeeCode : ''}, data-attdevice=${user.attendanceDeviceId != null ? user.attendanceDeviceId : ''}, data-gpsallowed=${user.gpsCheckinAllowed}, data-gpsfree=${user.gpsFreeLocation}">
                                     <i class="fa-solid fa-user-pen"></i>
                                 </button>
                                 <button th:if="${user.local}" class="btn btn-sm btn-outline-secondary btn-reset-password" title="Đặt lại mật khẩu"
@@ -290,6 +290,8 @@
                         </div>
                         <div class="form-text">Nhập mã + chọn văn phòng thì nhân viên tự xem được lịch chấm công của mình.
                             <b>Phải chọn đúng văn phòng</b> — các văn phòng dùng chung dải mã, cùng mã khác máy là hai người khác nhau.</div>
+
+                        <!-- Quyền chấm công GPS chuyển sang trang riêng của Nhân Sự: Quản Lý Nhân Sự > Chấm Công Online -->
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-medium">Chọn quyền hạn <span class="text-danger">*</span></label>

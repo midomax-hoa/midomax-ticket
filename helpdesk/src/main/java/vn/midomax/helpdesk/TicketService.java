@@ -60,6 +60,12 @@ public interface TicketService {
     /** Trưởng phòng: ticket của toàn bộ người gửi trong danh sách (cả phòng ban). */
     Page<Ticket> getTicketsForDeptHead(List<String> reporterNames, String tab, String search, int page);
 
+    /** Toàn bộ ticket của một người gửi — dùng cho xuất Excel (không phân trang). */
+    List<Ticket> getAllTicketsForUser(String username, String search);
+
+    /** Toàn bộ ticket của cả phòng ban — dùng cho xuất Excel của trưởng phòng. */
+    List<Ticket> getAllTicketsForDeptHead(List<String> reporterNames, String search);
+
     Map<String, Long> getStatisticsForDeptHead(List<String> reporterNames, String ownIdentity);
 
     Map<String, Long> getStatisticsForUser(String username);

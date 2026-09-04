@@ -24,6 +24,13 @@ public class AttendanceRecord {
     /** Nghỉ phép. */ public static final String ST_LEAVE = "LEAVE";
     /** Nghỉ lễ. */ public static final String ST_HOLIDAY = "HOLIDAY";
     /** Ngày nghỉ theo ca (cuối tuần). */ public static final String ST_OFF = "OFF";
+    /**
+     * Chưa đến ngày làm việc (hôm nay trở đi). Không phải vắng — chỉ là chưa tới lượt,
+     * nên hiện số 0. Trước đây mọi ngày còn lại trong tháng đều bị ghi "vắng không phép".
+     */
+    public static final String ST_NONE = "NONE";
+    /** Hôm nay đã quét vào nhưng chưa quét ra — đang trong ca, chưa kết luận được. */
+    public static final String ST_WORKING = "WORKING";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -244,6 +244,8 @@
     <div th:replace="~{success-modal :: successModal}"></div>
 
     <script src="/js/bootstrap.bundle.min.js"></script>
+    <!-- Chụp ảnh màn hình ngay trong form tạo ticket -->
+    <script src="/js/ticket-snip.js"></script>
     <script th:inline="javascript">
         document.addEventListener("DOMContentLoaded", () => {
             const timeSpan = document.getElementById('current-time');

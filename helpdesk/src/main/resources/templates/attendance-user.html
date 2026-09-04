@@ -63,7 +63,8 @@
         .st-half      { color: #0d9488; } /* ½ — nửa buổi, chờ bổ sung công */
         .st-holiday   { color: #8b5cf6; } /* L */
         .st-off       { color: #94a3b8; } /* N */
-        .st-none      { color: #cbd5e1; } /* Grey 0 */
+        .st-none      { color: #cbd5e1; } /* Grey 0 - chưa đến ngày làm */
+        .st-working   { color: #0891b2; } /* Đang trong ca, chưa quét ra */
 
         .cell-time { font-size: 11px; font-weight: 500; color: #475569; margin-top: 4px; }
         .cell-shift { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; }
@@ -96,12 +97,42 @@
         .metric-label { color: #475569; font-weight: 500; }
         .metric-value { color: #0f172a; font-weight: 700; }
 
-        @media (max-width: 1199px) {
+        /* Panel thống kê chiếm cứng 380px. Trước đây tới 1199px mới xuống hàng, nên trong
+           khoảng 1200-1450px mỗi ô ngày chỉ còn ~50px: "8:30 - 17:30" và tên ca bị xuống
+           dòng, ô cao vống lên trông rất méo. Cho xuống hàng sớm hơn để lịch đủ chỗ. */
+        @media (max-width: 1450px) {
             .layout-container { flex-direction: column; }
             .stats-section { width: 100%; }
         }
+
+        /* Ô ngày hẹp dần thì giảm đệm và cỡ chữ, giữ mỗi thứ nằm gọn một dòng */
+        @media (max-width: 1100px) {
+            .calendar-day-cell { padding: 8px 6px; min-height: 104px; }
+            .status-badge { font-size: 15px; padding: 2px 4px; min-width: 26px; }
+            .cell-time { font-size: 10px; }
+            .cell-shift { font-size: 9px; }
+        }
+
         @media (max-width: 991px) {
             #mobile-toggle-btn { display: block !important; }
+        }
+
+        /* Máy tính bảng / điện thoại: lịch 7 cột vốn đã chật, bỏ bớt thứ không thiết yếu */
+        @media (max-width: 767px) {
+            .calendar-day-cell { padding: 6px 3px; min-height: 86px; }
+            .calendar-header-day { padding: 10px 3px; font-size: 12px; }
+            .day-num { font-size: 11px; margin-bottom: 4px; }
+            .status-badge { font-size: 14px; padding: 1px 3px; min-width: 22px; }
+            .cell-time { font-size: 9px; }
+            /* Tên ca chiếm chỗ nhất mà ít quan trọng nhất — ẩn đi, vẫn xem được khi bấm vào ngày */
+            .cell-shift { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .calendar-day-cell { padding: 4px 2px; min-height: 72px; }
+            .calendar-header-day { padding: 8px 2px; font-size: 11px; }
+            .status-badge { font-size: 13px; }
+            .cell-time { display: none; }
         }
     </style>
 </head>
@@ -116,7 +147,7 @@
             <div class="d-flex align-items-center">
                 <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
                 <div>
-                    <h4 class="fw-bold m-0" style="color:#1e3a8a;" th:text="${selfView != null} ? 'Chấm Công Của Tôi' : 'Bảng Công Cá Nhân'">Bảng Công Cá Nhân</h4>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;" th:text="${selfView != null} ? 'Lịch Chấm Công Của Tôi' : 'Bảng Công Cá Nhân'">Bảng Công Cá Nhân</h4>
                     <small class="text-muted" th:text="${selfView != null} ? 'Bấm vào một ngày để gửi Phiếu đăng ký nghỉ hoặc Giấy bổ sung công' : 'Chi tiết chấm công tháng của nhân viên'">Chi tiết chấm công tháng của nhân viên</small>
                 </div>
             </div>
@@ -141,6 +172,17 @@
         </div>
 
         <!-- LAYOUT -->
+        <!-- Nút sang trang chấm công riêng (kiểu MISA) — chỉ hiện với người được cấp GPS -->
+        <a th:href="@{/attendance/checkin}" th:if="${gpsAllowed != null and gpsAllowed}"
+           class="widget-card mb-3 d-flex align-items-center justify-content-between text-decoration-none"
+           style="border-left: 4px solid #0d9488; padding: 16px 20px;">
+            <div>
+                <div class="fw-bold" style="color:#0d9488;"><i class="fa-solid fa-fingerprint me-2"></i>Chấm công GPS</div>
+                <div class="text-muted" style="font-size:12px;">Mở trang chấm công — đồng hồ, nút chấm và lịch sử của bạn</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="color:#0d9488;"></i>
+        </a>
+
         <div class="layout-container">
             
             <!-- LEFT CALENDAR GRID -->
@@ -236,6 +278,8 @@
                                             <span th:case="'OFF'" class="st-off">N</span>
                                             <!-- Future Day: show grey 0 -->
                                             <span th:case="'NONE'" class="st-none">0</span>
+                                            <!-- Hôm nay đã vào ca, chưa quét ra -->
+                                            <span th:case="'WORKING'" class="st-working" title="Đang trong ca làm">•</span>
                                             <!-- Missing: show blue 0 -->
                                             <span th:case="'MISSING'" class="st-missing">0</span>
                                             <!-- Nửa buổi: đi công tác, chờ Giấy bổ sung công -->
@@ -496,6 +540,16 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        <!-- Các lần chấm GPS của CHÍNH MÌNH trong ngày đang xem: hình + giờ + vị trí.
+                             Nạp bằng fetch khi mở popup, ngày không có thì mục này tự ẩn. -->
+                        <div id="req-gps" class="d-none mb-3 p-2 rounded"
+                             style="background:#f0fdfa; border:1px solid #99f6e4;">
+                            <div class="fw-bold mb-1" style="font-size:13px; color:#0d9488;">
+                                <i class="fa-solid fa-location-dot me-1"></i>Chấm GPS ngày này
+                            </div>
+                            <div id="req-gps-list"></div>
+                        </div>
+
                         <!-- Ngày đã có đơn: hiện trạng thái thay vì form -->
                         <div id="req-existing" style="display:none;">
                             <div class="alert mb-0" id="req-existing-box">
@@ -590,6 +644,8 @@
     </div>
 
     <script src="/js/bootstrap.bundle.min.js"></script>
+
+
     <script th:inline="javascript">
         const toggleBtn = document.getElementById('toggle-btn');
         const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
@@ -616,11 +672,42 @@
         }
 
         // ===== Modal Phiếu đăng ký nghỉ / Giấy bổ sung công (trang cá nhân) =====
+        /** Nạp các lần chấm GPS của chính mình trong ngày đang mở popup. */
+        function loadDayGps(date) {
+            const wrap = document.getElementById('req-gps');
+            const list = document.getElementById('req-gps-list');
+            if (!wrap || !list) return;
+            wrap.classList.add('d-none');
+            list.innerHTML = '';
+            fetch('/attendance/gps/my-day?date=' + encodeURIComponent(date))
+                .then(r => r.ok ? r.json() : [])
+                .then(items => {
+                    if (!items.length) return; // ngày không chấm GPS thì mục này ẩn luôn cho gọn
+                    list.innerHTML = items.map(c =>
+                        '<div class="d-flex align-items-center gap-2 py-1">'
+                        + '<img src="/attendance/gps/selfie/' + c.id + '" loading="lazy" alt="selfie" onerror="this.style.display=\'none\'"'
+                        + ' style="width:38px; height:38px; object-fit:cover; border-radius:8px; border:1px solid #99f6e4; cursor:zoom-in;"'
+                        + ' onclick="window.open(\'/attendance/gps/selfie/' + c.id + '\',\'_blank\')">'
+                        + '<div style="flex:1; font-size:12.5px;">'
+                        + '<b>' + c.time + '</b>'
+                        + '<span class="text-muted"> · ' + (c.free
+                            ? ((c.location || 'Vị trí theo định vị') + ' · công tác')
+                            : ((c.deviceName || '') + (c.distance != null ? ' · cách ' + c.distance + 'm' : '')))
+                        + '</span></div>'
+                        + (c.mapUrl ? '<a href="' + c.mapUrl + '" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-1"'
+                                    + ' title="Xem trên bản đồ"><i class="fa-solid fa-map-location-dot" style="font-size:12px;"></i></a>' : '')
+                        + '</div>').join('');
+                    wrap.classList.remove('d-none');
+                })
+                .catch(() => {});
+        }
+
         function openRequestModal(cell) {
             const modal = document.getElementById('requestModal');
             if (!modal) return; // không phải trang cá nhân
             const date = cell.getAttribute('data-date');
             if (!date) return;
+            loadDayGps(date);
 
             const existingState = cell.getAttribute('data-req-state') || '';
             const existing = document.getElementById('req-existing');

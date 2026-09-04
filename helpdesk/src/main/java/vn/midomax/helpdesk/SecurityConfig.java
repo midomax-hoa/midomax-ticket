@@ -33,7 +33,9 @@ public class SecurityConfig {
             .authenticationProvider(authenticationProvider())
             .csrf(csrf -> csrf.disable()) // Tắt chống giả mạo CSRF tạm thời
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/css/**", "/js/**", "/images/**", "/uploads/**", "/api/notifications/**").permitAll()
+                // /api/notifications KHÔNG được để permitAll: nội dung chuông là tiêu đề
+                // ticket, báo cáo, tình trạng đơn nghỉ — phải đăng nhập mới đọc được.
+                .requestMatchers("/login", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                 // Quản lý user (trang + API) chỉ dành cho Admin. Phải đứng trước /admin-home
                 // vì luật khớp theo thứ tự, luật đầu tiên trúng sẽ thắng.
                 .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")

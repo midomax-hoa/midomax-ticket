@@ -57,6 +57,26 @@ public class AppUser {
     private Long attendanceDeviceId;
 
     /**
+     * Được chấm công bằng GPS trên điện thoại (kèm selfie). Cấp theo từng người —
+     * mặc định tắt, ai vẫn quẹt máy vân tay thì không bật.
+     */
+    @Column(name = "gps_checkin_allowed")
+    private Boolean gpsCheckinAllowed = false;
+
+    /**
+     * Đi công tác: được chấm GPS ở BẤT KỲ đâu (không so bán kính văn phòng),
+     * hệ thống vẫn lưu toạ độ để nhân sự xem lại. Chỉ có nghĩa khi cờ trên bật.
+     */
+    @Column(name = "gps_free_location")
+    private Boolean gpsFreeLocation = false;
+
+    public boolean isGpsCheckinAllowed() { return Boolean.TRUE.equals(gpsCheckinAllowed); }
+    public void setGpsCheckinAllowed(Boolean v) { this.gpsCheckinAllowed = v; }
+
+    public boolean isGpsFreeLocation() { return Boolean.TRUE.equals(gpsFreeLocation); }
+    public void setGpsFreeLocation(Boolean v) { this.gpsFreeLocation = v; }
+
+    /**
      * Trưởng phòng: thấy được ticket của mọi nhân viên CÙNG phòng ban
      * (chỉ xem — quyền sửa/phân công vẫn theo role). Null coi như false.
      */

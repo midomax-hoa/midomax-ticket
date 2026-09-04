@@ -444,8 +444,19 @@ public class AttendanceService {
         record.setFirstIn(null);
         record.setLastOut(null);
 
+        // Ngày hôm nay trở đi thì chưa kết thúc ca làm, chưa đủ căn cứ kết luận vắng
+        // hay thiếu quét. Không chốt sớm, nếu không cả tháng còn lại sẽ hiện "vắng
+        // không phép" cho mọi người ngay từ đầu tháng.
+        boolean notFinishedYet = record.getWorkDate() != null
+                && !record.getWorkDate().isBefore(LocalDate.now());
+
         if (punches.isEmpty()) {
-            record.setStatus(workingDay ? AttendanceRecord.ST_ABSENT : AttendanceRecord.ST_OFF);
+            if (!workingDay) {
+                record.setStatus(AttendanceRecord.ST_OFF);
+            } else {
+                record.setStatus(notFinishedYet
+                        ? AttendanceRecord.ST_NONE : AttendanceRecord.ST_ABSENT);
+            }
             return;
         }
 
@@ -453,8 +464,10 @@ public class AttendanceService {
         record.setFirstIn(firstIn);
 
         if (punches.size() == 1) {
-            // Quên quét lần thứ hai — để người phụ trách xác nhận tay.
-            record.setStatus(AttendanceRecord.ST_MISSING);
+            // Hôm nay mới quét vào, chưa tan làm -> đang trong ca chứ không phải quên quét.
+            // Ngày đã qua mà chỉ có 1 lần quét thì mới là thiếu, để người phụ trách xác nhận tay.
+            record.setStatus(notFinishedYet
+                    ? AttendanceRecord.ST_WORKING : AttendanceRecord.ST_MISSING);
             return;
         }
 
@@ -465,7 +478,10 @@ public class AttendanceService {
         // hai nhịp, nghĩa là hôm đó người này quên quét lượt còn lại. Không được coi
         // lần quét cuối ngày là "giờ vào", nếu không sẽ tính thành đi trễ cả 9 tiếng.
         if (Duration.between(firstIn, lastOut).toMinutes() < MIN_SESSION_MINUTES) {
-            record.setStatus(AttendanceRecord.ST_MISSING);
+            // Hai lần quét sát nhau (bấm máy hai nhịp). Nếu là ngày chưa xong thì người ta
+            // vẫn đang làm, chưa kết luận thiếu quét được — để cuối ngày tính lại.
+            record.setStatus(notFinishedYet
+                    ? AttendanceRecord.ST_WORKING : AttendanceRecord.ST_MISSING);
             return;
         }
 
@@ -620,6 +636,12 @@ public class AttendanceService {
 
     public List<AttendanceLog> findLogs(LocalDate from, LocalDate to) {
         return logRepo.findInRange(from.atStartOfDay(), to.plusDays(1).atStartOfDay());
+    }
+
+    /** Các lần quét của MỘT người trong khoảng thời gian — trang chấm công cá nhân dùng. */
+    public List<AttendanceLog> findLogsForPerson(String code, Long deviceId,
+                                                 LocalDateTime from, LocalDateTime to) {
+        return logRepo.findByPersonInRange(code, deviceId, from, to);
     }
 
     public Optional<AttendanceRecord> findRecord(Long id) {

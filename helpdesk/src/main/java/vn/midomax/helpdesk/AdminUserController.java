@@ -260,6 +260,13 @@ public class AdminUserController {
                     }
                     user.setAttendanceDeviceId(devId);
                 }
+                // Chấm công GPS: cấp theo từng người; cờ "công tác" cho phép chấm ngoài bán kính
+                if (payload.containsKey("gpsAllowed")) {
+                    user.setGpsCheckinAllowed(Boolean.TRUE.equals(payload.get("gpsAllowed")));
+                }
+                if (payload.containsKey("gpsFree")) {
+                    user.setGpsFreeLocation(Boolean.TRUE.equals(payload.get("gpsFree")));
+                }
                 appUserRepository.save(user);
                 ticketService.invalidateItStaffCache();
 
