@@ -51,6 +51,14 @@ services:
       AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
       AZURE_SENDER_EMAIL: ${AZURE_SENDER_EMAIL:-it01@midomax.vn}
 
+      # ===== Cham cong: tu dong keo du lieu tu may cham cong ZKTeco =====
+      # Server phai thay duoc may cham cong (IP noi bo). Khong thay thi dat "false"
+      # de khoi log loi moi ngay, quay ve bam nut dong bo tay.
+      ATTENDANCE_AUTO_SYNC_ENABLED: ${ATTENDANCE_AUTO_SYNC_ENABLED:-true}
+      # 12h trua keo cham cong sang; 0h keo cham cong chieu va chot ngay vua qua
+      ATTENDANCE_AUTO_SYNC_NOON_CRON: ${ATTENDANCE_AUTO_SYNC_NOON_CRON:-0 0 12 * * *}
+      ATTENDANCE_AUTO_SYNC_MIDNIGHT_CRON: ${ATTENDANCE_AUTO_SYNC_MIDNIGHT_CRON:-0 0 0 * * *}
+
     expose:
       - "8080"
 
