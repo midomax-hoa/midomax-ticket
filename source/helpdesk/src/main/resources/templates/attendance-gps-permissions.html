@@ -18,6 +18,13 @@
         .badge-gps { background: #ccfbf1; color: #0f766e; }
         .badge-free { background: #e0f2fe; color: #0369a1; }
         .badge-off { background: #f1f5f9; color: #94a3b8; }
+        .inp-code { width: 96px; }
+        .inp-device { width: 190px; }
+        /* Nút lưu chỉ hiện ở dòng đang có thay đổi chưa lưu */
+        .btn-save-assign { display: none; }
+        tr.dirty .btn-save-assign { display: inline-block; }
+        tr.dirty .inp-code, tr.dirty .inp-device { border-color: #f59e0b; }
+        .save-note { font-size: 12px; color: #15803d; white-space: nowrap; }
         @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
     </style>
 </head>
@@ -31,13 +38,13 @@
                 <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
                 <div>
                     <h4 class="fw-bold m-0" style="color:#1e3a8a;">Chấm Công Online</h4>
-                    <small class="text-muted">Chọn nhiều người rồi cấp / bỏ quyền chấm công GPS một lượt</small>
+                    <small class="text-muted">Gán mã chấm công + văn phòng, và cấp / bỏ quyền chấm công GPS cho nhiều người một lượt</small>
                 </div>
             </div>
         </div>
 
         <div class="widget-card">
-            <!-- Thanh thao tác hàng loạt -->
+            <!-- Thanh tìm kiếm + thao tác hàng loạt -->
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                 <input type="text" id="qFilter" class="form-control" style="max-width:260px;"
                        placeholder="🔍 Tìm tên / email / mã chấm công...">
@@ -59,30 +66,50 @@
                 Mỗi người chỉ ở MỘT trong ba trạng thái: <b>Chấm tại văn phòng</b> (trong bán kính),
                 <b>Chấm mọi nơi</b> (đi công tác/du lịch — không cần bật gì thêm, vẫn lưu vị trí + selfie),
                 hoặc <b>Tắt</b>. Hết đợt công tác thì bấm lại "Chấm tại văn phòng" là về chế độ thường.
-                Người chưa gán mã chấm công + văn phòng thì cấp xong vẫn chưa chấm được — gán ở Phân Quyền User trước.
+                <br>
+                <i class="fa-solid fa-fingerprint me-1"></i>
+                Mã chấm công + văn phòng gán ngay trong bảng: sửa ô rồi bấm nút lưu của dòng đó.
+                <b>Phải nhập cả hai</b> (các văn phòng dùng chung dải mã — cùng mã khác máy là hai người khác nhau),
+                để trống cả hai là gỡ gán. Người chưa gán thì cấp quyền xong vẫn chưa chấm được.
             </div>
 
             <div class="table-responsive">
                 <table class="table table-hover mb-0" id="permTable">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:34px;"><input type="checkbox" class="form-check-input" id="checkAll"></th>
+                            <th style="width:34px;"><input type="checkbox" class="form-check-input" id="checkAll" title="Chọn tất cả dòng đang hiện"></th>
                             <th>Nhân viên</th>
                             <th>Mã CC</th>
                             <th>Văn phòng</th>
+                            <th style="width:90px;"></th>
                             <th>Trạng thái chấm online</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="u : ${users}" th:classappend="${u.employeeCode == null or u.attendanceDeviceId == null} ? 'row-nocode' : ''"
-                            th:attr="data-search=${(u.fullName != null ? u.fullName : '') + ' ' + (u.email != null ? u.email : '') + ' ' + (u.employeeCode != null ? u.employeeCode : '')}">
+                            th:attr="data-uid=${u.id}, data-search=${(u.fullName != null ? u.fullName : '') + ' ' + (u.email != null ? u.email : '') + ' ' + (u.employeeCode != null ? u.employeeCode : '')}">
                             <td><input type="checkbox" class="form-check-input row-check" th:value="${u.id}"></td>
                             <td>
                                 <div class="fw-semibold" th:text="${u.fullName != null ? u.fullName : u.email}">Nguyễn Văn A</div>
                                 <div class="text-muted" style="font-size:11.5px;" th:text="${u.email}">a@midomax.vn</div>
                             </td>
-                            <td th:text="${u.employeeCode != null ? u.employeeCode : '—'}">398</td>
-                            <td th:text="${u.attendanceDeviceId != null and deviceNames.containsKey(u.attendanceDeviceId)} ? ${deviceNames.get(u.attendanceDeviceId)} : '—'">188Bis</td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm inp-code" maxlength="20" placeholder="Mã"
+                                       th:value="${u.employeeCode}" th:attr="data-uid=${u.id}">
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm inp-device" th:attr="data-uid=${u.id}">
+                                    <option value="">— Chưa gán —</option>
+                                    <option th:each="d : ${devices}" th:value="${d.id}" th:text="${d.name}"
+                                            th:selected="${u.attendanceDeviceId != null and u.attendanceDeviceId == d.id}">188Bis</option>
+                                </select>
+                            </td>
+                            <td class="text-nowrap">
+                                <button type="button" class="btn btn-sm btn-primary btn-save-assign" title="Lưu mã chấm công + văn phòng" th:attr="data-uid=${u.id}">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                </button>
+                                <span class="save-note"></span>
+                            </td>
                             <td>
                                 <!-- Một badge duy nhất cho một trạng thái — công tác đè lên chế độ văn phòng -->
                                 <span th:if="${u.gpsFreeLocation}" class="badge badge-free"><i class="fa-solid fa-plane me-1"></i>Chấm mọi nơi (công tác)</span>
@@ -90,8 +117,17 @@
                                 <span th:if="${!u.gpsCheckinAllowed and !u.gpsFreeLocation}" class="badge badge-off">Tắt</span>
                             </td>
                         </tr>
+                        <tr id="noMatchRow" style="display:none;">
+                            <td colspan="6" class="text-center text-muted py-4">Không có ai khớp từ khóa.</td>
+                        </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Phân trang tại chỗ: 10 người/trang, lọc theo từ khóa trước rồi mới chia trang -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 pt-3" style="border-top:1px solid #f1f5f9;">
+                <span class="text-muted" style="font-size:13px;" id="pageInfo"></span>
+                <nav aria-label="Phân trang"><ul class="pagination pagination-sm mb-0" id="pager"></ul></nav>
             </div>
         </div>
     </div>
@@ -100,35 +136,153 @@
     <script>
     (function () {
         'use strict';
+        var PAGE_SIZE = 10;
+        var page = 1;
+        var keyword = '';
+        var table = document.getElementById('permTable');
+        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr[data-uid]'));
         var checkAll = document.getElementById('checkAll');
+        var pageInfo = document.getElementById('pageInfo');
+        var pager = document.getElementById('pager');
+        var noMatchRow = document.getElementById('noMatchRow');
 
-        function visibleChecks() {
-            return Array.prototype.filter.call(document.querySelectorAll('.row-check'), function (c) {
-                return c.closest('tr').style.display !== 'none';
+        function matchedRows() {
+            if (!keyword) return rows;
+            return rows.filter(function (tr) {
+                return (tr.getAttribute('data-search') || '').toLowerCase().indexOf(keyword) >= 0;
             });
         }
+        function visibleRows() {
+            return rows.filter(function (tr) { return tr.style.display !== 'none'; });
+        }
+
+        // Lọc theo từ khóa trước, rồi mới cắt trang trên kết quả lọc — tất cả tại chỗ, không gọi server
+        function render() {
+            var matched = matchedRows();
+            var totalPages = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
+            if (page > totalPages) page = totalPages;
+            if (page < 1) page = 1;
+            var start = (page - 1) * PAGE_SIZE;
+            var end = Math.min(start + PAGE_SIZE, matched.length);
+
+            rows.forEach(function (tr) { tr.style.display = 'none'; });
+            matched.slice(start, end).forEach(function (tr) { tr.style.display = ''; });
+            noMatchRow.style.display = matched.length ? 'none' : '';
+
+            pageInfo.textContent = matched.length
+                ? 'Hiện ' + (start + 1) + '–' + end + ' / ' + matched.length + ' người'
+                : 'Không có ai khớp từ khóa';
+            renderPager(totalPages);
+            syncCheckAll();
+        }
+
+        function pageItem(label, target, disabled, active) {
+            return '<li class="page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '') + '">'
+                + '<a class="page-link" href="#" data-page="' + target + '">' + label + '</a></li>';
+        }
+        function renderPager(totalPages) {
+            pager.innerHTML = '';
+            if (totalPages <= 1) return;
+            var items = [pageItem('«', page - 1, page <= 1, false)];
+            var last = 0;
+            for (var p = 1; p <= totalPages; p++) {
+                // Chỉ vẽ trang đầu, trang cuối và ±2 quanh trang hiện tại; khoảng trống thay bằng "…"
+                if (p !== 1 && p !== totalPages && Math.abs(p - page) > 2) continue;
+                if (p - last > 1) items.push('<li class="page-item disabled"><span class="page-link">…</span></li>');
+                items.push(pageItem(String(p), p, false, p === page));
+                last = p;
+            }
+            items.push(pageItem('»', page + 1, page >= totalPages, false));
+            pager.innerHTML = items.join('');
+        }
+        pager.addEventListener('click', function (e) {
+            var a = e.target.closest('a[data-page]');
+            if (!a) return;
+            e.preventDefault();
+            if (a.closest('.page-item').classList.contains('disabled')) return;
+            page = parseInt(a.getAttribute('data-page'), 10);
+            render();
+        });
+
+        document.getElementById('qFilter').addEventListener('input', function () {
+            keyword = this.value.trim().toLowerCase();
+            page = 1; // đổi từ khóa thì về trang đầu
+            render();
+        });
+
+        // --- Chọn nhiều: "chọn tất cả" chỉ áp cho các dòng ĐANG HIỆN; dòng đã tick ở trang khác vẫn giữ ---
         function updateCount() {
-            var n = document.querySelectorAll('.row-check:checked').length;
-            document.getElementById('selCount').textContent = n;
+            document.getElementById('selCount').textContent = table.querySelectorAll('.row-check:checked').length;
+        }
+        function syncCheckAll() {
+            var visible = visibleRows().map(function (tr) { return tr.querySelector('.row-check'); });
+            var checked = visible.filter(function (c) { return c.checked; }).length;
+            checkAll.checked = visible.length > 0 && checked === visible.length;
+            checkAll.indeterminate = checked > 0 && checked < visible.length;
+            updateCount();
         }
         checkAll.addEventListener('change', function () {
-            visibleChecks().forEach(function (c) { c.checked = checkAll.checked; });
-            updateCount();
-        });
-        document.getElementById('permTable').addEventListener('change', function (e) {
-            if (e.target.classList.contains('row-check')) updateCount();
+            visibleRows().forEach(function (tr) { tr.querySelector('.row-check').checked = checkAll.checked; });
+            syncCheckAll();
         });
 
-        // Lọc nhanh theo tên / email / mã — lọc tại chỗ, không gọi server
-        document.getElementById('qFilter').addEventListener('input', function () {
-            var q = this.value.trim().toLowerCase();
-            document.querySelectorAll('#permTable tbody tr').forEach(function (tr) {
-                tr.style.display = (tr.getAttribute('data-search') || '').toLowerCase().indexOf(q) >= 0 ? '' : 'none';
-            });
+        // --- Gán mã chấm công + văn phòng ngay trên dòng ---
+        function markDirty(tr) {
+            tr.classList.add('dirty');
+            tr.querySelector('.save-note').textContent = '';
+        }
+        table.addEventListener('input', function (e) {
+            if (e.target.classList.contains('inp-code')) markDirty(e.target.closest('tr'));
         });
+        table.addEventListener('change', function (e) {
+            if (e.target.classList.contains('row-check')) syncCheckAll();
+            if (e.target.classList.contains('inp-device') || e.target.classList.contains('inp-code')) markDirty(e.target.closest('tr'));
+        });
+        table.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && e.target.classList.contains('inp-code')) {
+                e.preventDefault();
+                saveAssign(e.target.closest('tr'));
+            }
+        });
+        table.addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-save-assign');
+            if (btn) saveAssign(btn.closest('tr'));
+        });
+
+        function saveAssign(tr) {
+            var code = tr.querySelector('.inp-code').value.trim();
+            var deviceId = tr.querySelector('.inp-device').value;
+            var btn = tr.querySelector('.btn-save-assign');
+            var note = tr.querySelector('.save-note');
+            if ((code === '') !== (deviceId === '')) {
+                alert('Mã chấm công và văn phòng phải cùng nhập hoặc cùng để trống (để trống cả hai = gỡ gán).');
+                return;
+            }
+            btn.disabled = true;
+            fetch('/attendance/gps-permissions/assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: tr.getAttribute('data-uid'), employeeCode: code, deviceId: deviceId })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res.ok) { alert(res.message || 'Lưu thất bại, thử lại.'); return; }
+                tr.classList.remove('dirty');
+                tr.classList.toggle('row-nocode', code === '');
+                // Cập nhật chuỗi tìm kiếm để tìm được theo mã vừa gán
+                var nameEl = tr.querySelector('.fw-semibold');
+                var mailEl = tr.querySelector('.text-muted');
+                tr.setAttribute('data-search', ((nameEl ? nameEl.textContent : '') + ' '
+                    + (mailEl ? mailEl.textContent : '') + ' ' + code).trim());
+                note.textContent = '✓ Đã lưu';
+                setTimeout(function () { note.textContent = ''; }, 2500);
+            })
+            .catch(function () { alert('Gửi thất bại — kiểm tra mạng rồi thử lại.'); })
+            .finally(function () { btn.disabled = false; });
+        }
 
         window.bulk = function (action) {
-            var ids = Array.prototype.map.call(document.querySelectorAll('.row-check:checked'), function (c) { return c.value; });
+            var ids = Array.prototype.map.call(table.querySelectorAll('.row-check:checked'), function (c) { return c.value; });
             if (!ids.length) { alert('Chưa chọn ai — tích chọn nhân viên trong bảng trước.'); return; }
             fetch('/attendance/gps-permissions/bulk', {
                 method: 'POST',
@@ -142,6 +296,8 @@
             })
             .catch(function () { alert('Gửi thất bại — kiểm tra mạng rồi thử lại.'); });
         };
+
+        render();
     })();
     </script>
 </body>

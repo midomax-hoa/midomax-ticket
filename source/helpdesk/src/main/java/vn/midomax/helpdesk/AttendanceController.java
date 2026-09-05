@@ -361,50 +361,6 @@ public class AttendanceController {
         return redirectToMonth(month, year);
     }
 
-    // --- Phân quyền chấm công online (GPS) — trang của NHÂN SỰ, nằm trong Quản Lý Nhân Sự ---
-
-    @GetMapping("/gps-permissions")
-    public String gpsPermissions(Model model) {
-        java.util.Map<Long, String> deviceNames = new java.util.HashMap<>();
-        for (AttendanceDevice d : deviceRepo.findAll()) deviceNames.put(d.getId(), d.getName());
-        java.util.List<AppUser> users = new java.util.ArrayList<>(appUserRepository.findAll());
-        users.sort(java.util.Comparator.comparing(
-                u -> u.getFullName() != null ? u.getFullName() : (u.getEmail() != null ? u.getEmail() : ""),
-                String.CASE_INSENSITIVE_ORDER));
-        model.addAttribute("users", users);
-        model.addAttribute("deviceNames", deviceNames);
-        return "attendance-gps-permissions";
-    }
-
-    /** Bật/tắt hàng loạt: action = allow | deny | free-on | free-off cho danh sách ids. */
-    @PostMapping("/gps-permissions/bulk")
-    @ResponseBody
-    public java.util.Map<String, Object> gpsPermissionsBulk(@RequestBody java.util.Map<String, Object> payload) {
-        Object idsObj = payload.get("ids");
-        String action = String.valueOf(payload.get("action"));
-        int changed = 0;
-        if (idsObj instanceof java.util.List<?> ids) {
-            for (Object o : ids) {
-                AppUser u;
-                try { u = appUserRepository.findById(Long.valueOf(String.valueOf(o))).orElse(null); }
-                catch (NumberFormatException e) { continue; }
-                if (u == null) continue;
-                // Ba trạng thái rõ ràng, không bắt nhân sự hiểu quan hệ giữa 2 cờ:
-                // office = chấm trong bán kính văn phòng; free = chấm mọi nơi (công tác,
-                // tự bao gồm quyền chấm); deny = tắt hẳn chấm online.
-                switch (action) {
-                    case "office" -> { u.setGpsCheckinAllowed(true); u.setGpsFreeLocation(false); }
-                    case "free" -> { u.setGpsCheckinAllowed(true); u.setGpsFreeLocation(true); }
-                    case "deny" -> { u.setGpsCheckinAllowed(false); u.setGpsFreeLocation(false); }
-                    default -> { continue; }
-                }
-                appUserRepository.save(u);
-                changed++;
-            }
-        }
-        return java.util.Map.of("ok", true, "changed", changed);
-    }
-
     // --- Máy chấm công ---
 
     @GetMapping("/devices")
