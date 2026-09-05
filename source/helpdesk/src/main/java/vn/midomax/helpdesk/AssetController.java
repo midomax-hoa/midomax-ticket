@@ -48,6 +48,9 @@ public class AssetController {
     private AssetCategoryRepository categoryRepository;
 
     @Autowired
+    private AssetDocumentService assetDocumentService;
+
+    @Autowired
     private AssetHandoverService handoverService;
 
     @Autowired
@@ -227,6 +230,9 @@ public class AssetController {
         model.addAttribute("selectedStatus", status);
         model.addAttribute("keyword", keyword);
         model.addAttribute("suggestedCode", nextInventoryCode());
+        // Số ảnh biên bản của từng tài sản, lấy một lượt để không truy vấn theo từng dòng
+        model.addAttribute("docCounts", assetDocumentService.countByAsset(
+                assets.stream().map(Asset::getId).toList()));
         model.addAttribute("activePage", "tools");
 
         return "asset-management";
@@ -295,6 +301,7 @@ public class AssetController {
                        @RequestParam(value = "extraModel", required = false) List<String> extraModels,
                        @RequestParam(value = "extraSerial", required = false) List<String> extraSerials,
                        @RequestParam(value = "extraQty", required = false) List<Integer> extraQtys,
+                       @RequestParam(value = "statusDocFiles", required = false) org.springframework.web.multipart.MultipartFile[] statusDocFiles,
                        Authentication authentication,
                        RedirectAttributes redirectAttributes) {
 
@@ -304,6 +311,7 @@ public class AssetController {
 
         Asset asset;
         String oldAssignedName = null;
+        String oldStatus = null;
         if (id != null) {
             asset = assetRepository.findById(id).orElse(null);
             if (asset == null) {
@@ -311,6 +319,7 @@ public class AssetController {
                 return "redirect:/assets";
             }
             oldAssignedName = asset.getAssignedToName();
+            oldStatus = asset.getStatus();
         } else {
             asset = new Asset();
             asset.setCreatedBy(authentication != null ? authentication.getName() : "unknown");
@@ -477,10 +486,52 @@ public class AssetController {
                 + (code != null ? code : "(chưa có mã kiểm kê)") + ".";
         if (extraSaved > 0) okMsg += " Thêm " + extraSaved + " sản phẩm cùng đợt bàn giao.";
         if (extraUpdated > 0) okMsg += " Cập nhật " + extraUpdated + " sản phẩm cùng đợt.";
-        redirectAttributes.addFlashAttribute("successMessage", okMsg);
+
+        // Chuyển sang "Đang sửa" / "Hỏng" thì quy trình yêu cầu kèm biên bản.
+        // Người dùng có thể chọn ảnh ngay trong form (statusDocFiles); không chọn thì
+        // chuyển hướng kèm cờ để trang tự mở hộp tải biên bản, chọn sẵn đúng loại.
+        String newStatus = trim(status);
+        boolean needsDoc = "Đang sửa".equals(newStatus) || "Hỏng".equals(newStatus);
+        boolean statusChanged = newStatus != null && !newStatus.equals(oldStatus);
+        String docType = "Hỏng".equals(newStatus)
+                ? AssetDocument.TYPE_BROKEN : AssetDocument.TYPE_REPAIR;
+        String docLabel = "Hỏng".equals(newStatus) ? "báo hỏng" : "sửa chữa";
+
+        boolean hasFiles = false;
+        if (statusDocFiles != null) {
+            for (org.springframework.web.multipart.MultipartFile f : statusDocFiles) {
+                if (f != null && !f.isEmpty()) { hasFiles = true; break; }
+            }
+        }
+
         // Danh sách xếp cũ->mới và chia 5 dòng/trang, nên tài sản vừa lưu thường nằm ở
         // trang cuối. Nhảy thẳng tới trang chứa nó để thấy ngay kết quả.
-        return "redirect:/assets?page=" + pageOf(asset.getId());
+        int targetPage = pageOf(asset.getId());
+
+        if (needsDoc && hasFiles) {
+            AssetDocumentService.UploadResult up = assetDocumentService.upload(
+                    asset.getId(), docType, statusDocFiles, java.time.LocalDate.now(),
+                    null, "Đính kèm khi chuyển trạng thái " + newStatus,
+                    authentication != null ? authentication.getName() : null);
+            if (up.getSaved() > 0) {
+                okMsg += " Đã lưu " + up.getSaved() + " ảnh biên bản " + docLabel + ".";
+            }
+            if (up.hasErrors()) {
+                redirectAttributes.addFlashAttribute("errorMessage", String.join(" ", up.getErrors()));
+            }
+            redirectAttributes.addFlashAttribute("successMessage", okMsg);
+            return "redirect:/assets?page=" + targetPage;
+        }
+
+        if (needsDoc && statusChanged) {
+            redirectAttributes.addFlashAttribute("successMessage", okMsg
+                    + " Tài sản chuyển sang " + newStatus.toUpperCase()
+                    + " — vui lòng tải ảnh biên bản " + docLabel + " lên.");
+            return "redirect:/assets?statusDoc=" + asset.getId() + "&docType=" + docType + "&page=" + targetPage;
+        }
+
+        redirectAttributes.addFlashAttribute("successMessage", okMsg);
+        return "redirect:/assets?page=" + targetPage;
     }
 
     /** Trang cuối của danh sách mặc định — nơi các tài sản vừa thêm nằm. */
@@ -515,6 +566,20 @@ public class AssetController {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
+    }
+
+    /** Sinh mã kế tiếp và dò tăng dần đến khi chưa bị trùng (phòng mã gõ tay chen giữa dải số). */
+    private String uniqueNextInventoryCode() {
+        String code = nextInventoryCode();
+        while (assetRepository.existsByInventoryCode(code)) {
+            int n = Integer.parseInt(code.substring("MDM-".length())) + 1;
+            code = String.format("MDM-%05d", n);
+        }
+        return code;
     }
 
     /** Ghi nhận kết quả kiểm kê cho một tài sản. */
@@ -557,6 +622,8 @@ public class AssetController {
     public String delete(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         Asset asset = assetRepository.findById(id).orElse(null);
         if (asset != null) {
+            // Xoá kèm ảnh biên bản, không thì file nằm lại trên đĩa mà chẳng ai truy được nữa
+            assetDocumentService.deleteAllOfAsset(id);
             assetRepository.delete(asset);
             redirectAttributes.addFlashAttribute("successMessage",
                     "Đã xóa tài sản " + asset.getInventoryCode() + ".");

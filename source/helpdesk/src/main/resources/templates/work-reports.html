@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Báo cáo công việc & Quản lý Dự án - Midomax IT Portal</title>
+    <title>Báo Cáo Công Việc & Quản Lý Dự Án - Midomax IT Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
@@ -457,8 +457,8 @@
             <div class="d-flex align-items-center">
                 <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display: none; cursor: pointer; font-size: 22px; color: #4f46e5; margin-right: 15px;"></i>
                 <div>
-                    <h4 class="fw-bold m-0" style="color: #1e293b;">CLICKUP WORKSPACE - IT PORTAL</h4>
-                    <small class="text-muted">Quản lý dự án, theo dõi tiến độ & Báo cáo công việc phát triển</small>
+                    <h4 class="fw-bold m-0" style="color: #1e293b;">BÁO CÁO CÔNG VIỆC &amp; QUẢN LÝ DỰ ÁN</h4>
+                    <small class="text-muted">Quản lý dự án, theo dõi tiến độ & Báo cáo công việc</small>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-3 ms-auto">
@@ -467,7 +467,7 @@
                     <i class="fa-solid fa-file-excel me-2"></i>Xuất Excel
                 </a>
                 <button class="btn btn-primary fw-bold px-4 py-2 text-nowrap flex-shrink-0" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);" data-bs-toggle="modal" data-bs-target="#createReportModal" onclick="openCreateParentReportModal()">
-                    <i class="fa-solid fa-plus me-2"></i>Thêm Nhiệm Vụ / Báo Cáo
+                    <i class="fa-solid fa-plus me-2"></i>Thêm Công Việc / Báo Cáo
                 </button>
                 <i class="fa-solid fa-bell fs-5 ms-2 d-inline-block" style="color: #6b7280; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#1e3a8a'" onmouseout="this.style.color='#6b7280'"></i>
             </div>
@@ -505,7 +505,7 @@
             <!-- If no tasks at all -->
             <div class="text-center py-5 text-muted bg-white rounded-4 shadow-sm border mt-3" th:if="${#maps.isEmpty(reportsByProjectMap)}">
                 <i class="fa-regular fa-folder-open d-block fs-2 mb-2 text-secondary"></i>
-                Chưa có công việc nào. Nhấn "+ Thêm Nhiệm Vụ / Báo Cáo" ở góc phải để bắt đầu!
+                Chưa có công việc nào. Nhấn "+ Thêm Công Việc / Báo Cáo" ở góc phải để bắt đầu!
             </div>
 
             <th:block th:each="entry, iter : ${reportsByProjectMap}">
@@ -981,7 +981,7 @@
                     <input type="hidden" name="id" id="updateReportId">
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-dark">Tên Nhiệm Vụ / Công Việc <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold small text-dark">Tên Công Việc / Báo Cáo <span class="text-danger">*</span></label>
                             <input type="text" name="taskTitle" id="updateTaskTitleInput" class="form-control shadow-sm fw-bold text-primary" required>
                         </div>
                         <div class="row g-3 mb-3">
@@ -1255,7 +1255,7 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>

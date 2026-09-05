@@ -93,7 +93,9 @@ public class WorkReport {
         if (priority == null || priority.isEmpty()) priority = "NORMAL";
         if (loggedHours == null) loggedHours = 0.0;
         if (isTimerRunning == null) isTimerRunning = false;
-        if (createdBy == null || createdBy.isEmpty()) createdBy = "system";
+        if (createdBy == null || createdBy.trim().isEmpty()) {
+            createdBy = (assignee != null && !assignee.trim().isEmpty()) ? assignee.trim() : "system";
+        }
         stampCompletion();
     }
 
@@ -107,6 +109,9 @@ public class WorkReport {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
     public String getProjectName() { return projectName; }
     public void setProjectName(String projectName) { this.projectName = projectName; }
 
@@ -115,9 +120,6 @@ public class WorkReport {
 
     public String getAssignee() { return assignee; }
     public void setAssignee(String assignee) { this.assignee = assignee; }
-
-    public String getCreatedBy() { return createdBy; }
-    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
     public String getWatchers() { return watchers; }
 

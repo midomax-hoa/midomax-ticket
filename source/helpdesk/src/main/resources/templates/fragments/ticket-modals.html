@@ -924,7 +924,7 @@
 
                                             <div class="d-flex gap-2 flex-wrap align-items-center">
                                                 <button type="button" class="btn btn-success fw-bold px-3 shadow-sm" onclick="submitUserConfirmResolve()">
-                                                    <i class="fa-solid fa-circle-check me-1"></i> Xác Nhận Hoàn Thành (Hết Lỗi)
+                                                    <i class="fa-solid fa-circle-check me-1"></i> Xác Nhận Hoàn Thành
                                                 </button>
                                                 <button type="button" class="btn btn-outline-danger fw-bold px-3 shadow-sm" onclick="toggleUserIssueInput()">
                                                     <i class="fa-solid fa-rotate-left me-1"></i> Phản Hồi Còn Lỗi / Chưa Xong
@@ -1151,8 +1151,6 @@
                                 <label class="form-label fw-bold small text-dark">Người yêu cầu (Requester)</label>
                                 <select class="form-select shadow-sm" name="reporterSelect" id="requesterSelect" onchange="toggleCustomRequester()" style="border-radius: 8px;">
                                     <option value="self" selected>Bản thân báo cáo</option>
-                                    <option value="user1">Nguyễn Văn A (Kế toán)</option>
-                                    <option value="user2">Trần Thị B (Nhân sự)</option>
                                     <option value="other">-- Nhập tên khác --</option>
                                 </select>
                                 <input type="text" id="customRequesterInput" name="customRequester" class="form-control shadow-sm mt-2" placeholder="Nhập tên người yêu cầu..." style="display: none; border-radius: 8px;">
@@ -1213,7 +1211,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-dark">Ngày và Giờ hẹn xử lý <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small text-dark">Ngày và Giờ hẹn <span class="text-danger">*</span></label>
                                 <input type="text" id="slaDeadlineAdmin" name="bookedStartTime" class="form-control shadow-sm bg-white" placeholder="-- Chọn ngày giờ --" required style="border-radius: 8px;">
                             </div>
                             
@@ -1258,7 +1256,7 @@
                         <div class="row g-3">
                             <div class="col-md-12">
                                 <label class="form-label fw-bold small text-dark">Tiêu đề yêu cầu <span class="text-danger">*</span></label>
-                                <input type="text" name="title" class="form-control shadow-sm" style="border-radius: 8px;" placeholder="Nhập tóm tắt sự cố (ví dụ: Lỗi không kết nối được máy in...)" required>
+                                <input type="text" name="title" class="form-control shadow-sm" style="border-radius: 8px;" placeholder="Tóm tắt yêu cầu cần hỗ trợ (ví dụ: Máy in không kết nối, cấp quyền phần mềm, xin cấp thiết bị...)" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-dark">Người gửi</label>
@@ -1300,7 +1298,7 @@
                             <!-- Danh mục đứng TRƯỚC người hỗ trợ: chọn loại việc rồi mới chọn
                                  người, vì danh sách người hỗ trợ được lọc theo danh mục. -->
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-dark">Danh mục sự cố <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small text-dark">Danh mục cần hỗ trợ <span class="text-danger">*</span></label>
                                 <select name="category" id="categorySelectUser" class="form-select shadow-sm" required style="border-radius: 8px;">
                                     <option value="" selected disabled>-- Chọn Danh mục --</option>
                                     <option th:each="g : ${itGroups}" th:value="${g.name()}"
@@ -1313,7 +1311,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-dark">Ngày và Giờ hẹn xử lý <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small text-dark">Ngày và Giờ hẹn hỗ trợ <span class="text-danger">*</span></label>
                                 <input type="text" id="slaDeadlineUser" name="bookedStartTime" class="form-control shadow-sm bg-white" placeholder="-- Chọn ngày giờ --" required style="border-radius: 8px;">
                             </div>
 
@@ -1337,7 +1335,7 @@
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label fw-bold small text-dark">Mô tả chi tiết <span class="text-danger">*</span></label>
-                                <textarea name="description" class="form-control shadow-sm" rows="4" placeholder="Nhập nội dung sự cố chi tiết..." required style="border-radius: 8px;"></textarea>
+                                <textarea name="description" class="form-control shadow-sm" rows="4" placeholder="Nhập nội dung chi tiết..." required style="border-radius: 8px;"></textarea>
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label fw-bold small text-dark"><i class="fa-solid fa-image me-1 text-primary"></i>Hình ảnh đính kèm (Chỉ cho phép file ảnh)</label>
@@ -1380,7 +1378,7 @@
 
             <div class="tech-loading-subtext mt-3">
                 <i class="fa-solid fa-shield-halved me-1 text-primary"></i> 
-                Đang bảo mật dữ liệu & tự động gửi Email thông báo qua Microsoft 365...
+                Đang bảo mật dữ liệu & tự động gửi Email
             </div>
         </div>
     </div>

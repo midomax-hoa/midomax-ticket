@@ -199,20 +199,10 @@ public class TicketServiceImpl implements TicketService {
         String oldStatus = ticket.getStatus();
         String oldAssignee = ticket.getAssignee();
 
-        // Khi vé đã hoàn thành (RESOLVED), khóa không cho sửa nữa — trừ ghi chú khắc phục
-        // và ảnh xác nhận hoàn thành, vì IT thường bổ sung hai thứ này ngay sau khi đóng việc.
-        if ("RESOLVED".equalsIgnoreCase(ticket.getStatus())) {
-            boolean changed = false;
-            if (updatedTicket.getFixNote() != null && !updatedTicket.getFixNote().equals(ticket.getFixNote())) {
-                ticket.setFixNote(updatedTicket.getFixNote());
-                changed = true;
-            }
-            if (updatedTicket.getCompletionImagePath() != null) {
-                ticket.setCompletionImagePath(updatedTicket.getCompletionImagePath());
-                changed = true;
-            }
-            return changed ? ticketRepository.save(ticket) : ticket;
-        }
+        // KHÔNG khóa RESOLVED ở đây được: các controller nạp ticket rồi sửa TRƯỚC khi
+        // gọi hàm này, mà Hibernate (open-in-view) trả về đúng đối tượng đã sửa — nên
+        // đọc trạng thái tại đây là đọc trạng thái MỚI, không phải trạng thái đang lưu.
+        // Chốt khóa đã chuyển lên controller (xem assertEditableStatus).
 
         ticket.setTitle(updatedTicket.getTitle());
         if (updatedTicket.getDescription() != null) {
@@ -578,6 +568,55 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public long countTicketsByReporter(String reporterName) {
         return ticketRepository.countByReporterName(reporterName);
+    }
+
+    @Override
+    public Page<Ticket> getTicketsForDeptHead(List<String> reporterNames, String tab, String search, int page) {
+        String status = null;
+        if (tab != null && ("closed".equalsIgnoreCase(tab) || "resolved".equalsIgnoreCase(tab))) {
+            status = "RESOLVED";
+        }
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String searchId = null;
+        if (cleanSearch != null) {
+            String digits = cleanSearch.toLowerCase().startsWith("t") ? cleanSearch.substring(1) : cleanSearch;
+            try {
+                Long.parseLong(digits);
+                searchId = digits;
+            } catch (NumberFormatException ignored) { }
+        }
+        Pageable pageable = PageRequest.of(page, 5);
+        return ticketRepository.filterAndSearchTicketsForReporters(reporterNames, status, cleanSearch, searchId, pageable);
+    }
+
+    /** Cỡ trang đủ lớn để xuất Excel lấy hết ticket trong một lần. */
+    private static final int EXPORT_PAGE_SIZE = 10_000;
+
+    @Override
+    public List<Ticket> getAllTicketsForUser(String username, String search) {
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        return ticketRepository.filterAndSearchTicketsForUser(
+                username, null, cleanSearch, null,
+                PageRequest.of(0, EXPORT_PAGE_SIZE)).getContent();
+    }
+
+    @Override
+    public List<Ticket> getAllTicketsForDeptHead(List<String> reporterNames, String search) {
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        return ticketRepository.filterAndSearchTicketsForReporters(
+                reporterNames, null, cleanSearch, null,
+                PageRequest.of(0, EXPORT_PAGE_SIZE)).getContent();
+    }
+
+    @Override
+    public Map<String, Long> getStatisticsForDeptHead(List<String> reporterNames, String ownIdentity) {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("total", ticketRepository.countByReporterNameIn(reporterNames));
+        stats.put("open", ticketRepository.countByReporterNameInAndStatus(reporterNames, "OPEN"));
+        stats.put("inProgress", ticketRepository.countByReporterNameInAndStatus(reporterNames, "PROGRESS"));
+        stats.put("resolved", ticketRepository.countByReporterNameInAndStatus(reporterNames, "RESOLVED"));
+        stats.put("mine", ticketRepository.countByReporterName(ownIdentity));
+        return stats;
     }
 
     @Override

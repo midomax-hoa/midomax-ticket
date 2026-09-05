@@ -23,6 +23,43 @@ public class ExpenseFund {
 
     private boolean active = true; // Quỹ đang sử dụng
 
+    /**
+     * Kỳ ngân sách của quỹ: chỉ hóa đơn trong khoảng này mới được tính vào "đã chi".
+     * Ví dụ ngân sách 6 tháng cuối năm 2026 -> năm 2026, từ tháng 6 đến tháng 12.
+     * Null = chưa đặt, khi đó tính cả năm.
+     */
+    private Integer budgetYear;
+    private Integer fromMonth;
+    private Integer toMonth;
+
+    public Integer getBudgetYear() { return budgetYear; }
+    public void setBudgetYear(Integer budgetYear) { this.budgetYear = budgetYear; }
+
+    public Integer getFromMonth() { return fromMonth; }
+    public void setFromMonth(Integer fromMonth) { this.fromMonth = fromMonth; }
+
+    public Integer getToMonth() { return toMonth; }
+    public void setToMonth(Integer toMonth) { this.toMonth = toMonth; }
+
+    /** Tháng bắt đầu thực tế (mặc định 1). */
+    public int startMonth() { return fromMonth == null ? 1 : Math.max(1, Math.min(12, fromMonth)); }
+
+    /** Tháng kết thúc thực tế (mặc định 12). */
+    public int endMonth() { return toMonth == null ? 12 : Math.max(1, Math.min(12, toMonth)); }
+
+    /** Hóa đơn có nằm trong kỳ ngân sách của quỹ không. */
+    public boolean covers(int year, int month) {
+        if (budgetYear != null && budgetYear != year) return false;
+        return month >= startMonth() && month <= endMonth();
+    }
+
+    /** Nhãn kỳ để hiển thị, ví dụ "T6–T12/2026". */
+    public String getPeriodLabel() {
+        if (budgetYear == null && fromMonth == null && toMonth == null) return "Cả năm";
+        String range = "T" + startMonth() + "–T" + endMonth();
+        return budgetYear == null ? range : range + "/" + budgetYear;
+    }
+
     private String createdBy;
 
     private LocalDateTime createdAt;

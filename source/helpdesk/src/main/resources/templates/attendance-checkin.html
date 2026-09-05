@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chấm Công - Midomax IT</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background: linear-gradient(160deg, #eef2ff 0%, #f0fdfa 50%, #fefce8 100%); color: #333;
+               font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; min-height: 100vh; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #fff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 18px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
+
+        /* KHỐI TRUNG TÂM: nền gradient xanh đậm cho nổi, chữ trắng */
+        .hero-card {
+            border-radius: 22px; padding: 34px 24px 30px; text-align: center; position: relative; overflow: hidden;
+            background: linear-gradient(140deg, #0f766e 0%, #0d9488 45%, #115e59 100%);
+            box-shadow: 0 18px 40px -14px rgba(13,148,136,0.55);
+        }
+        /* Hoạ tiết tròn mờ cho đỡ trống */
+        .hero-card::before, .hero-card::after {
+            content: ''; position: absolute; border-radius: 50%; background: rgba(255,255,255,0.07); pointer-events: none;
+        }
+        .hero-card::before { width: 260px; height: 260px; top: -110px; right: -80px; }
+        .hero-card::after  { width: 200px; height: 200px; bottom: -100px; left: -70px; }
+        .hero-card > * { position: relative; z-index: 1; }
+
+        .clock-big { font-size: 56px; font-weight: 800; color: #fff; letter-spacing: 2px; line-height: 1;
+                     font-variant-numeric: tabular-nums; text-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+        .clock-date { color: #99f6e4; font-size: 14.5px; font-weight: 600; margin-top: 6px; }
+
+        .punch-btn {
+            width: 172px; height: 172px; border-radius: 50%; border: 5px solid rgba(255,255,255,0.35); cursor: pointer;
+            background: radial-gradient(circle at 30% 25%, #fbbf24, #f59e0b 55%, #d97706);
+            color: #fff; font-weight: 800; font-size: 19px;
+            box-shadow: 0 16px 34px -8px rgba(0,0,0,0.45), inset 0 -4px 10px rgba(0,0,0,0.18);
+            transition: transform 0.15s, box-shadow 0.15s; position: relative;
+        }
+        .punch-btn:hover:not(:disabled) { transform: translateY(-3px) scale(1.03); }
+        .punch-btn:disabled { filter: grayscale(0.5); opacity: 0.7; cursor: not-allowed; }
+        .punch-btn .fa-fingerprint { font-size: 46px; display: block; margin: 0 auto 8px; }
+        .punch-ring { position: absolute; inset: -16px; border-radius: 50%; border: 2px solid rgba(251,191,36,0.6); animation: ring 2.2s ease-out infinite; pointer-events: none; }
+        @keyframes ring { 0% { transform: scale(0.92); opacity: 1; } 100% { transform: scale(1.18); opacity: 0; } }
+
+        .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700;
+                padding: 5px 14px; border-radius: 20px; background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+
+        .hero-hint { color: #ccfbf1; font-size: 12.5px; }
+        #gpsResult span { text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+        /* Ô thống kê hôm nay: mỗi ô một màu cho vui mắt */
+        .stat-tile { border-radius: 14px; padding: 14px 10px; text-align: center; border: none; }
+        .stat-tile .lbl { font-size: 12px; font-weight: 600; opacity: 0.85; }
+        .stat-tile .val { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .tile-in  { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #15803d; }
+        .tile-out { background: linear-gradient(135deg, #ffedd5, #fed7aa); color: #c2410c; }
+        .tile-cnt { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); color: #4338ca; }
+
+        .hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px; }
+        .hist-row:last-child { border-bottom: none; }
+
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } .clock-big { font-size: 44px; } }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('checkin')}"></div>
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Chấm Công</h4>
+                    <small class="text-muted">Xin chào, <b th:text="${fullName}">Nhân viên</b> 👋</small>
+                </div>
+            </div>
+            <a th:href="@{/attendance/my}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-calendar-days me-1"></i><span class="d-none d-sm-inline">Xem lịch công</span>
+            </a>
+        </div>
+
+        <div class="row g-3 justify-content-center">
+            <!-- KHỐI CHẤM CÔNG -->
+            <div class="col-lg-6">
+                <div class="hero-card">
+                    <div class="clock-big" id="ckClock">--:--:--</div>
+                    <div class="clock-date" id="ckDate">—</div>
+
+                    <div class="my-3">
+                        <span class="chip" th:if="${officeName != null}">
+                            <i class="fa-solid fa-building"></i><span th:text="${officeName}">188Bis</span>
+                            <span th:if="${officeHasGps}" th:text="'· bán kính ' + ${officeRadius} + 'm'"></span>
+                        </span>
+                        <span class="chip" th:if="${gpsFree}"><i class="fa-solid fa-plane"></i>Chế độ công tác</span>
+                    </div>
+
+                    <!-- Được cấp quyền: nút chấm to -->
+                    <div th:if="${gpsAllowed and hasCode}" class="py-2">
+                        <button type="button" class="punch-btn" id="gpsBtn" onclick="gpsPunch()">
+                            <span class="punch-ring"></span>
+                            <i class="fa-solid fa-fingerprint"></i>
+                            Chấm công
+                        </button>
+                        <div class="hero-hint mt-3" id="gpsHint">
+                            Bấm nút → cho phép vị trí &amp; camera → chụp selfie là xong
+                        </div>
+                    </div>
+
+                    <!-- Chưa đủ điều kiện: nút mờ đi + một dòng nhẹ nhàng, không nhồi khung cảnh báo -->
+                    <div th:if="${!gpsAllowed or !hasCode}" class="py-2">
+                        <button type="button" class="punch-btn" disabled>
+                            <i class="fa-solid fa-fingerprint"></i>
+                            Chấm công
+                        </button>
+                        <div class="hero-hint mt-3">
+                            <i class="fa-solid fa-lock me-1"></i>
+                            <span th:if="${!hasCode}">Chấm công GPS sẽ mở khi IT gán mã chấm công cho bạn</span>
+                            <span th:if="${hasCode and !gpsAllowed}">Chấm công GPS sẽ mở khi được IT/nhân sự cấp quyền</span>
+                            — hiện tại bạn quẹt máy vân tay như bình thường.
+                        </div>
+                    </div>
+
+                    <!-- Camera selfie -->
+                    <div id="gpsCamWrap" class="mt-3 d-none">
+                        <video id="gpsVideo" autoplay playsinline muted
+                               style="width:210px; max-width:100%; border-radius:14px; transform:scaleX(-1); border:3px solid rgba(255,255,255,0.5);"></video>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-warning fw-bold" onclick="gpsCapture()">
+                                <i class="fa-solid fa-camera me-1"></i>Chụp &amp; chấm công
+                            </button>
+                            <button type="button" class="btn btn-light border ms-1" onclick="gpsCancel()">Huỷ</button>
+                        </div>
+                    </div>
+                    <div id="gpsResult" class="mt-2" style="font-size:13.5px; min-height:20px;"></div>
+                </div>
+            </div>
+
+            <!-- HÔM NAY + LỊCH SỬ -->
+            <div class="col-lg-4">
+                <div class="widget-card mb-3">
+                    <div class="fw-bold mb-2" style="font-size:14px; color:#0f172a;">
+                        <i class="fa-solid fa-sun me-1" style="color:#f59e0b;"></i>Hôm nay
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-4"><div class="stat-tile tile-in">
+                            <div class="lbl"><i class="fa-solid fa-right-to-bracket me-1"></i>Giờ vào</div>
+                            <div class="val" th:text="${firstIn != null} ? ${#temporals.format(firstIn,'HH:mm')} : '—'">—</div>
+                        </div></div>
+                        <div class="col-4"><div class="stat-tile tile-out">
+                            <div class="lbl"><i class="fa-solid fa-right-from-bracket me-1"></i>Giờ ra</div>
+                            <div class="val" th:text="${lastOut != null} ? ${#temporals.format(lastOut,'HH:mm')} : '—'">—</div>
+                        </div></div>
+                        <div class="col-4"><div class="stat-tile tile-cnt">
+                            <div class="lbl"><i class="fa-solid fa-hand-pointer me-1"></i>Lần chấm</div>
+                            <div class="val" th:text="${punchCount}">0</div>
+                        </div></div>
+                    </div>
+                    <div class="text-muted mt-2" style="font-size:11.5px;">
+                        Gộp mọi nguồn: máy vân tay + chấm GPS. Công chốt cuối ngày theo ca làm việc.
+                    </div>
+                </div>
+
+                <!-- Các lần chấm GPS HÔM NAY của chính mình: hình + vị trí + giờ để tự đối chiếu.
+                     Các ngày trước xem trong Lịch Công (nút dưới) — trang này giữ cho nhẹ. -->
+                <div class="widget-card">
+                    <div class="fw-bold mb-2" style="font-size:14px; color:#0f172a;">
+                        <i class="fa-solid fa-camera-retro me-1" style="color:#0d9488;"></i>Hôm nay đã chấm
+                    </div>
+                    <div class="hist-row" th:each="c : ${myCheckins}">
+                        <!-- Selfie của chính mình — bấm để xem to -->
+                        <img th:src="@{'/attendance/gps/selfie/' + ${c.id}}" loading="lazy" alt="selfie"
+                             style="width:44px; height:44px; object-fit:cover; border-radius:10px; border:2px solid #99f6e4; cursor:zoom-in; flex-shrink:0;"
+                             th:attr="onclick=|window.open('/attendance/gps/selfie/${c.id}','_blank')|">
+                        <div style="flex:1; min-width:0;">
+                            <div class="fw-semibold" th:text="${#temporals.format(c.punchTime,'HH:mm:ss')}">08:30:15</div>
+                            <div class="text-muted" style="font-size:11.5px;">
+                                <!-- Công tác: hiện địa chỉ thật nơi chấm; trong bán kính: tên văn phòng + khoảng cách -->
+                                <span th:if="${c.freeLocation}" th:text="${c.locationName != null ? c.locationName : 'Vị trí theo định vị'}">Quận 1, TP.HCM</span>
+                                <span th:if="${!c.freeLocation}">
+                                    <span th:text="${c.deviceName}">188Bis</span>
+                                    <span th:if="${c.distanceM != null}" th:text="' · cách ' + ${#numbers.formatDecimal(c.distanceM,0,0)} + 'm'"></span>
+                                </span>
+                                <span th:if="${c.freeLocation}" class="badge bg-info ms-1" style="font-size:9px;">công tác</span>
+                            </div>
+                        </div>
+                        <a th:if="${c.mapUrl != null}" th:href="${c.mapUrl}" target="_blank"
+                           class="btn btn-sm btn-outline-primary" title="Xem điểm chấm trên bản đồ">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                        </a>
+                    </div>
+                    <div class="text-muted" style="font-size:12.5px;" th:if="${#lists.isEmpty(myCheckins)}">
+                        Hôm nay chưa có lần chấm GPS nào.
+                    </div>
+                    <a th:href="@{/attendance/my}" class="btn btn-light border w-100 mt-2" style="font-size:13px;">
+                        <i class="fa-solid fa-calendar-days me-1"></i>Xem các ngày khác trong Lịch Công
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        'use strict';
+
+        // Đồng hồ chạy giây — trái tim của trang chấm công
+        var DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+        function tick() {
+            var n = new Date();
+            function p(x) { return x < 10 ? '0' + x : x; }
+            document.getElementById('ckClock').textContent = p(n.getHours()) + ':' + p(n.getMinutes()) + ':' + p(n.getSeconds());
+            document.getElementById('ckDate').textContent =
+                DAYS[n.getDay()] + ', ' + p(n.getDate()) + '/' + p(n.getMonth() + 1) + '/' + n.getFullYear();
+        }
+        tick(); setInterval(tick, 1000);
+
+        var gpsPos = null, gpsStream = null;
+        function note(msg, isErr) {
+            var el = document.getElementById('gpsResult');
+            // Nền hero xanh đậm nên lỗi dùng vàng nhạt, thành công dùng trắng — chữ đỏ trên nền xanh khó đọc
+            if (el) el.innerHTML = '<span style="color:' + (isErr ? '#fde68a' : '#ffffff') + '; font-weight:600;">' + msg + '</span>';
+        }
+        function busy(b) { var x = document.getElementById('gpsBtn'); if (x) x.disabled = b; }
+
+        window.gpsPunch = function () {
+            if (!window.isSecureContext || !navigator.geolocation
+                    || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                note('Trình duyệt chặn định vị/camera trên HTTP — chấm được khi hệ thống lên HTTPS (ticket.midomax.vn).', true);
+                return;
+            }
+            busy(true);
+            note('Đang lấy vị trí GPS...');
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                gpsPos = pos;
+                note('Đã có vị trí (±' + Math.round(pos.coords.accuracy) + 'm). Đang mở camera...');
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+                    .then(function (stream) {
+                        gpsStream = stream;
+                        document.getElementById('gpsVideo').srcObject = stream;
+                        document.getElementById('gpsCamWrap').classList.remove('d-none');
+                        note('Nhìn vào camera rồi bấm "Chụp & chấm công".');
+                    })
+                    .catch(function (e) { busy(false); note('Không mở được camera: ' + e.message, true); });
+            }, function (err) {
+                busy(false);
+                note(err.code === 1
+                    ? 'Bạn đã từ chối quyền vị trí — vào cài đặt trình duyệt cho phép rồi thử lại.'
+                    : 'Không lấy được vị trí: ' + err.message + '. Bật GPS rồi thử lại.', true);
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        };
+
+        window.gpsCancel = function () {
+            if (gpsStream) { gpsStream.getTracks().forEach(function (t) { t.stop(); }); gpsStream = null; }
+            document.getElementById('gpsCamWrap').classList.add('d-none');
+            busy(false); note('');
+        };
+
+        /**
+         * Điểm độ nét: phương sai Laplacian trên bản thu nhỏ 160px — cùng công thức
+         * với kiểm tra phía máy chủ. Ảnh mờ/rung thì báo chụp lại NGAY, giữ camera mở,
+         * khỏi tốn một lượt gửi lên rồi mới bị trả về.
+         */
+        function sharpnessOf(canvas) {
+            var w = 160, h = Math.max(2, Math.round(canvas.height * w / Math.max(1, canvas.width)));
+            var s = document.createElement('canvas'); s.width = w; s.height = h;
+            var ctx = s.getContext('2d');
+            ctx.drawImage(canvas, 0, 0, w, h);
+            var d = ctx.getImageData(0, 0, w, h).data;
+            var gray = new Float32Array(w * h);
+            var bright = 0;
+            for (var i = 0, p = 0; i < d.length; i += 4, p++) {
+                gray[p] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                bright += gray[p];
+            }
+            // Tính chung + tách vùng: giữa (mặt) và vành rìa (phông) — bắt ảnh xóa phông
+            var sum = 0, sumSq = 0, n = 0;
+            var cSum = 0, cSq = 0, cN = 0, bSum = 0, bSq = 0, bN = 0;
+            var cx1 = w * 0.30, cx2 = w * 0.70, cy1 = h * 0.30, cy2 = h * 0.70;
+            var bx = w * 0.20, by = h * 0.20;
+            for (var y = 1; y < h - 1; y++) {
+                for (var x = 1; x < w - 1; x++) {
+                    var idx = y * w + x;
+                    var lap = 4 * gray[idx] - gray[idx - w] - gray[idx + w] - gray[idx - 1] - gray[idx + 1];
+                    sum += lap; sumSq += lap * lap; n++;
+                    if (x >= cx1 && x < cx2 && y >= cy1 && y < cy2) { cSum += lap; cSq += lap * lap; cN++; }
+                    else if (x < bx || x >= w - bx || y < by || y >= h - by) { bSum += lap; bSq += lap * lap; bN++; }
+                }
+            }
+            var mean = sum / n, cMean = cSum / cN, bMean = bSum / bN;
+            return {
+                sharp: sumSq / n - mean * mean,
+                bright: bright / (w * h),
+                center: cSq / cN - cMean * cMean,
+                border: bSq / bN - bMean * bMean
+            };
+        }
+
+        window.gpsCapture = function () {
+            if (!gpsPos || !gpsStream) { window.gpsCancel(); return; }
+            var v = document.getElementById('gpsVideo');
+            var c = document.createElement('canvas');
+            c.width = v.videoWidth || 480; c.height = v.videoHeight || 640;
+            c.getContext('2d').drawImage(v, 0, 0);
+
+            // Kiểm nét + sáng trước khi gửi — camera VẪN MỞ để chụp lại luôn
+            var q = sharpnessOf(c);
+            // Kiem SANG truoc: anh toi om khong co canh nao, kiem net truoc se bao nham "mo"
+            if (q.bright < 35) {
+                note('Ảnh quá TỐI — ra chỗ đủ sáng rồi bấm chụp lại.', true);
+                return;
+            }
+            if (q.sharp < 15) {
+                note('Ảnh bị MỜ — giữ điện thoại yên, nhìn thẳng camera rồi bấm chụp lại.', true);
+                return;
+            }
+            // Xóa phông: mặt nét mà phông mượt bất thường (tường trơn thật vẫn qua nhờ nhiễu camera)
+            if (q.center > 100 && q.border < 4.5) {
+                note('Ảnh đang bật XÓA PHÔNG / làm mờ nền — tắt hiệu ứng camera rồi bấm chụp lại (phông phải thấy rõ).', true);
+                return;
+            }
+            note('Đang gửi...');
+            c.toBlob(function (blob) {
+                var fd = new FormData();
+                fd.append('latitude', gpsPos.coords.latitude);
+                fd.append('longitude', gpsPos.coords.longitude);
+                fd.append('accuracy', gpsPos.coords.accuracy);
+                fd.append('selfie', blob, 'selfie.jpg');
+                fetch('/attendance/gps/checkin', { method: 'POST', body: fd })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        window.gpsCancel();
+                        note((res.ok ? '✅ ' : '') + res.message, !res.ok);
+                        if (res.ok) setTimeout(function () { location.reload(); }, 2200);
+                    })
+                    .catch(function () { window.gpsCancel(); note('Gửi thất bại — kiểm tra mạng rồi thử lại.', true); });
+            }, 'image/jpeg', 0.85);
+        };
+    })();
+    </script>
+</body>
+</html>

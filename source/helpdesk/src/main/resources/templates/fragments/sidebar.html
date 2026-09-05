@@ -70,6 +70,10 @@
 
 /* SIDEBAR CSS - ORIGINAL COLORS WITH GOOEY NOTCH */
         .sidebar {
+            /* Ghim font tại đây: sidebar vốn thừa hưởng font của từng trang, nên trang
+               dùng Inter (Lịch Trình) menu nhìn đậm và bè hơn hẳn trang dùng Segoe UI —
+               cùng một menu mà mỗi trang một kiểu chữ. */
+            font-family: 'Segoe UI', sans-serif;
             width: 260px;
             background: #ffffff;
             height: 100vh;
@@ -96,10 +100,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 60px;
-            margin-bottom: 30px;
+            height: 62px;
+            margin-bottom: 26px;
             padding: 0;
-            position: relative; /* mốc toạ độ cho chim Kami bay quanh logo */
+            position: relative; /* moc toa do cho chim Kami bay quanh logo */
             width: 100%;
         }
 
@@ -232,8 +236,8 @@
         }
 
         .brand-midomax-sidebar {
-            height: 36px;
-            max-width: 170px;
+            height: 24px;
+            max-width: 190px;
             width: auto;
             object-fit: contain;
             margin: 0 auto;
@@ -326,10 +330,11 @@
         }
 
         .brand-kamito-sidebar {
-            height: 54px;
+            height: 38px;
             max-width: 190px;
             width: auto;
             object-fit: contain;
+            aspect-ratio: 299 / 280;   /* ti le sau khi cat sat vien */
             margin: 0 auto;
             filter: none;
             transition: opacity 0.3s ease;
@@ -874,11 +879,11 @@
             </div>
             <div class="brand-morph-container">
                 <div class="brand-face brand-face-midomax">
-                    <img th:src="@{/images/logo-midomax.png}" alt="MIDOMAX" class="brand-midomax-sidebar" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                    <img th:src="@{/images/logo-midomax-trim.png(v=3)}" alt="MIDOMAX" class="brand-midomax-sidebar" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
                     <span class="brand-text" style="display: none;">MIDOMAX</span>
                 </div>
                 <div class="brand-face brand-face-kamito">
-                    <img th:src="@{/images/kamito-logo-red.png}" alt="KAMITO" class="brand-kamito-sidebar" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                    <img th:src="@{/images/kamito-logo-red.png(v=3)}" alt="KAMITO" class="brand-kamito-sidebar" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
                     <span class="brand-text brand-text-kamito" style="display: none;">KAMITO</span>
                 </div>
             </div>
@@ -937,31 +942,52 @@
                 <div class="icon-wrapper"><i class="fa-solid fa-circle-plus"></i></div>
                 <span>Tạo Ticket</span>
             </a>
-            <a href="#" th:classappend="${activePage == 'network'} ? 'active' : ''" title="Mạng" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+            <a href="/network" th:classappend="${activePage == 'network'} ? 'active' : ''" title="Mạng" th:if="${allowedModules != null and allowedModules.contains('NETWORK')}">
                 <div class="icon-wrapper"><i class="fa-solid fa-network-wired"></i></div>
                 <span>Mạng</span>
             </a>
-            <!-- Trong IT chỉ nhóm helpdesk thấy Công Cụ Dụng Cụ; luật này khớp với SecurityConfig. -->
-            <a href="/assets" th:classappend="${activePage == 'tools'} ? 'active' : ''" title="Công Cụ Dụng Cụ" sec:authorize="hasAnyRole('ADMIN', 'MANAGER') or hasAuthority('GROUP_HELPDESK')">
-                <div class="icon-wrapper"><i class="fa-solid fa-boxes-stacked"></i></div>
-                <span>Công Cụ Dụng Cụ</span>
+            <!-- Trong IT chỉ nhóm helpdesk thấy Công Cụ Dụng Cụ; luật này khớp với SecurityConfig.
+                 License 365 là mục CON của Công Cụ Dụng Cụ, không đặt ngang hàng. -->
+            <a href="/assets"
+               title="Công Cụ Dụng Cụ" th:if="${allowedModules != null and allowedModules.contains('ASSETS')}"
+               style="justify-content: space-between; padding-right: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-wrapper"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <span>Công Cụ Dụng Cụ</span>
+                </div>
+                <i class="fa-solid fa-chevron-down submenu-caret" data-target="assetsSubmenu"
+                   style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
+            <div class="collapse" id="assetsSubmenu"
+                 th:classappend="${activePage == 'tools' or activePage == 'licenses'} ? 'show' : ''"
+                 th:if="${allowedModules != null and allowedModules.contains('ASSETS')}">
+                <a href="/assets" th:classappend="${activePage == 'tools'} ? 'active' : ''" title="Danh Sách Tài Sản"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <span>Danh Sách Tài Sản</span>
+                </a>
+                <a href="/assets/licenses" th:classappend="${activePage == 'licenses'} ? 'active' : ''" title="License Microsoft 365"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-brands fa-microsoft"></i></div>
+                    <span>License 365</span>
+                </a>
+            </div>
             <!-- Quản Lý Tài Chính là menu cha; Sổ Hóa Đơn nằm trong nó, không đặt ngang hàng.
                  Mở sẵn submenu khi đang ở bất kỳ trang con nào của tài chính. -->
-            <a href="#financeSubmenu" data-bs-toggle="collapse"
-               th:aria-expanded="${activePage == 'expenses' or activePage == 'invoices'} ? 'true' : 'false'"
-               th:classappend="${activePage == 'expenses' or activePage == 'invoices'} ? '' : 'collapsed'"
-               title="Quản Lý Tài Chính" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')"
+            <!-- Bấm vào tên -> đi thẳng trang Quỹ Chi Tiêu; bấm mũi tên -> chỉ xổ/thu submenu -->
+            <a href="/expenses"
+               title="Quản Lý Tài Chính" th:if="${allowedModules != null and allowedModules.contains('FINANCE')}"
                style="justify-content: space-between; padding-right: 20px;">
                 <div style="display: flex; align-items: center;">
                     <div class="icon-wrapper"><i class="fa-solid fa-wallet"></i></div>
                     <span>Quản Lý Tài Chính</span>
                 </div>
-                <i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+                <i class="fa-solid fa-chevron-down submenu-caret" data-target="financeSubmenu"
+                   style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
             <div class="collapse" id="financeSubmenu"
-                 th:classappend="${activePage == 'expenses' or activePage == 'invoices'} ? 'show' : ''"
-                 sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                 th:classappend="${activePage == 'expenses' or activePage == 'invoices' or activePage == 'reconcile'} ? 'show' : ''"
+                 th:if="${allowedModules != null and allowedModules.contains('FINANCE')}">
                 <a href="/expenses" th:classappend="${activePage == 'expenses'} ? 'active' : ''" title="Quỹ Chi Tiêu"
                    style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
                     <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-sack-dollar"></i></div>
@@ -972,28 +998,95 @@
                     <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-receipt"></i></div>
                     <span>Sổ Hóa Đơn</span>
                 </a>
+                <a href="/expenses/reconcile" th:classappend="${activePage == 'reconcile'} ? 'active' : ''" title="Đối Chiếu Ngân Sách"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <span>Đối Chiếu</span>
+                </a>
             </div>
             <a href="/schedule" th:classappend="${activePage == 'schedule'} ? 'active' : ''" title="Lịch Trình">
                 <div class="icon-wrapper"><i class="fa-solid fa-calendar-check"></i></div>
                 <span>Lịch Trình</span>
             </a>
-            <a href="/work-reports" th:classappend="${activePage == 'work-reports'} ? 'active' : ''" title="Báo Cáo Công Việc" sec:authorize="isAuthenticated()">
+            <!-- Chấm Công là menu CHA: bấm tên -> trang chấm công (nút chấm GPS, đồng hồ);
+                 mũi tên xổ ra 2 mục con. Ai đăng nhập cũng thấy, cần admin gán mã chấm công. -->
+            <a href="/attendance/checkin"
+               title="Chấm Công" style="justify-content: space-between; padding-right: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-wrapper"><i class="fa-solid fa-fingerprint"></i></div>
+                    <span>Chấm Công</span>
+                </div>
+                <i class="fa-solid fa-chevron-down submenu-caret" data-target="checkinSubmenu"
+                   style="font-size: 12px; padding: 6px; margin: -6px;"></i>
+            </a>
+            <div class="collapse" id="checkinSubmenu"
+                 th:classappend="${activePage == 'checkin' or activePage == 'my-attendance'} ? 'show' : ''">
+                <a href="/attendance/checkin" th:classappend="${activePage == 'checkin'} ? 'active' : ''" title="Chấm Công GPS"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-location-dot"></i></div>
+                    <span>Chấm Công GPS</span>
+                </a>
+                <a href="/attendance/my" th:classappend="${activePage == 'my-attendance'} ? 'active' : ''" title="Lịch Công Của Tôi"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-calendar-days"></i></div>
+                    <span>Lịch Công Của Tôi</span>
+                </a>
+            </div>
+            <!-- Duyệt đơn nghỉ phép / bổ sung công: chỉ Admin, trưởng phòng, phòng NSHC -->
+            <a href="/attendance/requests" th:if="${canApproveLeave != null and canApproveLeave}"
+               th:classappend="${activePage == 'leave-requests'} ? 'active' : ''" title="Duyệt Đơn Từ">
+                <div class="icon-wrapper"><i class="fa-solid fa-clipboard-check"></i></div>
+                <span>Duyệt Đơn Từ</span>
+            </a>
+            <a href="/work-reports" th:classappend="${activePage == 'work-reports'} ? 'active' : ''" title="Báo Cáo Công Việc" th:if="${allowedModules != null and allowedModules.contains('REPORTS')}">
                 <div class="icon-wrapper"><i class="fa-solid fa-layer-group"></i></div>
                 <span>Báo Cáo Công Việc</span>
             </a>
-            <a href="/employees" th:classappend="${activePage == 'employees'} ? 'active' : ''" title="Quản Lý Nhân Sự" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
-                <div class="icon-wrapper"><i class="fa-solid fa-user-tie"></i></div>
-                <span>Quản Lý Nhân Sự</span>
+            <!-- Quản Lý Nhân Sự là menu cha; Hồ Sơ Nhân Viên và Chấm Công nằm trong nó. -->
+            <a href="/employees"
+               title="Quản Lý Nhân Sự" th:if="${allowedModules != null and allowedModules.contains('HR')}"
+               style="justify-content: space-between; padding-right: 20px;">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-wrapper"><i class="fa-solid fa-user-tie"></i></div>
+                    <span>Quản Lý Nhân Sự</span>
+                </div>
+                <i class="fa-solid fa-chevron-down submenu-caret" data-target="hrSubmenu"
+                   style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
+            <div class="collapse" id="hrSubmenu"
+                 th:classappend="${activePage == 'employees' or activePage == 'attendance' or activePage == 'gps-locations' or activePage == 'gps-perms'} ? 'show' : ''"
+                 th:if="${allowedModules != null and allowedModules.contains('HR')}">
+                <a href="/employees" th:classappend="${activePage == 'employees'} ? 'active' : ''" title="Hồ Sơ Nhân Viên"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-address-card"></i></div>
+                    <span>Hồ Sơ Nhân Viên</span>
+                </a>
+                <a href="/attendance" th:classappend="${activePage == 'attendance'} ? 'active' : ''" title="Lịch Chấm Công"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-fingerprint"></i></div>
+                    <span>Lịch Chấm Công</span>
+                </a>
+                <a href="/attendance/locations" th:classappend="${activePage == 'gps-locations'} ? 'active' : ''" title="Địa Điểm Chấm Công GPS"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-map-location-dot"></i></div>
+                    <span>Địa Điểm Chấm Công</span>
+                </a>
+                <a href="/attendance/gps-permissions" th:classappend="${activePage == 'gps-perms'} ? 'active' : ''" title="Chấm Công Online"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                    <span>Chấm Công Online</span>
+                </a>
+            </div>
 
             <div style="margin: 10px 25px; border-top: 1px solid #e5e7eb;" sec:authorize="hasRole('ADMIN')"></div>
 
-            <a href="#userSubmenu" data-bs-toggle="collapse" th:aria-expanded="${activePage == 'users'} ? 'true' : 'false'" th:classappend="${activePage == 'users'} ? '' : 'collapsed'" title="Quản Lý User" sec:authorize="hasRole('ADMIN')" style="justify-content: space-between; padding-right: 20px;">
+            <a href="/admin/users" title="Quản Lý User" sec:authorize="hasRole('ADMIN')" style="justify-content: space-between; padding-right: 20px;">
                 <div style="display: flex; align-items: center;">
                     <div class="icon-wrapper"><i class="fa-solid fa-users-gear"></i></div>
                     <span>Quản Lý User</span>
                 </div>
-                <i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+                <i class="fa-solid fa-chevron-down submenu-caret" data-target="userSubmenu"
+                   style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
             <div class="collapse" id="userSubmenu" th:classappend="${activePage == 'users'} ? 'show' : ''" sec:authorize="hasRole('ADMIN')">
                 <a href="/admin/users" th:classappend="${activePage == 'users'} ? 'active' : ''" title="Phân Quyền User" style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
@@ -1010,10 +1103,24 @@
             </div>
             <div class="sidebar-user-info">
                 <span class="sidebar-user-name" th:text="${#authentication.name}">Username</span>
+                <!-- Không hiện mã role thô (ROLE_ADMIN...) — chỉ để tên cho gọn -->
             </div>
             <i class="fa-solid fa-right-from-bracket ms-auto" style="color: #ef4444; font-size: 16px;"></i>
         </a>
 <script>
+// Xổ/thu submenu bằng JS thuần, không phụ thuộc Bootstrap collapse.
+// Bấm vào tên menu cha vẫn điều hướng bình thường; chỉ mũi tên mới xổ menu.
+document.addEventListener('click', function(e) {
+    const caret = e.target.closest('.submenu-caret');
+    if (!caret) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = document.getElementById(caret.getAttribute('data-target'));
+    if (!box) return;
+    const opened = box.classList.toggle('show');
+    caret.style.transform = opened ? 'rotate(180deg)' : 'rotate(0deg)';
+}, true);
+
 document.addEventListener('DOMContentLoaded', function() {
     const toggleBtn = document.getElementById('toggle-btn');
     const mobileToggleBtn = document.getElementById('mobile-toggle-btn');

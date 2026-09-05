@@ -420,6 +420,7 @@ public class WorkReportServiceImpl implements WorkReportService {
             }
         }
 
+        child.setCreatedBy(parent != null && parent.getCreatedBy() != null ? parent.getCreatedBy() : child.getAssignee());
         child.setCreatedAt(LocalDateTime.now());
         child.setUpdatedAt(LocalDateTime.now());
         WorkReport saved = workReportRepository.save(child);

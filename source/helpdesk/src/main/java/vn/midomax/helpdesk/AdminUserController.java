@@ -39,12 +39,53 @@ public class AdminUserController {
     @Autowired
     private TicketService ticketService;
 
+    @Autowired
+    private ModuleAccessService moduleAccessService;
+
+    @Autowired
+    private AttendanceDeviceRepository attendanceDeviceRepository;
+
     // View cho trang Quản lý User
     @GetMapping("/admin/users")
     public String userManagementPage(Model model) {
         List<AppUser> users = appUserRepository.findAll();
         model.addAttribute("users", users);
         model.addAttribute("itGroups", ItGroup.values());
+        model.addAttribute("departments", Department.values());
+
+        // Bản rút gọn cho JS của modal đồng bộ 365: đánh dấu user nào đã có trong hệ thống.
+        // Không đưa thẳng entity vào inline JS để khỏi lộ hash mật khẩu.
+        List<Map<String, String>> existingJs = new ArrayList<>();
+        for (AppUser u : users) {
+            Map<String, String> m = new java.util.HashMap<>();
+            m.put("email", u.getEmail());
+            m.put("role", u.getRole());
+            m.put("department", u.getDepartment());
+            existingJs.add(m);
+        }
+        model.addAttribute("existingUsersJs", existingJs);
+
+        List<Map<String, String>> deptJs = new ArrayList<>();
+        for (Department d : Department.values()) {
+            Map<String, String> m = new java.util.HashMap<>();
+            m.put("code", d.name());
+            m.put("label", d.getLabel());
+            m.put("display", d.getDisplay());
+            deptJs.add(m);
+        }
+        model.addAttribute("departmentsJs", deptJs);
+
+        List<Map<String, String>> moduleJs = new ArrayList<>();
+        for (AppModule m : AppModule.values()) {
+            Map<String, String> mm = new java.util.HashMap<>();
+            mm.put("code", m.name());
+            mm.put("label", m.getLabel());
+            mm.put("icon", m.getIcon());
+            moduleJs.add(mm);
+        }
+        model.addAttribute("modulesJs", moduleJs);
+        // Máy chấm công (văn phòng) — bắt buộc chọn kèm mã vì các văn phòng trùng dải mã
+        model.addAttribute("attendanceDevices", attendanceDeviceRepository.findAll());
         return "user-management";
     }
 
@@ -85,6 +126,7 @@ public class AdminUserController {
         user.setPassword(passwordEncoder.encode(password));
         user.setAuthSource(AppUser.SOURCE_LOCAL);
         user.setItGroups(parseItGroups(payload.get("itGroups"), role));
+        user.setDepartment(parseDepartment(payload.get("department")));
         appUserRepository.save(user);
         ticketService.invalidateItStaffCache();
 
@@ -145,6 +187,8 @@ public class AdminUserController {
         Set<ItGroup> groups = parseItGroups(payload.get("itGroups"), role);
         AppUser existingUser = findByLoginName(email);
 
+        String department = parseDepartment(payload.get("department"));
+
         if (existingUser != null) {
             // Update role and email if user already exists
             existingUser.setRole(role);
@@ -153,6 +197,9 @@ public class AdminUserController {
             }
             existingUser.setEmail(email.trim());
             existingUser.setItGroups(groups);
+            if (department != null) {
+                existingUser.setDepartment(department);
+            }
             if (existingUser.getAuthSource() == null) {
                 existingUser.setAuthSource(AppUser.SOURCE_M365);
             }
@@ -164,6 +211,7 @@ public class AdminUserController {
             AppUser newUser = new AppUser(email.trim(), fullName, role);
             newUser.setAuthSource(AppUser.SOURCE_M365);
             newUser.setItGroups(groups);
+            newUser.setDepartment(department);
             appUserRepository.save(newUser);
             ticketService.invalidateItStaffCache();
             return ResponseEntity.ok("Đã thêm user thành công");
@@ -191,6 +239,34 @@ public class AdminUserController {
                 AppUser user = userOpt.get();
                 user.setRole(role);
                 user.setItGroups(parseItGroups(payload.get("itGroups"), role));
+                if (payload.containsKey("department")) {
+                    user.setDepartment(parseDepartment(payload.get("department")));
+                }
+                if (payload.containsKey("modules")) {
+                    user.setPersonalModules(parseModules(payload.get("modules")));
+                }
+                if (payload.containsKey("deptHead")) {
+                    user.setDeptHead(Boolean.TRUE.equals(payload.get("deptHead")));
+                }
+                if (payload.containsKey("employeeCode")) {
+                    String code = asString(payload.get("employeeCode"));
+                    user.setEmployeeCode(code == null || code.trim().isEmpty() ? null : code.trim());
+                }
+                if (payload.containsKey("attendanceDeviceId")) {
+                    String devRaw = asString(payload.get("attendanceDeviceId"));
+                    Long devId = null;
+                    if (devRaw != null && !devRaw.isBlank()) {
+                        try { devId = Long.parseLong(devRaw.trim()); } catch (NumberFormatException ignored) { }
+                    }
+                    user.setAttendanceDeviceId(devId);
+                }
+                // Chấm công GPS: cấp theo từng người; cờ "công tác" cho phép chấm ngoài bán kính
+                if (payload.containsKey("gpsAllowed")) {
+                    user.setGpsCheckinAllowed(Boolean.TRUE.equals(payload.get("gpsAllowed")));
+                }
+                if (payload.containsKey("gpsFree")) {
+                    user.setGpsFreeLocation(Boolean.TRUE.equals(payload.get("gpsFree")));
+                }
                 appUserRepository.save(user);
                 ticketService.invalidateItStaffCache();
 
@@ -212,6 +288,29 @@ public class AdminUserController {
         } catch (NumberFormatException e) {
             return ResponseEntity.badRequest().body("ID không hợp lệ");
         }
+    }
+
+    // ===== Ma trận "Phân hệ theo phòng ban" =====
+
+    /** Đọc ma trận hiện tại: { "TCKT": ["ASSETS"], "NSHC": ["HR"], ... }. */
+    @GetMapping("/api/admin/department-access")
+    @ResponseBody
+    public ResponseEntity<Map<String, Set<String>>> getDepartmentAccess() {
+        return ResponseEntity.ok(moduleAccessService.fullMatrix());
+    }
+
+    /** Ghi đè toàn bộ ma trận. Body cùng định dạng với GET. */
+    @PostMapping("/api/admin/department-access")
+    @ResponseBody
+    public ResponseEntity<String> saveDepartmentAccess(@RequestBody Map<String, List<String>> body) {
+        Map<String, Set<String>> matrix = new java.util.HashMap<>();
+        if (body != null) {
+            for (Map.Entry<String, List<String>> e : body.entrySet()) {
+                matrix.put(e.getKey(), e.getValue() == null ? Set.of() : new java.util.HashSet<>(e.getValue()));
+            }
+        }
+        moduleAccessService.saveMatrix(matrix);
+        return ResponseEntity.ok("Đã lưu phân hệ theo phòng ban");
     }
 
     // API xóa User
@@ -266,5 +365,25 @@ public class AdminUserController {
 
     private String asString(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    /** Danh sách phân hệ cấp riêng cho user từ payload; mã lạ bị bỏ qua. */
+    private Set<AppModule> parseModules(Object raw) {
+        Set<AppModule> modules = EnumSet.noneOf(AppModule.class);
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                AppModule m = AppModule.fromString(asString(item));
+                if (m != null) {
+                    modules.add(m);
+                }
+            }
+        }
+        return modules;
+    }
+
+    /** Chuẩn hóa mã phòng ban từ payload; giá trị lạ hoặc rỗng thành null (chưa phân). */
+    private String parseDepartment(Object raw) {
+        Department d = Department.fromString(asString(raw));
+        return d == null ? null : d.name();
     }
 }

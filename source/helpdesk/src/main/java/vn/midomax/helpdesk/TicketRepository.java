@@ -60,6 +60,28 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             Pageable pageable
     );
 
+    // Ticket của MỘT DANH SÁCH người gửi (trưởng phòng xem ticket cả phòng mình).
+    // reporterName lưu email (365) hoặc username (local) nên truyền cả hai dạng cho mỗi người.
+    @Query("SELECT t FROM Ticket t WHERE t.reporterName IN :reporterNames AND " +
+           "(:status IS NULL OR t.status = :status) AND " +
+           "(:search IS NULL OR " +
+           "  LOWER(t.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "  LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "  LOWER(t.category) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "  CAST(t.id AS string) = :searchId" +
+           ") ORDER BY t.createdAt DESC")
+    Page<Ticket> filterAndSearchTicketsForReporters(
+            @Param("reporterNames") java.util.List<String> reporterNames,
+            @Param("status") String status,
+            @Param("search") String search,
+            @Param("searchId") String searchId,
+            Pageable pageable
+    );
+
+    long countByReporterNameIn(java.util.List<String> reporterNames);
+
+    long countByReporterNameInAndStatus(java.util.List<String> reporterNames, String status);
+
     // Lọc ticket do chính user tạo
     @Query("SELECT t FROM Ticket t WHERE t.reporterName = :reporterName AND " +
            "(:status IS NULL OR t.status = :status) AND " +

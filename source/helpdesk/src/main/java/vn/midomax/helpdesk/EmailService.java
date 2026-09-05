@@ -10,8 +10,12 @@ import java.util.Optional;
 @Service
 public class EmailService {
 
-    /** Địa chỉ thật của hệ thống, dùng cho các nút bấm trong email gửi đi. */
-    @Value("${app.base-url:http://localhost:8080}")
+    /**
+     * Địa chỉ gốc của hệ thống, dùng cho link trong email gửi ra ngoài.
+     * KHÔNG được ghi cứng localhost: người nhận bấm vào sẽ mở máy của chính họ chứ
+     * không vào được hệ thống. Đổi tên miền thì sửa app.base-url trong cấu hình.
+     */
+    @Value("${app.base-url:https://ticket.midomax.vn}")
     private String baseUrl;
 
     @Autowired
@@ -182,6 +186,11 @@ public class EmailService {
         } catch (Exception e) {
             System.err.println("[EMAIL NOTIFICATION ERROR] Error processing notification: " + e.getMessage());
         }
+    }
+
+    /** Chuông thông báo trong app, KHÔNG gửi email (dùng cho báo cáo công việc...). */
+    public void notifyBell(String recipient, String title, String message, String type, String linkUrl) {
+        saveNotification(recipient, title, message, type, linkUrl);
     }
 
     private void saveNotification(String recipient, String title, String message, String type, String linkUrl) {

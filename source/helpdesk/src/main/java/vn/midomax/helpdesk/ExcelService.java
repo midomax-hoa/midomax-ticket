@@ -1109,6 +1109,20 @@ public class ExcelService {
         if (style != null) cell.setCellStyle(style);
     }
 
+    /**
+     * Chuẩn hoá chuỗi đọc từ Excel: bỏ khoảng trắng đặc biệt (NBSP, zero-width, BOM),
+     * gộp khoảng trắng liên tiếp rồi trim. Trả về null nếu rỗng.
+     */
+    public static String normalizeText(String s) {
+        if (s == null) return null;
+        String out = s.replace('\u00A0', ' ')   // non-breaking space
+                      .replace('\u200B', ' ')   // zero-width space
+                      .replace('\uFEFF', ' ')   // BOM
+                      .replaceAll("\\s+", " ")
+                      .trim();
+        return out.isEmpty() ? null : out;
+    }
+
     // --- Helper ---
     private String getCellString(Row row, int col) {
         Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);

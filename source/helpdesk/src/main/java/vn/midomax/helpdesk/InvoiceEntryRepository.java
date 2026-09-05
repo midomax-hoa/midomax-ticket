@@ -56,4 +56,11 @@ public interface InvoiceEntryRepository extends JpaRepository<InvoiceEntry, Long
 
     /** Hóa đơn đã đối chiếu về một quỹ chi tiêu — dùng để khấu trừ ngân sách. */
     List<InvoiceEntry> findByFundId(Long fundId);
+
+    /** Hóa đơn đã gán vào các hạng mục ngân sách cho trước — dùng để tính "đã chi" của quỹ. */
+    List<InvoiceEntry> findByBudgetItemIdIn(List<Long> budgetItemIds);
+
+    /** Tổng tiền hóa đơn đã gán cho một hạng mục ngân sách. */
+    @Query("SELECT COALESCE(SUM(i.amount), 0) FROM InvoiceEntry i WHERE i.budgetItemId = :itemId")
+    long sumAmountByBudgetItemId(@Param("itemId") Long itemId);
 }

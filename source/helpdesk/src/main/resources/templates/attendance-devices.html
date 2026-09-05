@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Máy Chấm Công - Midomax IT</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #fff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 15px 12px; white-space: nowrap; }
+        .table-custom td { padding: 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
+        .table-custom tbody tr:hover { background-color: #f8fafc; }
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('attendance')}"></div>
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Máy Chấm Công</h4>
+                    <small class="text-muted">Khai báo thiết bị ZK Device ở các chi nhánh</small>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a th:href="@{/attendance}" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left"></i> Về lịch công</a>
+                <button class="btn btn-primary" style="background:#1e3a8a; border:none;" onclick="openDeviceForm()">
+                    <i class="fa-solid fa-plus"></i> Thêm máy
+                </button>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="widget-card">
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Tên máy</th>
+                            <th>Địa điểm</th>
+                            <th>IP</th>
+                            <th>Cổng</th>
+                            <th>Trạng thái</th>
+                            <th>Lần tải cuối</th>
+                            <th>Kết quả</th>
+                            <th class="text-center">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="d : ${devices}">
+                            <td class="fw-semibold" th:text="${d.name}">Kho HCM</td>
+                            <td th:text="${d.location}">Kho HCM</td>
+                            <td th:text="${d.ipAddress}">192.168.100.10</td>
+                            <td th:text="${d.port}">4370</td>
+                            <td>
+                                <span th:if="${d.active}" class="badge bg-success">Đang bật</span>
+                                <span th:unless="${d.active}" class="badge bg-secondary">Tắt</span>
+                            </td>
+                            <td th:text="${d.lastSyncAt != null} ? ${#temporals.format(d.lastSyncAt,'HH:mm dd/MM/yyyy')} : '—'">—</td>
+                            <td style="font-size:12px;" th:text="${d.lastSyncStatus}">—</td>
+                            <td class="text-center" style="white-space:nowrap;">
+                                <form th:action="@{'/attendance/devices/test/' + ${d.id}}" method="post" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-info" title="Kiểm tra kết nối"><i class="fa-solid fa-plug"></i></button>
+                                </form>
+                                <form th:action="@{'/attendance/devices/sync/' + ${d.id}}" method="post" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-primary" title="Tải dữ liệu máy này"><i class="fa-solid fa-download"></i></button>
+                                </form>
+                                <button class="btn btn-sm btn-outline-secondary" title="Sửa"
+                                        th:attr="data-id=${d.id}, data-name=${d.name}, data-location=${d.location},
+                                                 data-ip=${d.ipAddress}, data-port=${d.port},
+                                                 data-key=${d.commKey}, data-active=${d.active}"
+                                        onclick="editDevice(this)"><i class="fa-solid fa-pen"></i></button>
+                                <a th:href="@{'/attendance/devices/delete/' + ${d.id}}" class="btn btn-sm btn-outline-danger"
+                                   onclick="return confirm('Xoá máy này? Log đã tải về vẫn được giữ lại.')" title="Xoá">
+                                    <i class="fa-solid fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(devices)}">
+                            <td colspan="8" class="text-center text-muted py-4">Chưa khai báo máy chấm công nào.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-light border mt-3 mb-0" style="font-size:13px;">
+                <i class="fa-solid fa-circle-info me-1" style="color:#1e3a8a;"></i>
+                Máy trong cùng mạng LAN thì điền IP nội bộ (ví dụ <code>192.168.100.10</code>).
+                Máy ở chi nhánh xa cần NAT cổng 4370 ra IP public rồi điền IP public đó.
+                Ô <strong>Khoá kết nối</strong> là mật khẩu giao tiếp cài trên máy — để <code>0</code> nếu máy không đặt.
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL THÊM/SỬA MÁY -->
+    <div class="modal fade" id="deviceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form th:action="@{/attendance/devices/save}" method="post" class="modal-content">
+                <input type="hidden" name="id" id="dv-id">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="color:#1e3a8a;"><i class="fa-solid fa-fingerprint me-2"></i>Máy chấm công</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tên máy <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="dv-name" class="form-control" required placeholder="Ví dụ: Máy tầng 1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Địa điểm</label>
+                        <input type="text" name="location" id="dv-location" class="form-control" placeholder="Ví dụ: Kho HCM">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label">Địa chỉ IP <span class="text-danger">*</span></label>
+                            <input type="text" name="ipAddress" id="dv-ip" class="form-control" required placeholder="192.168.100.10">
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label">Cổng</label>
+                            <input type="number" name="port" id="dv-port" class="form-control" value="4370">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Khoá kết nối (comm key)</label>
+                        <input type="number" name="commKey" id="dv-key" class="form-control" value="0">
+                    </div>
+
+                    <!-- Toạ độ chấm công GPS đặt ở trang riêng của nhân sự (Địa Điểm Chấm Công),
+                         form này chỉ còn phần kỹ thuật của IT: IP, cổng, khoá kết nối. -->
+                    <div class="alert alert-light border mb-3 py-2" style="font-size:12px;">
+                        <i class="fa-solid fa-map-location-dot me-1" style="color:#0d9488;"></i>
+                        Vị trí + bán kính chấm công GPS đặt tại
+                        <a href="/attendance/locations" class="fw-semibold">Địa Điểm Chấm Công</a>.
+                    </div>
+                    <div class="form-check">
+                        <!-- Marker "_active" để Spring nhận biết checkbox bị bỏ tick (trình duyệt không gửi gì). -->
+                        <input type="hidden" name="_active" value="on">
+                        <input type="checkbox" name="active" id="dv-active" class="form-check-input" value="true" checked>
+                        <label class="form-check-label" for="dv-active">Bật — tự tải khi bấm "Tải từ máy"</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+                    <button type="submit" class="btn btn-primary" style="background:#1e3a8a;">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const toggleBtn = document.getElementById('toggle-btn');
+        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+
+        if (mobileToggleBtn) {
+            mobileToggleBtn.addEventListener('click', function(e) { e.stopPropagation(); sidebar.classList.add('active'); });
+        }
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (window.innerWidth > 991) {
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                } else { sidebar.classList.remove('active'); }
+            });
+        }
+
+        function openDeviceForm() {
+            document.getElementById('dv-id').value = '';
+            document.getElementById('dv-name').value = '';
+            document.getElementById('dv-location').value = '';
+            document.getElementById('dv-ip').value = '';
+            document.getElementById('dv-port').value = '4370';
+            document.getElementById('dv-key').value = '0';
+            document.getElementById('dv-active').checked = true;
+            new bootstrap.Modal(document.getElementById('deviceModal')).show();
+        }
+
+        function editDevice(btn) {
+            document.getElementById('dv-id').value = btn.getAttribute('data-id');
+            document.getElementById('dv-name').value = btn.getAttribute('data-name') || '';
+            document.getElementById('dv-location').value = btn.getAttribute('data-location') || '';
+            document.getElementById('dv-ip').value = btn.getAttribute('data-ip') || '';
+            document.getElementById('dv-port').value = btn.getAttribute('data-port') || '4370';
+            document.getElementById('dv-key').value = btn.getAttribute('data-key') || '0';
+            document.getElementById('dv-active').checked = btn.getAttribute('data-active') === 'true';
+            new bootstrap.Modal(document.getElementById('deviceModal')).show();
+        }
+
+    </script>
+</body>
+</html>

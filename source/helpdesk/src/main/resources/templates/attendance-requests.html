@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duyệt Đơn Nghỉ / Bổ Sung Công - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); margin-bottom: 25px; }
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 12px; white-space: nowrap; }
+        .table-custom td { padding: 11px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .badge-soft { font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 20px; display: inline-block; white-space: nowrap; }
+        .b-leave { background: #e0e7ff; color: #3730a3; }
+        .b-late { background: #fef3c7; color: #b45309; }
+        .b-pending { background: #fef3c7; color: #b45309; }
+        .b-head { background: #dbeafe; color: #1d4ed8; }
+        .b-ok { background: #dcfce7; color: #15803d; }
+        .b-no { background: #fee2e2; color: #b91c1c; }
+        @media (max-width: 991px) { .main-content { margin-left: 0; width: 100%; padding: 15px; } }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('leave-requests')}"></div>
+
+    <div class="main-content" id="main-content">
+        <div class="topbar">
+                <!-- Nut mo menu tren dien thoai. .topbar la flex nen dat truc tiep, khong boc them the. -->
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                <h4 class="mb-0 fw-bold" style="color:#1e3a8a;">Duyệt Phiếu Đăng Ký Nghỉ / Giấy Bổ Sung Công</h4>
+                <div class="text-muted" style="font-size:13px;"
+                     th:text="${isHr} ? 'Bạn duyệt với vai trò PHÒNG NSHT (cấp chốt)' : 'Bạn duyệt với vai trò TRƯỞNG BỘ PHẬN (cấp 1)'">Vai trò</div>
+            </div>
+            <a href="/attendance/my" class="btn btn-outline-secondary fw-semibold">
+                <i class="fa-solid fa-arrow-left me-1"></i> Lịch của tôi
+            </a>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- CHỜ TÔI DUYỆT -->
+        <div class="widget-card">
+            <h6 class="fw-bold mb-3" style="color:#1e293b;">
+                <i class="fa-solid fa-hourglass-half me-1" style="color:#b45309;"></i>
+                Đơn chờ duyệt (<span th:text="${#lists.size(waitingForMe)}">0</span>)
+            </h6>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nhân viên</th><th>Phòng</th><th>Loại</th><th>Ngày</th><th>Lý do</th>
+                            <th>Trạng thái</th><th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${waitingForMe}">
+                            <td class="fw-semibold" style="color:#1e3a8a;"
+                                th:text="${r.requesterFullName != null ? r.requesterFullName : r.requesterName}">A</td>
+                            <td th:text="${r.department} ?: '—'">ITD</td>
+                            <td>
+                                <span class="badge-soft" th:classappend="${r.type == 'SUPPLEMENT'} ? 'b-late' : 'b-leave'"
+                                      th:text="${r.typeLabel}">Nghỉ phép</span>
+                                <div class="text-muted" style="font-size:11.5px;"
+                                     th:text="${r.type == 'SUPPLEMENT'} ? ${r.durationLabel} : ${r.leaveTypeLabel}">Phép năm</div>
+                            </td>
+                            <td class="fw-semibold">
+                                <span th:text="${#temporals.format(r.requestDate,'dd/MM')}">01/09</span><span
+                                      th:if="${r.effectiveToDate != r.requestDate}" th:text="' → ' + ${#temporals.format(r.effectiveToDate,'dd/MM')}"> → 03/09</span>
+                                <div class="text-muted fw-normal" style="font-size:11.5px;"
+                                     th:text="${r.totalDays != null ? r.totalDays + ' ngày' : ''}">1 ngày</div>
+                            </td>
+                            <td style="max-width:300px;">
+                                <span th:text="${r.reason}">Lý do</span>
+                                <div class="text-muted" style="font-size:11.5px;" th:if="${r.supporter != null}"
+                                     th:text="'Người hỗ trợ: ' + ${r.supporter}">Hỗ trợ</div>
+                            </td>
+                            <td><span class="badge-soft" th:classappend="${r.status == 'HEAD_APPROVED'} ? 'b-head' : 'b-pending'"
+                                      th:text="${r.statusLabel}">Chờ</span></td>
+                            <td class="text-end" style="white-space:nowrap;">
+                                <a th:href="@{'/attendance/requests/' + ${r.id} + '/file'}"
+                                   class="btn btn-sm btn-outline-primary fw-semibold" title="Xem / in phiếu theo mẫu công ty">
+                                    <i class="fa-solid fa-file-word me-1"></i>Xem phiếu
+                                </a>
+                                <form th:action="@{'/attendance/requests/' + ${r.id} + '/approve'}" method="post" style="display:inline;">
+                                    <button class="btn btn-sm btn-success fw-semibold"><i class="fa-solid fa-check me-1"></i>Duyệt</button>
+                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger fw-semibold"
+                                        th:attr="data-id=${r.id}" onclick="rejectPrompt(this)">
+                                    <i class="fa-solid fa-xmark me-1"></i>Từ chối
+                                </button>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(waitingForMe)}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-mug-hot fs-3 d-block mb-2"></i>Không có đơn nào chờ bạn duyệt.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TỔNG KẾT THÁNG (đơn đã duyệt đủ 2 cấp) -->
+        <div class="widget-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold m-0" style="color:#1e293b;">
+                    <i class="fa-solid fa-calculator me-1" style="color:#15803d;"></i>
+                    Tổng kết tháng <span th:text="${month} + '/' + ${year}">9/2026</span> (đơn đã duyệt)
+                </h6>
+                <div class="d-flex align-items-center gap-2">
+                    <a class="btn btn-outline-secondary btn-sm" th:href="@{/attendance/requests(month=${prevMonth.monthValue}, year=${prevMonth.year})}"><i class="fa-solid fa-chevron-left"></i></a>
+                    <a class="btn btn-outline-secondary btn-sm" th:href="@{/attendance/requests(month=${nextMonth.monthValue}, year=${nextMonth.year})}"><i class="fa-solid fa-chevron-right"></i></a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead><tr><th>Nhân viên (mã)</th><th class="text-center">Ngày nghỉ phép (đơn đã duyệt)</th><th class="text-center">Ngày bổ sung công (đơn đã duyệt)</th></tr></thead>
+                    <tbody>
+                        <tr th:each="e : ${summary}">
+                            <td class="fw-semibold" th:text="${e.key}">Nguyễn Văn A (101)</td>
+                            <td class="text-center fw-bold" style="color:#3730a3;" th:text="${e.value[0]}">2</td>
+                            <td class="text-center fw-bold" style="color:#b45309;" th:text="${e.value[1]}">1</td>
+                        </tr>
+                        <tr th:if="${summary.isEmpty()}">
+                            <td colspan="3" class="text-center text-muted py-4">Tháng này chưa có đơn nào được duyệt.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- LỊCH SỬ GẦN ĐÂY -->
+        <div class="widget-card">
+            <h6 class="fw-bold mb-3" style="color:#1e293b;"><i class="fa-solid fa-clock-rotate-left me-1 text-muted"></i>Đơn gần đây</h6>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead><tr><th>Nhân viên</th><th>Loại</th><th>Ngày</th><th>Trạng thái</th><th>Duyệt bởi</th></tr></thead>
+                    <tbody>
+                        <tr th:each="r : ${recentRequests}">
+                            <td th:text="${r.requesterFullName != null ? r.requesterFullName : r.requesterName}">A</td>
+                            <td><span class="badge-soft" th:classappend="${r.type == 'SUPPLEMENT'} ? 'b-late' : 'b-leave'" th:text="${r.typeLabel}">Nghỉ</span></td>
+                            <td>
+                                <span th:text="${#temporals.format(r.requestDate,'dd/MM/yyyy')}">01/09</span><span
+                                      th:if="${r.effectiveToDate != r.requestDate}" th:text="' → ' + ${#temporals.format(r.effectiveToDate,'dd/MM/yyyy')}"></span>
+                            </td>
+                            <td><span class="badge-soft"
+                                      th:classappend="${r.status == 'APPROVED'} ? 'b-ok' : (${r.status == 'REJECTED'} ? 'b-no' : (${r.status == 'HEAD_APPROVED'} ? 'b-head' : 'b-pending'))"
+                                      th:text="${r.statusLabel}">Đã duyệt</span></td>
+                            <td class="text-muted" style="font-size:13px;">
+                                <span th:if="${r.headBy != null}" th:text="'TP: ' + ${r.headBy}">TP</span>
+                                <span th:if="${r.hrBy != null}" th:text="' · NS: ' + ${r.hrBy}">NS</span>
+                                <span th:if="${r.rejectBy != null}" class="text-danger" th:text="'Từ chối: ' + ${r.rejectBy}">X</span>
+                                <a th:href="@{'/attendance/requests/' + ${r.id} + '/file'}"
+                                   class="ms-2 text-decoration-none" title="Xem / in phiếu"><i class="fa-solid fa-file-word"></i></a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(recentRequests)}">
+                            <td colspan="5" class="text-center text-muted py-4">Chưa có đơn nào.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form từ chối ẩn -->
+    <form method="post" id="rejectForm" style="display:none;">
+        <input type="hidden" name="rejectReason" id="rejectReasonInput">
+    </form>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function rejectPrompt(btn) {
+            const reason = prompt('Lý do từ chối (có thể bỏ trống):');
+            if (reason === null) return; // bấm Cancel
+            const form = document.getElementById('rejectForm');
+            form.action = '/attendance/requests/' + btn.getAttribute('data-id') + '/reject';
+            document.getElementById('rejectReasonInput').value = reason;
+            form.submit();
+        }
+    </script>
+</body>
+</html>

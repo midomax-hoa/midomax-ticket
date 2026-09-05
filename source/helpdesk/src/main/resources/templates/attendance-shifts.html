@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ca Làm Việc - Midomax IT</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #fff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .table-custom th { color: #6b7280; font-weight: 600; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding: 15px 12px; white-space: nowrap; }
+        .table-custom td { padding: 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
+        .table-custom tbody tr:hover { background-color: #f8fafc; }
+        .form-label { font-weight: 500; font-size: 13px; color: #4b5563; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        /* select can chua ~34px ben phai cho mui ten - padding tren de mat khoang Bootstrap danh san, chu chui xuong duoi mui ten */
+        .form-select { padding-right: 34px; }
+        .nav-tabs .nav-link { color: #64748b; font-weight: 500; border: none; border-bottom: 2px solid transparent; padding: 10px 15px; font-size: 14px; }
+        .nav-tabs .nav-link.active { color: #1e3a8a; border-bottom: 2px solid #1e3a8a; background: transparent; font-weight: 600; }
+        .weekday-check { display: inline-flex; align-items: center; gap: 5px; margin-right: 12px; font-size: 13px; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('attendance')}"></div>
+    <div class="main-content" id="main-content">
+
+        <div class="topbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
+                <div>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Ca Làm Việc</h4>
+                    <small class="text-muted">Khai báo ca và gán ca cho từng nhân viên</small>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a th:href="@{/attendance}" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left"></i> Về lịch công</a>
+                <button class="btn btn-primary" style="background:#1e3a8a; border:none;" onclick="openShiftForm()">
+                    <i class="fa-solid fa-plus"></i> Thêm ca
+                </button>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
+            <i class="fa-solid fa-circle-check me-2"></i><span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="widget-card">
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-shifts">Danh sách ca</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-assign">Gán ca cho nhân viên</button></li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- DANH SÁCH CA -->
+                <div class="tab-pane fade show active" id="tab-shifts">
+                    <div class="table-responsive">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Mã</th>
+                                    <th>Tên ca</th>
+                                    <th>Giờ làm</th>
+                                    <th>Nghỉ giữa ca</th>
+                                    <th>Ngưỡng muộn/sớm</th>
+                                    <th>Ngày làm</th>
+                                    <th>Mặc định</th>
+                                    <th class="text-center">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="s : ${shifts}">
+                                    <td th:text="${s.code}">HC</td>
+                                    <td class="fw-semibold" th:text="${s.name}">Hành chính</td>
+                                    <td>
+                                        <span th:text="${s.startTime}">08:00</span> – <span th:text="${s.endTime}">17:30</span>
+                                        <span th:if="${s.crossMidnight}" class="badge bg-dark ms-1">Ca đêm</span>
+                                    </td>
+                                    <td th:text="${s.breakMinutes} + ' phút'">60 phút</td>
+                                    <td th:text="${s.lateGraceMinutes} + ' / ' + ${s.earlyGraceMinutes} + ' phút'">5 / 5 phút</td>
+                                    <td th:text="${s.workingWeekdays}">2,3,4,5,6,7</td>
+                                    <td>
+                                        <span th:if="${s.isDefault}" class="badge bg-primary">Mặc định</span>
+                                    </td>
+                                    <td class="text-center" style="white-space:nowrap;">
+                                        <button class="btn btn-sm btn-outline-secondary" title="Sửa"
+                                                th:attr="data-id=${s.id}, data-code=${s.code}, data-name=${s.name},
+                                                         data-start=${s.startTime}, data-end=${s.endTime},
+                                                         data-break=${s.breakMinutes}, data-late=${s.lateGraceMinutes},
+                                                         data-early=${s.earlyGraceMinutes}, data-ot=${s.otStartAfterMinutes},
+                                                         data-cross=${s.crossMidnight}, data-days=${s.workingWeekdays},
+                                                         data-default=${s.isDefault}, data-active=${s.active}"
+                                                onclick="editShift(this)"><i class="fa-solid fa-pen"></i></button>
+                                        <a th:href="@{'/attendance/shifts/delete/' + ${s.id}}" class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('Xoá ca này?')" title="Xoá"><i class="fa-solid fa-trash"></i></a>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(shifts)}">
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        Chưa có ca nào. Cần tạo ít nhất một ca và đánh dấu "Mặc định" trước khi tính công.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- GÁN CA -->
+                <div class="tab-pane fade" id="tab-assign">
+                    <p class="text-muted" style="font-size:13px;">
+                        Nhân viên không gán ca riêng sẽ dùng ca được đánh dấu <strong>Mặc định</strong>.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Mã NV</th>
+                                    <th>Văn phòng (máy)</th>
+                                    <th>Họ và tên</th>
+                                    <th>Phòng ban</th>
+                                    <th style="width: 320px;">Ca làm việc</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Mỗi (máy, mã) một dòng: trùng mã khác văn phòng gán ca riêng được (ca kho ≠ ca văn phòng) -->
+                                <tr th:each="p : ${people}">
+                                    <td th:text="${p.code}">NV001</td>
+                                    <td style="color:#0d9488; font-weight:600;" th:text="${p.deviceName} ?: '— chưa gắn máy —'">188Bis</td>
+                                    <td class="fw-semibold" th:text="${p.name}">Nguyễn Văn A</td>
+                                    <td th:text="${p.department}">Kinh doanh</td>
+                                    <td>
+                                        <form th:action="@{/attendance/shifts/assign}" method="post" class="d-flex gap-2">
+                                            <input type="hidden" name="employeeCode" th:value="${p.code}">
+                                            <input type="hidden" name="deviceId" th:value="${p.deviceId}">
+                                            <select name="shiftId" class="form-select form-select-sm">
+                                                <option value="">-- Dùng ca mặc định --</option>
+                                                <option th:each="s : ${shifts}" th:value="${s.id}" th:text="${s.name}"
+                                                        th:selected="${assignments.get(p.personKey()) != null and assignments.get(p.personKey()) == s.id}"></option>
+                                            </select>
+                                            <button class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-check"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL THÊM/SỬA CA -->
+    <div class="modal fade" id="shiftModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <form th:action="@{/attendance/shifts/save}" method="post" class="modal-content">
+                <input type="hidden" name="id" id="sh-id">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="color:#1e3a8a;"><i class="fa-solid fa-clock me-2"></i>Ca làm việc</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Mã ca</label>
+                            <input type="text" name="code" id="sh-code" class="form-control" placeholder="HC">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Tên ca <span class="text-danger">*</span></label>
+                            <input type="text" name="name" id="sh-name" class="form-control" required placeholder="Hành chính">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Giờ vào <span class="text-danger">*</span></label>
+                            <input type="time" name="startTime" id="sh-start" class="form-control" required value="08:00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Giờ ra <span class="text-danger">*</span></label>
+                            <input type="time" name="endTime" id="sh-end" class="form-control" required value="17:30">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Nghỉ giữa ca (phút)</label>
+                            <input type="number" name="breakMinutes" id="sh-break" class="form-control" value="60">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check">
+                                <!-- Marker "_" để Spring nhận biết checkbox bị bỏ tick (trình duyệt không gửi gì). -->
+                                <input type="hidden" name="_crossMidnight" value="on">
+                                <input type="checkbox" name="crossMidnight" id="sh-cross" class="form-check-input" value="true">
+                                <label class="form-check-label" for="sh-cross">Ca đêm (qua ngày)</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Cho phép muộn (phút)</label>
+                            <input type="number" name="lateGraceMinutes" id="sh-late" class="form-control" value="5">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cho phép về sớm (phút)</label>
+                            <input type="number" name="earlyGraceMinutes" id="sh-early" class="form-control" value="5">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tính tăng ca sau (phút)</label>
+                            <input type="number" name="otStartAfterMinutes" id="sh-ot" class="form-control" value="30">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Ngày làm việc trong tuần</label>
+                            <div>
+                                <label class="weekday-check"><input type="checkbox" class="wd" value="2" checked> T2</label>
+                                <label class="weekday-check"><input type="checkbox" class="wd" value="3" checked> T3</label>
+                                <label class="weekday-check"><input type="checkbox" class="wd" value="4" checked> T4</label>
+                                <label class="weekday-check"><input type="checkbox" class="wd" value="5" checked> T5</label>
+                                <label class="weekday-check"><input type="checkbox" class="wd" value="6" checked> T6</label>
+                                <label class="weekday-check"><input type="checkbox" class="wd" value="7" checked> T7</label>
+                                <label class="weekday-check"><input type="checkbox" class="wd" value="1"> CN</label>
+                            </div>
+                            <input type="hidden" name="workingWeekdays" id="sh-days" value="2,3,4,5,6,7">
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="hidden" name="_isDefault" value="on">
+                                <input type="checkbox" name="isDefault" id="sh-default" class="form-check-input" value="true">
+                                <label class="form-check-label" for="sh-default">Là ca mặc định cho nhân viên chưa gán ca riêng</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="hidden" name="_active" value="on">
+                                <input type="checkbox" name="active" id="sh-active" class="form-check-input" value="true" checked>
+                                <label class="form-check-label" for="sh-active">Đang sử dụng</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+                    <button type="submit" class="btn btn-primary" style="background:#1e3a8a;">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const toggleBtn = document.getElementById('toggle-btn');
+        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+
+        if (mobileToggleBtn) {
+            mobileToggleBtn.addEventListener('click', function(e) { e.stopPropagation(); sidebar.classList.add('active'); });
+        }
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (window.innerWidth > 991) {
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                } else { sidebar.classList.remove('active'); }
+            });
+        }
+
+        // Gom các ô tick thứ thành chuỗi "2,3,4,5,6,7" ngay trước khi gửi form.
+        function syncWeekdays() {
+            const picked = Array.from(document.querySelectorAll('.wd:checked')).map(c => c.value);
+            document.getElementById('sh-days').value = picked.join(',');
+        }
+        document.querySelectorAll('.wd').forEach(c => c.addEventListener('change', syncWeekdays));
+
+        function setWeekdays(value) {
+            const set = new Set((value || '').split(','));
+            document.querySelectorAll('.wd').forEach(c => { c.checked = set.has(c.value); });
+            document.getElementById('sh-days').value = value || '';
+        }
+
+        function openShiftForm() {
+            document.getElementById('sh-id').value = '';
+            document.getElementById('sh-code').value = '';
+            document.getElementById('sh-name').value = '';
+            document.getElementById('sh-start').value = '08:00';
+            document.getElementById('sh-end').value = '17:30';
+            document.getElementById('sh-break').value = '60';
+            document.getElementById('sh-late').value = '5';
+            document.getElementById('sh-early').value = '5';
+            document.getElementById('sh-ot').value = '30';
+            document.getElementById('sh-cross').checked = false;
+            document.getElementById('sh-default').checked = false;
+            document.getElementById('sh-active').checked = true;
+            setWeekdays('2,3,4,5,6,7');
+            new bootstrap.Modal(document.getElementById('shiftModal')).show();
+        }
+
+        function editShift(btn) {
+            const g = n => btn.getAttribute(n) || '';
+            document.getElementById('sh-id').value = g('data-id');
+            document.getElementById('sh-code').value = g('data-code');
+            document.getElementById('sh-name').value = g('data-name');
+            document.getElementById('sh-start').value = g('data-start').substring(0, 5);
+            document.getElementById('sh-end').value = g('data-end').substring(0, 5);
+            document.getElementById('sh-break').value = g('data-break');
+            document.getElementById('sh-late').value = g('data-late');
+            document.getElementById('sh-early').value = g('data-early');
+            document.getElementById('sh-ot').value = g('data-ot');
+            document.getElementById('sh-cross').checked = g('data-cross') === 'true';
+            document.getElementById('sh-default').checked = g('data-default') === 'true';
+            document.getElementById('sh-active').checked = g('data-active') === 'true';
+            setWeekdays(g('data-days'));
+            new bootstrap.Modal(document.getElementById('shiftModal')).show();
+        }
+    </script>
+</body>
+</html>

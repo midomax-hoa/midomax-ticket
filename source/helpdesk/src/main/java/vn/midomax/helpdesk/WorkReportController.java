@@ -1,10 +1,12 @@
 package vn.midomax.helpdesk;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
@@ -59,6 +61,60 @@ public class WorkReportController {
         return handle != null ? handle : "guest";
     }
 
+    @Autowired
+    private EmailService emailService;
+
+    // ===== Chuông thông báo cho báo cáo công việc (chỉ trong app, không email) =====
+
+    private static final Map<String, String> STATUS_LABELS = Map.of(
+            "PLANNING", "Lên kế hoạch", "PROGRESS", "Đang thực hiện",
+            "TESTING", "Đang kiểm thử", "COMPLETED", "Hoàn thành");
+
+    private String statusLabel(String status) {
+        if (status == null) return "";
+        return STATUS_LABELS.getOrDefault(status.toUpperCase(), status);
+    }
+
+    private String actorOf(Authentication auth) {
+        return currentHandle(auth); // cùng luật handle với phần còn lại (tài khoản M365 trả về tên hiển thị)
+    }
+
+    /** Tách chuỗi watchers CSV thành tập username sạch. */
+    private Set<String> watcherSet(String watchers) {
+        Set<String> s = new LinkedHashSet<>();
+        if (watchers != null) {
+            for (String w : watchers.split(",")) {
+                String c = w.trim().toLowerCase();
+                if (!c.isEmpty()) s.add(c);
+            }
+        }
+        return s;
+    }
+
+    /** Người liên quan một báo cáo: người làm + người tạo + các watcher. */
+    private Set<String> relatedOf(WorkReport r) {
+        Set<String> s = new LinkedHashSet<>();
+        if (r == null) return s;
+        if (r.getAssignee() != null) s.add(r.getAssignee());
+        if (r.getCreatedBy() != null) s.add(r.getCreatedBy());
+        s.addAll(watcherSet(r.getWatchers()));
+        return s;
+    }
+
+    /** Gửi chuông cho danh sách người nhận, bỏ người thao tác và bỏ trùng. Lỗi không làm hỏng nghiệp vụ chính. */
+    private void bell(Collection<String> recipients, String actor, String title, String message) {
+        Set<String> sent = new HashSet<>();
+        for (String r : recipients) {
+            if (r == null) continue;
+            String c = r.trim().toLowerCase();
+            if (c.isEmpty() || c.equals(actor) || !sent.add(c)) continue;
+            try {
+                emailService.notifyBell(c, title, message, "REPORT", "/work-reports");
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     @GetMapping
     public String showWorkReports(
             @RequestParam(name = "assignee", required = false, defaultValue = "ALL") String assignee,
@@ -73,12 +129,15 @@ public class WorkReportController {
         boolean isManagerOrIT = authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_IT") || a.getAuthority().equals("ROLE_MANAGER"));
 
-        List<WorkReport> rawReports = isManagerOrIT
+        // Người thường chỉ thấy báo cáo liên quan tới mình (tạo / được giao / theo dõi / có việc con).
+        // Sau đó áp thêm phạm vi nhóm chuyên môn cho cả danh sách hiển thị lẫn số liệu thống kê,
+        // để con số trên đầu trang khớp với những gì user thực sự thấy.
+        List<WorkReport> rawReports = filterByGroupScope(isManagerOrIT
             ? workReportService.getReportsFiltered(assignee, project, status)
-            : workReportService.getVisibleReportsFiltered(username, assignee, project, status);
-        List<WorkReport> allReports = isManagerOrIT
+            : workReportService.getVisibleReportsFiltered(username, assignee, project, status), authentication);
+        List<WorkReport> allReports = filterByGroupScope(isManagerOrIT
             ? workReportService.getAllReports()
-            : workReportService.getVisibleReports(username);
+            : workReportService.getVisibleReports(username), authentication);
 
         LocalDate today = LocalDate.now();
         List<WorkReport> reports = rawReports.stream().filter(r -> {
@@ -183,10 +242,13 @@ public class WorkReportController {
             @RequestParam(name = "assignee", required = false, defaultValue = "ALL") String assignee,
             @RequestParam(name = "project", required = false, defaultValue = "ALL") String project,
             @RequestParam(name = "status", required = false, defaultValue = "ALL") String status,
-            @RequestParam(name = "dateFilter", required = false, defaultValue = "ALL") String dateFilter) throws java.io.IOException {
+            @RequestParam(name = "dateFilter", required = false, defaultValue = "ALL") String dateFilter,
+            Authentication authentication) throws java.io.IOException {
 
+        // Xuất Excel cũng theo đúng phạm vi nhóm chuyên môn như trang danh sách
         List<WorkReport> filtered = applyDateFilter(
-                workReportService.getReportsFiltered(assignee, project, status), dateFilter);
+                filterByGroupScope(workReportService.getReportsFiltered(assignee, project, status), authentication),
+                dateFilter);
 
         java.io.ByteArrayInputStream in = excelService.exportWorkReportsToExcel(filtered);
 
@@ -198,6 +260,88 @@ public class WorkReportController {
                 .headers(headers)
                 .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(new org.springframework.core.io.InputStreamResource(in));
+    }
+
+    /**
+     * Phạm vi nhìn thấy báo cáo theo nhóm chuyên môn IT:
+     * - Admin / Manager: thấy tất cả.
+     * - IT: thấy việc của chính mình + việc của người CÙNG nhóm chuyên môn
+     *   (Helpdesk thấy việc nhau, Phần mềm thấy việc Phần mềm, Báo cáo thấy việc Báo cáo).
+     *   Người thuộc nhiều nhóm thấy việc của mọi nhóm mình tham gia.
+     * - Còn lại (user được cấp phân hệ qua phòng ban): chỉ thấy việc mình làm,
+     *   mình tạo hoặc mình đang theo dõi (watcher).
+     */
+    private List<WorkReport> filterByGroupScope(List<WorkReport> reports, Authentication auth) {
+        if (auth == null || reports == null || reports.isEmpty()) return reports;
+
+        Set<String> authorities = auth.getAuthorities().stream()
+                .map(a -> a.getAuthority()).collect(Collectors.toSet());
+        if (authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MANAGER")) {
+            return reports;
+        }
+
+        String me = auth.getName().split("@")[0].trim().toLowerCase();
+        Set<String> myGroups = authorities.stream()
+                .filter(a -> a.startsWith(UserAuthorityMapper.GROUP_PREFIX))
+                .map(a -> a.substring(UserAuthorityMapper.GROUP_PREFIX.length()))
+                .collect(Collectors.toSet());
+
+        // username -> các nhóm chuyên môn của người đó (để biết assignee thuộc nhóm nào)
+        Map<String, Set<String>> groupsOf = new HashMap<>();
+        for (AppUser u : appUserRepository.findAll()) {
+            if (u.getEmail() == null) continue;
+            String uname = u.getEmail().split("@")[0].trim().toLowerCase();
+            Set<String> gs = new HashSet<>();
+            for (ItGroup g : u.getItGroups()) gs.add(g.name());
+            groupsOf.put(uname, gs);
+        }
+
+        return reports.stream().filter(r -> {
+            String assignee = r.getAssignee() == null ? "" : r.getAssignee().trim().toLowerCase();
+            String creator = r.getCreatedBy() == null ? "" : r.getCreatedBy().trim().toLowerCase();
+            if (assignee.equals(me) || creator.equals(me)) return true;
+            if (r.getWatchers() != null) {
+                for (String w : r.getWatchers().split(",")) {
+                    if (w.trim().toLowerCase().equals(me)) return true;
+                }
+            }
+            if (!myGroups.isEmpty()) {
+                Set<String> assigneeGroups = groupsOf.get(assignee);
+                if (assigneeGroups != null) {
+                    for (String g : assigneeGroups) {
+                        if (myGroups.contains(g)) return true;
+                    }
+                }
+            }
+            return false;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * Chốt quyền cho các endpoint nhận thẳng ID báo cáo. Danh sách và /detail đã lọc
+     * đúng phạm vi, nhưng nếu các endpoint còn lại không kiểm tra thì gọi thẳng API
+     * là đọc/sửa/xoá được báo cáo của người khác — giao diện lọc đẹp cũng vô nghĩa.
+     * Dùng chung đúng luật với filterByGroupScope để hai bên không lệch nhau.
+     */
+    private WorkReport assertCanAccessReport(Long reportId, Authentication auth) {
+        WorkReport r = reportId == null ? null : workReportService.getReportById(reportId);
+        if (r == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo công việc.");
+        }
+        if (filterByGroupScope(List.of(r), auth).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Bạn không có quyền với báo cáo công việc này.");
+        }
+        return r;
+    }
+
+    /** Như trên nhưng vào từ việc con — truy ngược lên báo cáo cha rồi mới xét quyền. */
+    private void assertCanAccessSubTask(Long subTaskId, Authentication auth) {
+        WorkSubTask st = subTaskId == null ? null : workSubTaskRepository.findById(subTaskId).orElse(null);
+        if (st == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy việc con.");
+        }
+        assertCanAccessReport(st.getWorkReportId(), auth);
     }
 
     /** Lọc danh sách theo khoảng thời gian (ALL / TODAY / YESTERDAY / WEEK). */
@@ -289,6 +433,14 @@ public class WorkReportController {
 
         WorkReport saved = workReportService.saveReport(report);
         System.out.println(">>> [DB SUCCESS] Đã lưu công việc mới vào Database: ID=" + saved.getId() + ", Title=" + saved.getTaskTitle() + ", Status=" + saved.getStatus());
+
+        // Chuông cho người được giao (nếu không phải tự giao cho mình)
+        bell(List.of(saved.getAssignee() == null ? "" : saved.getAssignee()), actorOf(authentication),
+                "📋 Bạn được giao việc mới: " + saved.getTaskTitle(),
+                (saved.getProjectName() != null && !saved.getProjectName().isEmpty()
+                        ? "Dự án " + saved.getProjectName() + " — " : "")
+                        + "giao bởi " + saved.getCreatedBy());
+
         redirectAttributes.addFlashAttribute("successMessage", "Đã tạo nhiệm vụ & báo cáo công việc thành công!");
         return "redirect:/work-reports";
     }
@@ -322,9 +474,59 @@ public class WorkReportController {
                 progressPercentage = Integer.parseInt(progressPercentageStr.trim());
             } catch (Exception e) {}
         }
+        // Ghi lại trạng thái CŨ trước khi cập nhật để biết cái gì thay đổi mà báo chuông
+        WorkReport before = assertCanAccessReport(id, authentication);
+        String oldAssignee = before != null ? before.getAssignee() : null;
+        String oldStatus = before != null ? before.getStatus() : null;
+        Set<String> oldWatchers = before != null ? watcherSet(before.getWatchers()) : new HashSet<>();
+        String creator = before != null ? before.getCreatedBy() : null;
+        String reportTitle = before != null && before.getTaskTitle() != null ? before.getTaskTitle() : ("#" + id);
+
         workReportService.updateFullReport(id, taskTitle, projectName, assignee, status, progressPercentage, dailyReport, watchers, dueDateStr, delayReason);
+
+        notifyReportChanges(authentication, reportTitle, creator,
+                oldAssignee, assignee, oldStatus, status, oldWatchers, watchers);
+
         redirectAttributes.addFlashAttribute("successMessage", "Đã cập nhật công việc thành công!");
         return "redirect:/work-reports";
+    }
+
+    /** Bắn chuông cho các thay đổi của một báo cáo: giao việc mới, gắn watcher mới, đổi trạng thái. */
+    private void notifyReportChanges(Authentication authentication, String reportTitle, String creator,
+                                     String oldAssignee, String newAssignee,
+                                     String oldStatus, String newStatus,
+                                     Set<String> oldWatchers, String newWatchersRaw) {
+        String actor = actorOf(authentication);
+
+        // 1. Đổi người làm -> báo người được giao mới
+        if (newAssignee != null && !newAssignee.isBlank()
+                && (oldAssignee == null || !newAssignee.trim().equalsIgnoreCase(oldAssignee.trim()))) {
+            bell(List.of(newAssignee), actor,
+                    "📋 Bạn được giao việc: " + reportTitle,
+                    "Chuyển giao bởi " + (actor.isEmpty() ? "hệ thống" : actor));
+        }
+
+        // 2. Watcher mới được gắn -> báo từng người mới
+        if (newWatchersRaw != null) {
+            Set<String> added = watcherSet(newWatchersRaw);
+            added.removeAll(oldWatchers);
+            bell(added, actor,
+                    "👀 Bạn được gắn theo dõi: " + reportTitle,
+                    (actor.isEmpty() ? "Bạn" : actor) + " đã thêm bạn vào danh sách theo dõi công việc này");
+        }
+
+        // 3. Đổi trạng thái -> báo người tạo + người làm + watchers cũ
+        if (newStatus != null && !newStatus.isBlank() && oldStatus != null
+                && !newStatus.trim().equalsIgnoreCase(oldStatus.trim())) {
+            Set<String> recipients = new LinkedHashSet<>();
+            if (creator != null) recipients.add(creator);
+            if (oldAssignee != null) recipients.add(oldAssignee);
+            recipients.addAll(oldWatchers);
+            bell(recipients, actor,
+                    "🔄 " + reportTitle + " → " + statusLabel(newStatus),
+                    (actor.isEmpty() ? "Hệ thống" : actor) + " đã chuyển trạng thái từ "
+                            + statusLabel(oldStatus) + " sang " + statusLabel(newStatus));
+        }
     }
 
     @PostMapping("/update-inline")
@@ -340,6 +542,9 @@ public class WorkReportController {
             @RequestParam(value = "dueDate", required = false) String dueDateStr,
             @RequestParam(value = "delayReason", required = false) String delayReason,
             Authentication authentication) {
+        // Chốt quyền đặt NGOÀI try: nếu để trong, exception bị nuốt thành "error"
+        // và người gọi không phân biệt được "không có quyền" với "lỗi hệ thống".
+        assertCanAccessReport(id, authentication);
         try {
             if (assignee != null) {
                 WorkReport target = workReportService.getReportById(id);
@@ -358,34 +563,45 @@ public class WorkReportController {
                     progress = Integer.parseInt(progressStr.trim());
                 } catch (Exception e) {}
             }
+
+            WorkReport before = workReportService.getReportById(id);
+            String oldAssignee = before != null ? before.getAssignee() : null;
+            String oldStatus = before != null ? before.getStatus() : null;
+            Set<String> oldWatchers = before != null ? watcherSet(before.getWatchers()) : new HashSet<>();
+            String creator = before != null ? before.getCreatedBy() : null;
+            String reportTitle = before != null && before.getTaskTitle() != null ? before.getTaskTitle() : ("#" + id);
+
             if (progress != null || dailyReport != null || (delayReason != null && !delayReason.trim().isEmpty())) {
                 workReportService.updateProgressAndReport(id, progress, status, dailyReport, watchers, delayReason);
             }
             if (priority != null || assignee != null || dueDateStr != null || (status != null && progress == null)) {
                 workReportService.updateInline(id, status, priority, assignee, watchers, dueDateStr, delayReason);
             }
+
+            notifyReportChanges(authentication, reportTitle, creator,
+                    oldAssignee, assignee, oldStatus, status, oldWatchers, watchers);
             return "success";
         } catch (Exception e) {
             return "error";
         }
     }
 
-    @RequestMapping(value = "/delete/{id}", method = {RequestMethod.GET, RequestMethod.POST})
-    public String deleteReport(@PathVariable("id") Long id, RedirectAttributes redirectAttributes,
-                               Authentication authentication) {
-        System.out.println(">>> [DELETE CONTROLLER] Bắt đầu xóa ID: " + id);
+    // Chỉ nhận POST: giao diện vốn đã submit bằng form POST, còn để hở GET thì
+    // trình duyệt/antivirus prefetch trúng link là xoá mất báo cáo.
+    @PostMapping("/delete/{id}")
+    public String deleteReport(@PathVariable("id") Long id, Authentication authentication,
+                               RedirectAttributes redirectAttributes) {
+        WorkReport target = assertCanAccessReport(id, authentication);
         // Chỉ người tạo mới được xoá. Người được giao việc / người theo dõi thì không,
         // kể cả khi họ tự gọi thẳng URL này.
-        WorkReport target = workReportService.getReportById(id);
-        String owner = target != null ? target.getCreatedBy() : null;
-        if (target == null || owner == null || owner.trim().isEmpty()
+        String owner = target.getCreatedBy();
+        if (owner == null || owner.trim().isEmpty()
                 || !owner.trim().equalsIgnoreCase(currentHandle(authentication))) {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Chỉ người tạo báo cáo mới được xoá hạng mục này!");
             return "redirect:/work-reports";
         }
         workReportService.deleteReport(id);
-        System.out.println(">>> [DELETE CONTROLLER] Đã gọi Service xóa ID: " + id);
         redirectAttributes.addFlashAttribute("successMessage", "Đã xóa hạng mục báo cáo thành công!");
         return "redirect:/work-reports";
     }
@@ -395,21 +611,33 @@ public class WorkReportController {
     public WorkSubTask addSubTask(
             @RequestParam("workReportId") Long workReportId,
             @RequestParam("title") String title,
-            @RequestParam(value = "assignee", required = false, defaultValue = "") String assignee) {
-        return workReportService.addSubTask(workReportId, title, assignee);
+            @RequestParam(value = "assignee", required = false, defaultValue = "") String assignee,
+            Authentication authentication) {
+        WorkReport parent = assertCanAccessReport(workReportId, authentication);
+        WorkSubTask subTask = workReportService.addSubTask(workReportId, title, assignee);
+        if (assignee != null && !assignee.isBlank()) {
+            bell(List.of(assignee), actorOf(authentication),
+                    "📌 Bạn được giao việc con: " + title,
+                    parent != null ? "Thuộc công việc: " + parent.getTaskTitle() : "");
+        }
+        return subTask;
     }
 
     @PostMapping("/subtasks/toggle")
     @ResponseBody
     public WorkSubTask toggleSubTask(
             @RequestParam("subTaskId") Long subTaskId,
-            @RequestParam("completed") Boolean completed) {
+            @RequestParam("completed") Boolean completed,
+            Authentication authentication) {
+        assertCanAccessSubTask(subTaskId, authentication);
         return workReportService.toggleSubTask(subTaskId, completed);
     }
 
     @PostMapping("/subtasks/delete")
     @ResponseBody
-    public String deleteSubTask(@RequestParam("subTaskId") Long subTaskId) {
+    public String deleteSubTask(@RequestParam("subTaskId") Long subTaskId,
+                                Authentication authentication) {
+        assertCanAccessSubTask(subTaskId, authentication);
         try {
             workReportService.deleteSubTask(subTaskId);
             return "success";
@@ -420,7 +648,9 @@ public class WorkReportController {
 
     @GetMapping("/comments")
     @ResponseBody
-    public List<WorkComment> getComments(@RequestParam("workReportId") Long workReportId) {
+    public List<WorkComment> getComments(@RequestParam("workReportId") Long workReportId,
+                                         Authentication authentication) {
+        assertCanAccessReport(workReportId, authentication);
         return workReportService.getComments(workReportId);
     }
 
@@ -431,18 +661,31 @@ public class WorkReportController {
             @RequestParam("author") String author,
             @RequestParam("content") String content,
             Authentication auth) {
+        assertCanAccessReport(workReportId, auth);
         String commenter = (auth != null && auth.getName() != null) ? auth.getName() : author;
         if (commenter == null || commenter.trim().isEmpty()) commenter = "Anonymous";
-        return workReportService.addComment(workReportId, commenter, content);
+        WorkComment comment = workReportService.addComment(workReportId, commenter, content);
+
+        // Chuông cho những người liên quan (người làm, người tạo, watchers) — trừ người bình luận
+        WorkReport report = workReportService.getReportById(workReportId);
+        if (report != null && content != null) {
+            String preview = content.length() > 80 ? content.substring(0, 80) + "..." : content;
+            bell(relatedOf(report), commenter.split("@")[0].trim().toLowerCase(),
+                    "💬 Bình luận mới ở: " + report.getTaskTitle(),
+                    commenter.split("@")[0] + ": " + preview);
+        }
+        return comment;
     }
 
 
     @GetMapping("/detail/{id}")
     @ResponseBody
-    public Map<String, Object> getDetail(@PathVariable("id") Long id) {
+    public Map<String, Object> getDetail(@PathVariable("id") Long id, Authentication authentication) {
         Map<String, Object> res = new HashMap<>();
         WorkReport r = workReportService.getReportById(id);
-        if (r != null) {
+        // Chặn đọc lén qua API: chỉ trả chi tiết nếu báo cáo nằm trong phạm vi
+        // user được thấy (cùng luật với danh sách — mình làm/tạo/theo dõi/cùng nhóm).
+        if (r != null && !filterByGroupScope(List.of(r), authentication).isEmpty()) {
             res.put("report", r);
             res.put("subtasks", workReportService.getSubTasks(id));
             res.put("childReports", workReportService.getChildReports(id));
@@ -487,6 +730,7 @@ public class WorkReportController {
             report.setStatus(status.trim().toUpperCase());
             report.setProgressPercentage(0);
             report.setStartDate(LocalDateTime.now());
+            report.setCreatedBy((authentication != null) ? authentication.getName().split("@")[0] : assignee.trim().toLowerCase());
             WorkReport saved = workReportService.saveReport(report);
             System.out.println(">>> [QUICK CREATE DB SUCCESS] Đã lưu nhanh công việc vào Database: ID=" + saved.getId() + ", ParentId=" + parentId + ", Title=" + saved.getTaskTitle() + ", Status=" + saved.getStatus());
             res.put("status", "success");
@@ -527,6 +771,7 @@ public class WorkReportController {
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "dueDate", required = false) String dueDateStr,
             Authentication authentication) {
+        assertCanAccessReport(parentId, authentication);
         Map<String, Object> res = new HashMap<>();
         try {
             WorkReport child = workReportService.createSubReport(parentId, taskTitle, assignee, watchers, status, dueDateStr);
