@@ -373,7 +373,39 @@ public class AttendanceController {
                 String.CASE_INSENSITIVE_ORDER));
         model.addAttribute("users", users);
         model.addAttribute("deviceNames", deviceNames);
+        model.addAttribute("devices", deviceRepo.findAll());
         return "attendance-gps-permissions";
+    }
+
+    /** Nhân sự gán mã chấm công + văn phòng ngay trên từng dòng (trước đây nằm ở trang admin). */
+    @PostMapping("/gps-permissions/assign")
+    @ResponseBody
+    public java.util.Map<String, Object> gpsPermissionsAssign(@RequestBody java.util.Map<String, Object> payload) {
+        AppUser u;
+        try { u = appUserRepository.findById(Long.valueOf(String.valueOf(payload.get("id")))).orElse(null); }
+        catch (NumberFormatException e) { u = null; }
+        if (u == null) return java.util.Map.of("ok", false, "message", "Không tìm thấy user.");
+
+        String code = payload.get("employeeCode") == null ? "" : String.valueOf(payload.get("employeeCode")).trim();
+        String devRaw = payload.get("deviceId") == null ? "" : String.valueOf(payload.get("deviceId")).trim();
+        Long devId = null;
+        if (!devRaw.isEmpty()) {
+            try { devId = Long.valueOf(devRaw); } catch (NumberFormatException e) {
+                return java.util.Map.of("ok", false, "message", "Văn phòng không hợp lệ.");
+            }
+            if (deviceRepo.findById(devId).isEmpty()) {
+                return java.util.Map.of("ok", false, "message", "Văn phòng không tồn tại.");
+            }
+        }
+        // Mã và văn phòng phải đi cùng nhau — các văn phòng dùng chung dải mã,
+        // cùng mã khác máy là hai người khác nhau.
+        if (code.isEmpty() != (devId == null)) {
+            return java.util.Map.of("ok", false, "message", "Phải nhập CẢ mã chấm công VÀ văn phòng (hoặc bỏ trống cả hai).");
+        }
+        u.setEmployeeCode(code.isEmpty() ? null : code);
+        u.setAttendanceDeviceId(devId);
+        appUserRepository.save(u);
+        return java.util.Map.of("ok", true);
     }
 
     /** Bật/tắt hàng loạt: action = allow | deny | free-on | free-off cho danh sách ids. */

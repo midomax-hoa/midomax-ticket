@@ -59,7 +59,7 @@
                 Mỗi người chỉ ở MỘT trong ba trạng thái: <b>Chấm tại văn phòng</b> (trong bán kính),
                 <b>Chấm mọi nơi</b> (đi công tác/du lịch — không cần bật gì thêm, vẫn lưu vị trí + selfie),
                 hoặc <b>Tắt</b>. Hết đợt công tác thì bấm lại "Chấm tại văn phòng" là về chế độ thường.
-                Người chưa gán mã chấm công + văn phòng thì cấp xong vẫn chưa chấm được — gán ở Phân Quyền User trước.
+                Gán <b>mã chấm công + văn phòng</b> ngay trên từng dòng (sửa xong bấm nút ✓ xanh) — người chưa gán thì cấp quyền xong vẫn chưa chấm được.
             </div>
 
             <div class="table-responsive">
@@ -81,8 +81,23 @@
                                 <div class="fw-semibold" th:text="${u.fullName != null ? u.fullName : u.email}">Nguyễn Văn A</div>
                                 <div class="text-muted" style="font-size:11.5px;" th:text="${u.email}">a@midomax.vn</div>
                             </td>
-                            <td th:text="${u.employeeCode != null ? u.employeeCode : '—'}">398</td>
-                            <td th:text="${u.attendanceDeviceId != null and deviceNames.containsKey(u.attendanceDeviceId)} ? ${deviceNames.get(u.attendanceDeviceId)} : '—'">188Bis</td>
+                            <!-- Gán mã + văn phòng ngay tại dòng: sửa xong nút Lưu tự hiện -->
+                            <td style="width:110px;">
+                                <input type="text" class="form-control form-control-sm inp-code"
+                                       th:value="${u.employeeCode}" th:attr="data-uid=${u.id}"
+                                       placeholder="Mã CC" style="max-width:95px;">
+                            </td>
+                            <td style="width:190px;">
+                                <div class="d-flex align-items-center gap-1">
+                                    <select class="form-select form-select-sm inp-device" th:attr="data-uid=${u.id}">
+                                        <option value="">— Văn phòng —</option>
+                                        <option th:each="d : ${devices}" th:value="${d.id}" th:text="${d.name}"
+                                                th:selected="${u.attendanceDeviceId == d.id}">188Bis</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-primary btn-save-assign d-none" th:attr="data-uid=${u.id}"
+                                            title="Lưu mã + văn phòng"><i class="fa-solid fa-check"></i></button>
+                                </div>
+                            </td>
                             <td>
                                 <!-- Một badge duy nhất cho một trạng thái — công tác đè lên chế độ văn phòng -->
                                 <span th:if="${u.gpsFreeLocation}" class="badge badge-free"><i class="fa-solid fa-plane me-1"></i>Chấm mọi nơi (công tác)</span>
@@ -93,6 +108,12 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Phân trang 10 người/trang — lọc và phân trang đều làm tại trình duyệt -->
+            <div class="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
+                <span class="text-muted" style="font-size:12.5px;" id="pageInfo"></span>
+                <nav><ul class="pagination pagination-sm mb-0" id="pager"></ul></nav>
+            </div>
         </div>
     </div>
 
@@ -101,6 +122,50 @@
     (function () {
         'use strict';
         var checkAll = document.getElementById('checkAll');
+        var PAGE_SIZE = 10;
+        var page = 1;
+        var allRows = Array.prototype.slice.call(document.querySelectorAll('#permTable tbody tr'));
+
+        function matchedRows() {
+            var q = document.getElementById('qFilter').value.trim().toLowerCase();
+            return allRows.filter(function (tr) {
+                return (tr.getAttribute('data-search') || '').toLowerCase().indexOf(q) >= 0;
+            });
+        }
+
+        /** Vẽ lại bảng: chỉ hiện 10 dòng của trang đang xem trong số dòng khớp bộ lọc. */
+        function render() {
+            var rows = matchedRows();
+            var pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+            if (page > pages) page = pages;
+            var from = (page - 1) * PAGE_SIZE, to = from + PAGE_SIZE;
+
+            allRows.forEach(function (tr) { tr.style.display = 'none'; });
+            rows.slice(from, to).forEach(function (tr) { tr.style.display = ''; });
+
+            document.getElementById('pageInfo').textContent = rows.length === 0
+                ? 'Không có ai khớp bộ lọc'
+                : 'Hiện ' + (from + 1) + '–' + Math.min(to, rows.length) + ' / ' + rows.length + ' người';
+
+            var pager = document.getElementById('pager');
+            pager.innerHTML = '';
+            function li(label, target, disabled, active) {
+                var el = document.createElement('li');
+                el.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                el.innerHTML = '<a class="page-link" href="#">' + label + '</a>';
+                if (!disabled && !active) el.firstChild.addEventListener('click', function (e) {
+                    e.preventDefault(); page = target; render();
+                });
+                else el.firstChild.addEventListener('click', function (e) { e.preventDefault(); });
+                pager.appendChild(el);
+            }
+            if (pages > 1) {
+                li('«', page - 1, page === 1, false);
+                for (var p = 1; p <= pages; p++) li(String(p), p, false, p === page);
+                li('»', page + 1, page === pages, false);
+            }
+            checkAll.checked = false;
+        }
 
         function visibleChecks() {
             return Array.prototype.filter.call(document.querySelectorAll('.row-check'), function (c) {
@@ -112,6 +177,7 @@
             document.getElementById('selCount').textContent = n;
         }
         checkAll.addEventListener('change', function () {
+            // Chỉ tích các dòng ĐANG HIỆN trên trang này — không âm thầm chọn cả trang khác
             visibleChecks().forEach(function (c) { c.checked = checkAll.checked; });
             updateCount();
         });
@@ -121,10 +187,40 @@
 
         // Lọc nhanh theo tên / email / mã — lọc tại chỗ, không gọi server
         document.getElementById('qFilter').addEventListener('input', function () {
-            var q = this.value.trim().toLowerCase();
-            document.querySelectorAll('#permTable tbody tr').forEach(function (tr) {
-                tr.style.display = (tr.getAttribute('data-search') || '').toLowerCase().indexOf(q) >= 0 ? '' : 'none';
-            });
+            page = 1;
+            render();
+        });
+
+        render();
+
+        // Sửa mã / văn phòng thì hiện nút Lưu của đúng dòng đó
+        // (input bắt gõ phím ở ô mã; change bắt chọn văn phòng ở select)
+        function showSaveFor(e) {
+            var uid = e.target.getAttribute && e.target.getAttribute('data-uid');
+            if (!uid || e.target.classList.contains('row-check')) return;
+            var btn = document.querySelector('.btn-save-assign[data-uid="' + uid + '"]');
+            if (btn) btn.classList.remove('d-none');
+        }
+        document.getElementById('permTable').addEventListener('input', showSaveFor);
+        document.getElementById('permTable').addEventListener('change', showSaveFor);
+        document.getElementById('permTable').addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-save-assign');
+            if (!btn) return;
+            var uid = btn.getAttribute('data-uid');
+            var code = document.querySelector('.inp-code[data-uid="' + uid + '"]').value.trim();
+            var dev = document.querySelector('.inp-device[data-uid="' + uid + '"]').value;
+            btn.disabled = true;
+            fetch('/attendance/gps-permissions/assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: uid, employeeCode: code, deviceId: dev })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.ok) { btn.classList.remove('btn-primary'); btn.classList.add('btn-success'); setTimeout(function () { location.reload(); }, 400); }
+                else { btn.disabled = false; alert(res.message || 'Có lỗi, thử lại.'); }
+            })
+            .catch(function () { btn.disabled = false; alert('Gửi thất bại — kiểm tra mạng rồi thử lại.'); });
         });
 
         window.bulk = function (action) {

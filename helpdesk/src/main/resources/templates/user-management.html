@@ -90,15 +90,25 @@
 
         <!-- TABLE CARD -->
         <div class="widget-card">
-            <!-- Lọc theo phòng ban -->
+            <!-- Tìm kiếm + bộ lọc -->
             <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                <label class="fw-semibold text-muted" style="font-size:13px;">
-                    <i class="fa-solid fa-building me-1"></i>Phòng ban:
-                </label>
-                <select class="form-select form-select-sm" id="deptFilter" style="max-width:320px;">
+                <input type="text" class="form-control form-control-sm" id="userSearch" style="max-width:240px;"
+                       placeholder="🔍 Tìm tên / email / mã chấm công...">
+                <select class="form-select form-select-sm" id="deptFilter" style="max-width:220px;">
                     <option value="">Tất cả phòng ban</option>
                     <option th:each="d : ${departments}" th:value="${d.name()}" th:text="${d.display}">ITD</option>
                     <option value="__NONE__">— Chưa phân phòng ban —</option>
+                </select>
+                <select class="form-select form-select-sm" id="roleFilter" style="max-width:150px;">
+                    <option value="">Mọi vai trò</option>
+                    <option value="ROLE_ADMIN">Admin</option>
+                    <option value="ROLE_IT">IT Support</option>
+                    <option value="ROLE_USER">User</option>
+                </select>
+                <select class="form-select form-select-sm" id="sourceFilter" style="max-width:130px;">
+                    <option value="">Mọi nguồn</option>
+                    <option value="LOCAL">Local</option>
+                    <option value="M365">365</option>
                 </select>
                 <span class="text-muted" style="font-size:13px;" id="deptFilterCount"></span>
             </div>
@@ -118,7 +128,11 @@
                     </thead>
                     <tbody>
                         <!-- data-dept luôn có giá trị (NONE khi chưa phân) — attr rỗng có thể bị bỏ qua khiến bộ lọc không bắt được dòng -->
-                        <tr th:each="user : ${users}" class="user-row" th:attr="data-dept=${user.department != null and !user.department.isEmpty() ? user.department : 'NONE'}">
+                        <tr th:each="user : ${users}" class="user-row"
+                            th:attr="data-dept=${user.department != null and !user.department.isEmpty() ? user.department : 'NONE'},
+                                     data-role=${user.role != null and !user.role.isEmpty() ? user.role : 'ROLE_USER'},
+                                     data-source=${user.local ? 'LOCAL' : 'M365'},
+                                     data-search=${(user.fullName != null ? user.fullName : '') + ' ' + (user.email != null ? user.email : '') + ' ' + (user.employeeCode != null ? user.employeeCode : '') + ' ' + user.id}">
                             <td class="fw-medium text-muted" th:text="${user.id}">1</td>
                             <td class="fw-bold" style="color:#1e3a8a;" th:text="${user.fullName}">Nguyễn Văn A</td>
                             <td th:text="${user.email}">user@midomax.vn</td>
@@ -275,23 +289,12 @@
                             </label>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-medium"><i class="fa-solid fa-fingerprint me-1" style="color:#0d9488;"></i>Mã chấm công</label>
-                        <div class="row g-2">
-                            <div class="col-5">
-                                <input type="text" class="form-control" id="editUserEmpCode" placeholder="VD: 101">
-                            </div>
-                            <div class="col-7">
-                                <select class="form-select" id="editUserAttDevice">
-                                    <option value="">— Chọn văn phòng (máy) —</option>
-                                    <option th:each="d : ${attendanceDevices}" th:value="${d.id}" th:text="${d.name}">188Bis</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-text">Nhập mã + chọn văn phòng thì nhân viên tự xem được lịch chấm công của mình.
-                            <b>Phải chọn đúng văn phòng</b> — các văn phòng dùng chung dải mã, cùng mã khác máy là hai người khác nhau.</div>
-
-                        <!-- Quyền chấm công GPS chuyển sang trang riêng của Nhân Sự: Quản Lý Nhân Sự > Chấm Công Online -->
+                    <!-- Mã chấm công + văn phòng + quyền chấm GPS đã chuyển sang trang của
+                         Nhân Sự: Quản Lý Nhân Sự > Chấm Công Online -->
+                    <div class="alert alert-light border py-2 mb-3" style="font-size:12.5px;">
+                        <i class="fa-solid fa-fingerprint me-1" style="color:#0d9488;"></i>
+                        Mã chấm công, văn phòng và quyền chấm GPS giờ gán ở
+                        <a href="/attendance/gps-permissions"><b>Quản Lý Nhân Sự → Chấm Công Online</b></a>.
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-medium">Chọn quyền hạn <span class="text-danger">*</span></label>
@@ -523,11 +526,18 @@
 
         function renderUserTable() {
             const val = $('#deptFilter').val();
+            const role = $('#roleFilter').val();
+            const source = $('#sourceFilter').val();
+            const q = ($('#userSearch').val() || '').trim().toLowerCase();
             const rows = $('tr.user-row').toArray();
-            // Lọc theo phòng ban trước, rồi mới chia trang trên kết quả lọc
+            // Lọc (tìm kiếm + phòng ban + vai trò + nguồn) trước, rồi mới chia trang
             const matched = rows.filter(tr => {
                 const dept = tr.getAttribute('data-dept') || 'NONE';
-                return !val || (val === '__NONE__' ? dept === 'NONE' : dept === val);
+                if (val && (val === '__NONE__' ? dept !== 'NONE' : dept !== val)) return false;
+                if (role && (tr.getAttribute('data-role') || 'ROLE_USER') !== role) return false;
+                if (source && tr.getAttribute('data-source') !== source) return false;
+                if (q && (tr.getAttribute('data-search') || '').toLowerCase().indexOf(q) < 0) return false;
+                return true;
             });
             rows.forEach(tr => tr.style.display = 'none');
 
@@ -538,7 +548,7 @@
             const start = (userPage - 1) * USER_PAGE_SIZE;
             matched.slice(start, start + USER_PAGE_SIZE).forEach(tr => tr.style.display = '');
 
-            $('#deptFilterCount').text(val ? matched.length + ' user' : '');
+            $('#deptFilterCount').text((val || role || source || q) ? matched.length + ' user' : '');
 
             const pager = $('#user-pager');
             if (matched.length > USER_PAGE_SIZE) {
@@ -554,7 +564,8 @@
             sessionStorage.setItem('userMgmtPage', userPage);
         }
 
-        $('#deptFilter').change(function() { userPage = 1; renderUserTable(); });
+        $('#deptFilter, #roleFilter, #sourceFilter').change(function() { userPage = 1; renderUserTable(); });
+        $('#userSearch').on('input', function() { userPage = 1; renderUserTable(); });
         $('#user-prev').click(function() { userPage--; renderUserTable(); });
         $('#user-next').click(function() { userPage++; renderUserTable(); });
         renderUserTable();
@@ -715,8 +726,6 @@
             $('#editUserRole').val(role);
             $('#editUserDept').val(String($(this).data('dept') || ''));
             $('#editUserDeptHead').prop('checked', $(this).data('depthead') === true);
-            $('#editUserEmpCode').val(String($(this).data('empcode') || ''));
-            $('#editUserAttDevice').val(String($(this).data('attdevice') || ''));
 
             $('.edit-it-group').prop('checked', false);
             groups.forEach(g => $('.edit-it-group[value="' + g + '"]').prop('checked', true));
@@ -744,7 +753,7 @@
                 url: '/api/admin/users/update-role',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ id: id, role: role, itGroups: checkedGroups('.edit-it-group'), department: $('#editUserDept').val(), modules: checkedGroups('.edit-user-module'), deptHead: $('#editUserDeptHead').prop('checked'), employeeCode: $('#editUserEmpCode').val(), attendanceDeviceId: $('#editUserAttDevice').val() }),
+                data: JSON.stringify({ id: id, role: role, itGroups: checkedGroups('.edit-it-group'), department: $('#editUserDept').val(), modules: checkedGroups('.edit-user-module'), deptHead: $('#editUserDeptHead').prop('checked') }),
                 success: function(res) {
                     toastr.success(res);
                     setTimeout(() => location.reload(), 1000);
