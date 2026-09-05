@@ -1,20 +1,15 @@
 package vn.midomax.helpdesk;
 
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import vn.midomax.helpdesk.storage.StorageService;
+import vn.midomax.helpdesk.storage.StoredFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Chấm công bằng GPS trên điện thoại.
@@ -38,28 +33,17 @@ public class GpsCheckinService {
 
     private static final long MAX_SELFIE_BYTES = 10L * 1024 * 1024;
 
-    @Value("${app.gps-selfie-dir:data/gps-selfies}")
-    private String configuredDir;
+    /**
+     * Thư mục con trên kho file (MinIO khi production) chứa selfie. File RIÊNG TƯ: chỉ trả về
+     * qua /attendance/gps/selfie/{id} sau khi kiểm chính chủ / người duyệt, không đi qua /uploads.
+     */
+    public static final String STORAGE_FOLDER = "gps-selfies";
 
     @Autowired private GpsCheckinRepository gpsRepo;
     @Autowired private AttendanceLogRepository logRepo;
     @Autowired private AttendanceDeviceRepository deviceRepo;
     @Autowired private AttendanceService attendanceService;
-
-    private Path storageDir;
-
-    @PostConstruct
-    public void init() {
-        storageDir = Paths.get(configuredDir).toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(storageDir);
-            System.out.println("[GPS] Thư mục lưu selfie chấm công: " + storageDir);
-        } catch (IOException e) {
-            System.err.println("[GPS] Không tạo được thư mục " + storageDir + ": " + e.getMessage());
-        }
-    }
-
-    public Path getStorageDir() { return storageDir; }
+    @Autowired private StorageService storageService;
 
     /** Kết quả một lần chấm — ok/lý do từ chối + bản ghi để hiển thị lại cho người bấm. */
     public record Result(boolean ok, String message, GpsCheckin checkin) {
@@ -322,14 +306,15 @@ public class GpsCheckinService {
                 return Result.fail("Ảnh đang bật chế độ XÓA PHÔNG / làm mờ nền — tắt hiệu ứng camera đi rồi chụp lại (phông nền phải thấy rõ).");
             }
 
-            // Lưu vào thư mục RIÊNG của từng nhân viên (máy_mã) thay vì dồn một đống:
-            // dễ soát/dọn theo người, và không bao giờ có một thư mục hàng vạn file.
+            // Lưu lên kho file (MinIO khi production) trong thư mục RIÊNG của từng nhân viên
+            // (máy_mã) thay vì dồn một đống: dễ soát/dọn theo người.
             String personDir = (deviceId + "_" + code).replaceAll("[^A-Za-z0-9_-]", "");
-            selfieName = personDir + "/" + UUID.randomUUID() + ".jpg";
-            Files.createDirectories(storageDir.resolve(personDir));
-            Files.write(storageDir.resolve(selfieName), selfieBytes);
+            selfieName = storageService.storePrivate(STORAGE_FOLDER + "/" + personDir, selfieBytes, ".jpg", ct);
+            if (selfieName == null) {
+                return Result.fail("Không lưu được ảnh selfie lên kho file. Thử lại hoặc báo IT.");
+            }
         } catch (IOException e) {
-            return Result.fail("Không lưu được ảnh selfie: " + e.getMessage());
+            return Result.fail("Không đọc được ảnh selfie: " + e.getMessage());
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -383,6 +368,17 @@ public class GpsCheckinService {
 
     public GpsCheckin get(Long id) {
         return id == null ? null : gpsRepo.findById(id).orElse(null);
+    }
+
+    /**
+     * Mở ảnh selfie của một lần chấm từ kho file. Bản ghi cũ (trước khi chuyển sang MinIO)
+     * lưu đường dẫn thiếu thư mục gốc "gps-selfies/" nên bù vào trước khi tìm.
+     */
+    public StoredFile openSelfie(GpsCheckin c) {
+        if (c == null || c.getSelfieFile() == null || c.getSelfieFile().isBlank()) return null;
+        String key = c.getSelfieFile();
+        if (!key.startsWith(STORAGE_FOLDER + "/")) key = STORAGE_FOLDER + "/" + key;
+        return storageService.load(key);
     }
 
     /** Vài lần chấm gần nhất của một người — hiện trên trang chấm công cá nhân. */

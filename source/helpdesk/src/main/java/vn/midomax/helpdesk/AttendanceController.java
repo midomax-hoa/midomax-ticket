@@ -1235,9 +1235,9 @@ public class AttendanceController {
 
     /** Ảnh selfie của một lần chấm — chỉ chính chủ hoặc người có quyền duyệt xem được. */
     @GetMapping("/gps/selfie/{id}")
-    public ResponseEntity<org.springframework.core.io.InputStreamResource> gpsSelfie(
+    public ResponseEntity<org.springframework.core.io.Resource> gpsSelfie(
             @PathVariable Long id,
-            org.springframework.security.core.Authentication authentication) throws java.io.IOException {
+            org.springframework.security.core.Authentication authentication) {
         GpsCheckin c = gpsCheckinService.get(id);
         AppUser me = currentAppUser(authentication);
         if (c == null || me == null || c.getSelfieFile() == null) {
@@ -1248,13 +1248,13 @@ public class AttendanceController {
         if (!own && !canApproveRequests(me)) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
         }
-        java.nio.file.Path p = gpsCheckinService.getStorageDir().resolve(c.getSelfieFile()).normalize();
-        if (!p.startsWith(gpsCheckinService.getStorageDir()) || !java.nio.file.Files.exists(p)) {
+        vn.midomax.helpdesk.storage.StoredFile file = gpsCheckinService.openSelfie(c);
+        if (file == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok()
-                .contentType(org.springframework.http.MediaType.IMAGE_JPEG)
-                .body(new org.springframework.core.io.InputStreamResource(java.nio.file.Files.newInputStream(p)));
+        // Ảnh riêng tư: trình duyệt cache riêng một lúc cho danh sách lướt mượt, proxy không giữ lại
+        return vn.midomax.helpdesk.storage.StoredFileResponses.of(file,
+                org.springframework.http.CacheControl.maxAge(java.time.Duration.ofHours(1)).cachePrivate());
     }
 
     /**

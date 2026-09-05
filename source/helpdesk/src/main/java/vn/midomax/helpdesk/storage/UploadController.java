@@ -1,9 +1,7 @@
 package vn.midomax.helpdesk.storage;
 
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,10 +11,12 @@ import java.time.Duration;
 import java.util.regex.Pattern;
 
 /**
- * Phục vụ file đính kèm tại /uploads/{tên-file}.
+ * Phục vụ file đính kèm CÔNG KHAI tại /uploads/{tên-file}.
  *
  * Trước đây file được map thẳng từ thư mục static, nay đi qua StorageService
  * để dùng chung một đường dẫn cho cả ổ đĩa (dev) lẫn MinIO (production).
+ * Chỉ nhận tên file phẳng: file riêng tư nằm trong thư mục con (có dấu "/") nên
+ * không bao giờ lọt ra đây, đường dẫn này đang permitAll trong SecurityConfig.
  */
 @RestController
 public class UploadController {
@@ -39,24 +39,6 @@ public class UploadController {
         if (file == null) {
             return ResponseEntity.notFound().build();
         }
-
-        ResponseEntity.BodyBuilder response = ResponseEntity.ok()
-                .contentType(mediaType(file.contentType()))
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)));
-        if (file.size() >= 0) {
-            response.contentLength(file.size());
-        }
-        return response.body(new InputStreamResource(file.content()));
-    }
-
-    private MediaType mediaType(String contentType) {
-        if (contentType == null || contentType.isBlank()) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-        try {
-            return MediaType.parseMediaType(contentType);
-        } catch (RuntimeException e) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
+        return StoredFileResponses.of(file, CacheControl.maxAge(Duration.ofDays(7)));
     }
 }

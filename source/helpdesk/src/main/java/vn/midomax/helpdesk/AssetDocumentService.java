@@ -1,30 +1,32 @@
 package vn.midomax.helpdesk;
 
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import vn.midomax.helpdesk.storage.StorageService;
+import vn.midomax.helpdesk.storage.StoredFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * Lưu ảnh biên bản giao nhận / thu hồi tài sản.
  *
- * Ảnh KHÔNG lưu vào src/main/resources hay target/ như mấy chỗ upload cũ trong hệ
- * thống: hai thư mục đó là nơi build, chạy "mvn clean" một phát là mất sạch. Biên bản
- * bàn giao là giấy tờ cần giữ lâu nên lưu ra thư mục dữ liệu riêng, đổi được qua
- * cấu hình app.asset-doc-dir nếu muốn để sang ổ khác hoặc thư mục có backup.
+ * Ảnh đi qua StorageService (MinIO khi production, ổ đĩa khi dev) dưới thư mục
+ * {@link #STORAGE_FOLDER}, là file RIÊNG TƯ: không phục vụ qua /uploads mà qua
+ * AssetDocumentFileController sau khi kiểm đăng nhập. Biên bản là giấy tờ cần giữ lâu
+ * nên không được nằm trong container hay thư mục build.
  */
 @Service
 public class AssetDocumentService {
+
+    /** Thư mục con trên kho file chứa biên bản. */
+    public static final String STORAGE_FOLDER = "asset-docs";
+
+    /** Đường dẫn web của biên bản, giữ nguyên dạng cũ để dữ liệu đã lưu trong DB vẫn dùng được. */
+    public static final String URL_PREFIX = "/asset-docs/";
 
     /** Chỉ nhận ảnh và PDF. Chặn .html/.svg vì file đó phục vụ từ domain app sẽ chạy được script. */
     private static final Set<String> ALLOWED_EXT = Set.of(
@@ -32,28 +34,13 @@ public class AssetDocumentService {
 
     private static final long MAX_BYTES = 15L * 1024 * 1024;
 
-    @Value("${app.asset-doc-dir:data/asset-docs}")
-    private String configuredDir;
+    private static final Pattern SAFE_NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,199}");
 
     @Autowired
     private AssetDocumentRepository documentRepository;
 
-    private Path storageDir;
-
-    @PostConstruct
-    public void init() {
-        storageDir = Paths.get(configuredDir).toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(storageDir);
-            System.out.println("[ASSET DOC] Thư mục lưu biên bản: " + storageDir);
-        } catch (IOException e) {
-            System.err.println("[ASSET DOC] Không tạo được thư mục " + storageDir + ": " + e.getMessage());
-        }
-    }
-
-    public Path getStorageDir() {
-        return storageDir;
-    }
+    @Autowired
+    private StorageService storageService;
 
     /** Kết quả một lần tải lên nhiều ảnh: mấy tấm được, mấy tấm bị loại và vì sao. */
     public static class UploadResult {
@@ -98,25 +85,16 @@ public class AssetDocumentService {
                 continue;
             }
 
-            String newName = UUID.randomUUID() + ext;
-            Path target = storageDir.resolve(newName).normalize();
-            if (!target.startsWith(storageDir)) {
-                result.errors.add("Bỏ qua \"" + original + "\": tên file không hợp lệ.");
-                continue;
-            }
-
-            try {
-                Files.createDirectories(storageDir);
-                Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                result.errors.add("Không lưu được \"" + original + "\": " + e.getMessage());
+            String key = storageService.storePrivate(STORAGE_FOLDER, file);
+            if (key == null) {
+                result.errors.add("Không lưu được \"" + original + "\" lên kho file. Thử lại hoặc báo IT.");
                 continue;
             }
 
             AssetDocument doc = new AssetDocument();
             doc.setAssetId(assetId);
             doc.setDocType(type);
-            doc.setFilePath("/asset-docs/" + newName);
+            doc.setFilePath(URL_PREFIX + key.substring(STORAGE_FOLDER.length() + 1));
             doc.setOriginalName(original);
             doc.setContentType(file.getContentType());
             doc.setSizeBytes(file.getSize());
@@ -149,7 +127,13 @@ public class AssetDocumentService {
         return id == null ? null : documentRepository.findById(id).orElse(null);
     }
 
-    /** Xoá cả bản ghi lẫn file trên đĩa, đừng để file rác nằm lại. */
+    /** Mở file biên bản theo tên trên URL (/asset-docs/{tên}). Null nếu tên lạ hoặc không có file. */
+    public StoredFile open(String name) {
+        if (name == null || !SAFE_NAME.matcher(name).matches() || name.contains("..")) return null;
+        return storageService.load(STORAGE_FOLDER + "/" + name);
+    }
+
+    /** Xóa cả bản ghi lẫn file trên kho, đừng để file rác nằm lại. */
     public boolean delete(Long id) {
         AssetDocument doc = get(id);
         if (doc == null) return false;
@@ -158,7 +142,7 @@ public class AssetDocumentService {
         return true;
     }
 
-    /** Xoá tài sản thì xoá kèm biên bản của nó. */
+    /** Xóa tài sản thì xóa kèm biên bản của nó. */
     public void deleteAllOfAsset(Long assetId) {
         List<AssetDocument> docs = documentRepository.findByAssetIdOrderByUploadedAtDesc(assetId);
         for (AssetDocument d : docs) deleteFileOf(d);
@@ -166,13 +150,14 @@ public class AssetDocumentService {
     }
 
     private void deleteFileOf(AssetDocument doc) {
-        if (doc.getFilePath() == null) return;
+        String key = keyOf(doc);
+        if (key != null) storageService.delete(key);
+    }
+
+    /** "/asset-docs/uuid.jpg" trong DB -> khóa "asset-docs/uuid.jpg" trên kho file. */
+    private static String keyOf(AssetDocument doc) {
+        if (doc.getFilePath() == null) return null;
         String name = doc.getFilePath().substring(doc.getFilePath().lastIndexOf('/') + 1);
-        try {
-            Path p = storageDir.resolve(name).normalize();
-            if (p.startsWith(storageDir)) Files.deleteIfExists(p);
-        } catch (IOException e) {
-            System.err.println("[ASSET DOC] Không xoá được file " + name + ": " + e.getMessage());
-        }
+        return name.isBlank() ? null : STORAGE_FOLDER + "/" + name;
     }
 }

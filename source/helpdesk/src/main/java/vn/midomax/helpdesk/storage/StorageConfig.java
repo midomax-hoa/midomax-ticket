@@ -44,6 +44,6 @@ public class StorageConfig {
     @Bean
     @ConditionalOnProperty(name = "app.storage.type", havingValue = "local", matchIfMissing = true)
     public StorageService localStorageService(StorageProperties properties) {
-        return new LocalStorageService(properties.getLocal().getDir());
+        return new LocalStorageService(properties.getLocal().getDir(), properties.getLocal().getPrivateDir());
     }
 }

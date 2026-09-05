@@ -25,8 +25,14 @@ public class StorageProperties {
     @Getter
     @Setter
     public static class Local {
-        /** Thư mục chứa file upload khi chạy local. */
+        /** Thư mục chứa file CÔNG KHAI (ảnh ticket, chứng từ) khi chạy local. */
         private String dir = "src/main/resources/static/uploads";
+
+        /**
+         * Thư mục chứa file RIÊNG TƯ (biên bản CCDC, selfie chấm công) khi chạy local.
+         * Phải nằm ngoài static/ vì mọi thứ trong static/ đều được phục vụ công khai.
+         */
+        private String privateDir = "data/private-uploads";
     }
 
     @Getter
@@ -38,6 +44,7 @@ public class StorageProperties {
         /** MinIO không quan tâm region nhưng SDK bắt buộc phải có. */
         private String region = "us-east-1";
 
+        /** Bucket phải để riêng tư: app tự kiểm quyền rồi đọc file ra, không cho tải nặc danh. */
         private String bucket;
 
         private String accessKey;

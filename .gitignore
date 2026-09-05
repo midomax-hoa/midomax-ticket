@@ -58,5 +58,5 @@ Thumbs.db
 # ===== File PDF huong dan xuat ban o root (ban chinh nam trong source/document/) =====
 /Huong_dan_su_dung_Helpdesk_Midomax.pdf
 
-# ===== Du lieu van hanh app ghi ra (selfie cham cong, anh bien ban CCDC) =====
+# ===== File rieng tu khi chay local (bien ban CCDC, selfie GPS) - production dung MinIO =====
 data/
