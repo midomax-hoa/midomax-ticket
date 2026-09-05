@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -17,8 +16,15 @@ import java.util.Set;
  * Tính danh sách phân hệ (AppModule) mà user hiện tại được vào.
  *
  * Quyền = quyền theo role như trước giờ (không lấy đi của ai) CỘNG THÊM các phân hệ
- * mà phòng ban của user được tick trong ma trận "Phân hệ theo phòng ban".
+ * mà phòng ban của user được tick trong ma trận "Phân hệ theo phòng ban" CỘNG THÊM
+ * phân hệ cấp riêng cho từng user. Ba nguồn chỉ cộng, không trừ: muốn một phân hệ
+ * chỉ cấp cho vài người thì ma trận phòng ban KHÔNG được tick phân hệ đó (tick hết
+ * mọi phòng ban là ai cũng vào được, bỏ tick riêng từng user không còn tác dụng).
  * Sidebar dùng kết quả này để ẩn/hiện menu, ModuleAccessInterceptor dùng để chặn URL.
+ *
+ * Ma trận đọc thẳng từ DB mỗi lần (bảng chỉ vài chục dòng, rẻ hơn nhiều so với
+ * findAll() user ngay bên dưới): sửa dữ liệu trực tiếp trong DB hay lưu từ UI đều có
+ * hiệu lực ngay, không phải khởi động lại app như hồi còn giữ cache trong RAM.
  */
 @Service
 public class ModuleAccessService {
@@ -28,9 +34,6 @@ public class ModuleAccessService {
 
     @Autowired
     private AppUserRepository appUserRepository;
-
-    /** Cache ma trận: mã phòng ban -> tập mã phân hệ. Nạp lại khi admin bấm lưu. */
-    private volatile Map<String, Set<String>> matrixCache;
 
     /** Tập mã phân hệ user được vào, ví dụ ["ASSETS", "FINANCE"]. */
     public Set<String> modulesOf(Authentication auth) {
@@ -80,10 +83,10 @@ public class ModuleAccessService {
 
     /** Toàn bộ ma trận cho trang cấu hình: mã phòng ban -> tập mã phân hệ. */
     public Map<String, Set<String>> fullMatrix() {
-        return new HashMap<>(matrix());
+        return matrix();
     }
 
-    /** Ghi đè toàn bộ ma trận (admin bấm Lưu) rồi nạp lại cache. */
+    /** Ghi đè toàn bộ ma trận (admin bấm Lưu). */
     @Transactional
     public void saveMatrix(Map<String, Set<String>> newMatrix) {
         // deleteAllInBatch xóa NGAY bằng một câu DELETE, không bị Hibernate dời
@@ -99,19 +102,15 @@ public class ModuleAccessService {
                 }
             }
         }
-        matrixCache = null; // nạp lại ở lần đọc kế tiếp
     }
 
+    /** Đọc ma trận từ DB: mã phòng ban -> tập mã phân hệ. */
     private Map<String, Set<String>> matrix() {
-        Map<String, Set<String>> cached = matrixCache;
-        if (cached == null) {
-            cached = new HashMap<>();
-            for (DepartmentModuleAccess row : accessRepository.findAll()) {
-                cached.computeIfAbsent(row.getDepartment(), k -> new HashSet<>()).add(row.getModule());
-            }
-            matrixCache = cached;
+        Map<String, Set<String>> result = new HashMap<>();
+        for (DepartmentModuleAccess row : accessRepository.findAll()) {
+            result.computeIfAbsent(row.getDepartment(), k -> new HashSet<>()).add(row.getModule());
         }
-        return cached;
+        return result;
     }
 
     /**
