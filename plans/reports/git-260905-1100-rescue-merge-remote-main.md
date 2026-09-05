@@ -79,6 +79,25 @@
 - `success-modal.html` khôi phục (5 trang còn include); `ticket-modal-fragment.html` để remote xoá
   (không nơi nào tham chiếu).
 
+## Bổ sung: đưa file lưu trữ ra MinIO (cùng ngày)
+
+Biên bản CCDC và selfie chấm công GPS của remote ghi ra `data/` trên ổ đĩa (mất khi redeploy container,
+không chia sẻ được giữa nhiều instance). Đã chuyển qua `StorageService` như file đính kèm ticket:
+
+- File **công khai** (ảnh ticket, chứng từ): `store()` → `/uploads/{tên}` phẳng, `UploadController` phục vụ, permitAll.
+- File **riêng tư**: `storePrivate(thư-mục-con, ...)` → khóa có dấu `/` (`asset-docs/…`, `gps-selfies/1_NV01/…`),
+  không lọt ra `/uploads`; controller nghiệp vụ kiểm quyền rồi trả bằng `load(key)` + `StoredFileResponses.of(...)`.
+  Biên bản: `AssetDocumentFileController` tại `/asset-docs/{tên}` (cần đăng nhập, URL giữ như cũ nên
+  `file_path` trong DB không phải sửa). Selfie: `/attendance/gps/selfie/{id}` như cũ, bản ghi cũ thiếu tiền tố
+  `gps-selfies/` được bù khi đọc.
+- Local dev: file riêng tư nằm ở `app.storage.local.private-dir` (`STORAGE_LOCAL_PRIVATE_DIR`, mặc định
+  `data/private-uploads`), ngoài `static/`. Bỏ `app.asset-doc-dir`, `app.gps-selfie-dir`, `ASSET_DOC_DIR`, `GPS_SELFIE_DIR`.
+- `WebConfig` không còn map thư mục upload từ ổ đĩa.
+- **Chuyển dữ liệu cũ khi deploy** (file đang nằm trên đĩa server của bản remote): copy vào bucket giữ nguyên tên:
+  `data/asset-docs/*` → `asset-docs/*`, `data/gps-selfies/<máy_mã>/*` → `gps-selfies/<máy_mã>/*`
+  (ví dụ `mc cp --recursive data/asset-docs/ minio/<bucket>/asset-docs/`).
+- Bucket MinIO phải để **riêng tư** (không bật anonymous download), vì file riêng tư nằm cùng bucket.
+
 ## Việc còn lại / cần quyết định
 
 1. **Đổi ngay client-secret Microsoft Entra** (`xGW8Q~...`) và mật khẩu MySQL: cả hai đã bị commit
