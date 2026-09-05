@@ -42,9 +42,6 @@ public class AdminUserController {
     @Autowired
     private ModuleAccessService moduleAccessService;
 
-    @Autowired
-    private AttendanceDeviceRepository attendanceDeviceRepository;
-
     // View cho trang Quản lý User
     @GetMapping("/admin/users")
     public String userManagementPage(Model model) {
@@ -84,8 +81,6 @@ public class AdminUserController {
             moduleJs.add(mm);
         }
         model.addAttribute("modulesJs", moduleJs);
-        // Máy chấm công (văn phòng) — bắt buộc chọn kèm mã vì các văn phòng trùng dải mã
-        model.addAttribute("attendanceDevices", attendanceDeviceRepository.findAll());
         return "user-management";
     }
 
