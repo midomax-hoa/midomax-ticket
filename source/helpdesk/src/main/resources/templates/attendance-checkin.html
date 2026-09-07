@@ -134,6 +134,9 @@
                             <button type="button" class="btn btn-warning fw-bold" onclick="gpsCapture()">
                                 <i class="fa-solid fa-camera me-1"></i>Chụp &amp; chấm công
                             </button>
+                            <button type="button" class="btn btn-light border ms-1" onclick="gpsFlip()" title="Đổi camera trước/sau">
+                                <i class="fa-solid fa-camera-rotate"></i>
+                            </button>
                             <button type="button" class="btn btn-light border ms-1" onclick="gpsCancel()">Huỷ</button>
                         </div>
                     </div>
@@ -212,16 +215,16 @@
 
         // Đồng hồ chạy giây — trái tim của trang chấm công
         var DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+        function p(x) { return x < 10 ? '0' + x : x; }
         function tick() {
             var n = new Date();
-            function p(x) { return x < 10 ? '0' + x : x; }
             document.getElementById('ckClock').textContent = p(n.getHours()) + ':' + p(n.getMinutes()) + ':' + p(n.getSeconds());
             document.getElementById('ckDate').textContent =
                 DAYS[n.getDay()] + ', ' + p(n.getDate()) + '/' + p(n.getMonth() + 1) + '/' + n.getFullYear();
         }
         tick(); setInterval(tick, 1000);
 
-        var gpsPos = null, gpsStream = null;
+        var gpsPos = null, gpsStream = null, gpsFacing = 'user', gpsAddr = null;
         function note(msg, isErr) {
             var el = document.getElementById('gpsResult');
             // Nền hero xanh đậm nên lỗi dùng vàng nhạt, thành công dùng trắng — chữ đỏ trên nền xanh khó đọc
@@ -239,21 +242,42 @@
             note('Đang lấy vị trí GPS...');
             navigator.geolocation.getCurrentPosition(function (pos) {
                 gpsPos = pos;
+                // Lấy địa chỉ chạy NGẦM song song với mở camera — kịp trước lúc bấm chụp
+                gpsAddr = null;
+                fetch('/attendance/gps/geocode?latitude=' + pos.coords.latitude + '&longitude=' + pos.coords.longitude)
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) { if (res.name) gpsAddr = res.name; })
+                    .catch(function () { /* không có địa chỉ thì dấu in tọa độ */ });
                 note('Đã có vị trí (±' + Math.round(pos.coords.accuracy) + 'm). Đang mở camera...');
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
-                    .then(function (stream) {
-                        gpsStream = stream;
-                        document.getElementById('gpsVideo').srcObject = stream;
-                        document.getElementById('gpsCamWrap').classList.remove('d-none');
-                        note('Nhìn vào camera rồi bấm "Chụp & chấm công".');
-                    })
-                    .catch(function (e) { busy(false); note('Không mở được camera: ' + e.message, true); });
+                openCam();
             }, function (err) {
                 busy(false);
                 note(err.code === 1
                     ? 'Bạn đã từ chối quyền vị trí — vào cài đặt trình duyệt cho phép rồi thử lại.'
                     : 'Không lấy được vị trí: ' + err.message + '. Bật GPS rồi thử lại.', true);
             }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        };
+
+        /** Mở camera theo gpsFacing; camera trước soi gương, camera sau để nguyên. */
+        function openCam() {
+            if (gpsStream) { gpsStream.getTracks().forEach(function (t) { t.stop(); }); gpsStream = null; }
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: gpsFacing }, audio: false })
+                .then(function (stream) {
+                    gpsStream = stream;
+                    var v = document.getElementById('gpsVideo');
+                    v.srcObject = stream;
+                    v.style.transform = gpsFacing === 'user' ? 'scaleX(-1)' : 'none';
+                    document.getElementById('gpsCamWrap').classList.remove('d-none');
+                    note(gpsFacing === 'user'
+                        ? 'Nhìn vào camera rồi bấm "Chụp & chấm công".'
+                        : 'Đang dùng camera SAU — hướng vào nơi làm việc rồi bấm chụp.');
+                })
+                .catch(function (e) { busy(false); note('Không mở được camera: ' + e.message, true); });
+        }
+
+        window.gpsFlip = function () {
+            gpsFacing = gpsFacing === 'user' ? 'environment' : 'user';
+            openCam();
         };
 
         window.gpsCancel = function () {
@@ -302,6 +326,63 @@
             };
         }
 
+        /**
+         * Đóng dấu giờ + tọa độ lên góc dưới ảnh (kiểu app camera chấm công Android).
+         * Chỉ để đối chiếu bằng mắt — giờ công CHÍNH THỨC vẫn do máy chủ tự đóng dấu
+         * lúc nhận, đổi giờ điện thoại không ảnh hưởng. Phải đóng dấu SAU bước kiểm
+         * nét/xóa phông vì chữ đè lên rìa ảnh sẽ làm sai điểm đo.
+         */
+        function stampOn(c) {
+            var ctx = c.getContext('2d');
+            var fs = Math.max(14, Math.round(c.width / 24));
+            var fs2 = Math.round(fs * 0.8);
+            var pad = Math.round(fs * 0.5);
+            var n = new Date();
+            var timeLine = p(n.getHours()) + ':' + p(n.getMinutes()) + ':' + p(n.getSeconds())
+                    + '  ' + p(n.getDate()) + '/' + p(n.getMonth() + 1) + '/' + n.getFullYear();
+            // Vị trí in ĐỊA CHỈ (reverse geocode); chưa kịp có địa chỉ mới rơi về tọa độ
+            var place = gpsAddr || (gpsPos.coords.latitude.toFixed(5) + ', ' + gpsPos.coords.longitude.toFixed(5)
+                    + ' (±' + Math.round(gpsPos.coords.accuracy) + 'm)');
+
+            // Bẻ địa chỉ dài thành tối đa 2 dòng vừa bề ngang ảnh, dư thì "…"
+            ctx.font = fs2 + 'px sans-serif';
+            var maxW = c.width - pad * 2;
+            var placeLines = [];
+            var rest = place;
+            while (rest && placeLines.length < 2) {
+                var cut = rest.length;
+                while (cut > 1 && ctx.measureText(rest.slice(0, cut)).width > maxW) cut--;
+                if (cut < rest.length && placeLines.length === 1) {
+                    placeLines.push(rest.slice(0, Math.max(1, cut - 1)) + '…');
+                    rest = '';
+                } else {
+                    // Ưu tiên bẻ tại dấu phẩy/khoảng trắng gần nhất cho dễ đọc
+                    var seg = rest.slice(0, cut);
+                    if (cut < rest.length) {
+                        var br = Math.max(seg.lastIndexOf(', '), seg.lastIndexOf(' '));
+                        if (br > cut * 0.5) { seg = rest.slice(0, br); cut = br + (rest.charAt(br) === ',' ? 2 : 1); }
+                    }
+                    placeLines.push(seg.trim());
+                    rest = rest.slice(cut).trim();
+                }
+            }
+
+            var barH = pad + fs + pad + placeLines.length * (fs2 + Math.round(pad * 0.6)) + pad;
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(0, c.height - barH, c.width, barH);
+            ctx.fillStyle = '#ffffff';
+            ctx.textBaseline = 'top';
+            ctx.font = 'bold ' + fs + 'px sans-serif';
+            var y = c.height - barH + pad;
+            ctx.fillText(timeLine, pad, y);
+            y += fs + pad;
+            ctx.font = fs2 + 'px sans-serif';
+            for (var i = 0; i < placeLines.length; i++) {
+                ctx.fillText(placeLines[i], pad, y);
+                y += fs2 + Math.round(pad * 0.6);
+            }
+        }
+
         window.gpsCapture = function () {
             if (!gpsPos || !gpsStream) { window.gpsCancel(); return; }
             var v = document.getElementById('gpsVideo');
@@ -325,6 +406,7 @@
                 note('Ảnh đang bật XÓA PHÔNG / làm mờ nền — tắt hiệu ứng camera rồi bấm chụp lại (phông phải thấy rõ).', true);
                 return;
             }
+            stampOn(c);
             note('Đang gửi...');
             c.toBlob(function (blob) {
                 var fd = new FormData();

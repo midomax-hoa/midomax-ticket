@@ -117,7 +117,7 @@ public class ModuleAccessService {
      * Tìm AppUser theo tên đăng nhập. Khớp cả email đầy đủ lẫn phần trước
      * dấu @, cùng luật với đăng nhập và AdminUserController.findByLoginName.
      */
-    private AppUser userOf(String loginName) {
+    public AppUser userOf(String loginName) {
         if (loginName == null || loginName.isBlank()) return null;
         String clean = loginName.trim().toLowerCase();
         String prefix = clean.split("@")[0];

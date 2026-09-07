@@ -509,7 +509,8 @@
             </div>
 
             <th:block th:each="entry, iter : ${reportsByProjectMap}">
-                <div class="task-group mb-4" th:id="'group-' + ${iter.index}">
+                <!-- Mặc định THU GỌN cho trang đỡ dài — ai cần thì bấm mũi tên bung nhóm ra -->
+                <div class="task-group mb-4 collapsed" th:id="'group-' + ${iter.index}">
                     <!-- GROUP HEADER (CLICKUP STYLE THEO DỰ ÁN) -->
                     <div class="group-header" th:onclick="'toggleGroup(\'group-' + ${iter.index} + '\')'" style="cursor: pointer;">
                         <div class="group-title-wrapper">

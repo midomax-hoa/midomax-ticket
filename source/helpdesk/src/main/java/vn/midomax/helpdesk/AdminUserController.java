@@ -245,7 +245,10 @@ public class AdminUserController {
                 }
                 if (payload.containsKey("employeeCode")) {
                     String code = asString(payload.get("employeeCode"));
-                    user.setEmployeeCode(code == null || code.trim().isEmpty() ? null : code.trim());
+                    code = code == null ? null : code.trim();
+                    // "0" là quy ước XÓA mã: coi như user chưa có mã chấm công
+                    if (code == null || code.isEmpty() || code.equals("0")) code = null;
+                    user.setEmployeeCode(code);
                 }
                 if (payload.containsKey("attendanceDeviceId")) {
                     String devRaw = asString(payload.get("attendanceDeviceId"));

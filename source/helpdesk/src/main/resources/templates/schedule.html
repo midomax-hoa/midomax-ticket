@@ -99,9 +99,10 @@
             color: #475569;
             letter-spacing: 0.5px;
         }
-        .calendar-dates { display: flex; flex-wrap: wrap; gap: 12px 2px; width: 100%; }
+        /* Grid 7 cột cứng: hàng cuối thiếu ô vẫn thẳng cột với header
+           (flex-wrap cũ làm 5 ô cuối giãn full ngang nên bị lệch) */
+        .calendar-dates { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px 2px; width: 100%; }
         .calendar-dates span {
-            flex: 1 1 calc(14.28% - 1px);
             text-align: center;
             font-size: 18px;
             font-weight: 600;

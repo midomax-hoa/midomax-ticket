@@ -143,7 +143,7 @@
                     <span class="text-muted fw-normal" style="font-size:13px;" th:text="'(' + ${#lists.size(rows)} + ' hạng mục)'">(0)</span>
                 </h6>
                 <div class="scroll-x">
-                    <table class="tbl">
+                    <table class="tbl" id="reconcileTbl">
                         <thead>
                             <tr>
                                 <th>Hạng mục</th>
@@ -183,6 +183,11 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Phân trang tại chỗ: bảng dài quá nên mỗi trang 10 dòng cho dễ nhìn -->
+                <div class="d-flex align-items-center justify-content-between mt-2" id="reconcilePager" style="font-size:13px;">
+                    <span class="text-muted" id="reconcilePageInfo"></span>
+                    <div class="d-flex gap-1" id="reconcilePageBtns"></div>
                 </div>
             </div>
 
@@ -236,5 +241,46 @@
     </div>
 
     <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Phân trang tại chỗ cho bảng "Đối chiếu từng hạng mục": dữ liệu đã render
+    // sẵn trong trang, chỉ ẩn/hiện từng lát 10 dòng — không cần sửa controller.
+    (function () {
+        'use strict';
+        var PAGE_SIZE = 10;
+        var rows = Array.prototype.slice.call(
+                document.querySelectorAll('#reconcileTbl tbody tr'))
+                .filter(function (r) { return r.cells.length > 1; }); // bỏ dòng "chưa có hạng mục"
+        var pagerEl = document.getElementById('reconcilePager');
+        var totalPages = Math.ceil(rows.length / PAGE_SIZE);
+        if (totalPages <= 1) { if (pagerEl) pagerEl.style.display = 'none'; return; }
+
+        var cur = 1;
+        function render() {
+            var from = (cur - 1) * PAGE_SIZE, to = Math.min(cur * PAGE_SIZE, rows.length);
+            rows.forEach(function (r, i) { r.style.display = (i >= from && i < to) ? '' : 'none'; });
+            document.getElementById('reconcilePageInfo').textContent =
+                    'Hiển thị ' + (from + 1) + '–' + to + ' / ' + rows.length + ' hạng mục';
+            var btns = document.getElementById('reconcilePageBtns');
+            btns.innerHTML = '';
+            function addBtn(label, page, disabled, active) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'btn btn-sm ' + (active ? 'btn-primary' : 'btn-light border');
+                if (active) b.style.cssText = 'background:#1e3a8a; border:none;';
+                b.textContent = label;
+                b.disabled = !!disabled;
+                b.onclick = function () { cur = page; render(); };
+                btns.appendChild(b);
+            }
+            addBtn('‹', cur - 1, cur === 1, false);
+            // Cửa sổ tối đa 5 số trang quanh trang hiện tại cho gọn
+            var start = Math.max(1, Math.min(cur - 2, totalPages - 4));
+            var end = Math.min(totalPages, start + 4);
+            for (var p = start; p <= end; p++) addBtn(String(p), p, false, p === cur);
+            addBtn('›', cur + 1, cur === totalPages, false);
+        }
+        render();
+    })();
+    </script>
 </body>
 </html>

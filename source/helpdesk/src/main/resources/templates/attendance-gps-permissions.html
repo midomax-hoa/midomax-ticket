@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chấm Công Online - Midomax IT</title>
+    <title>Cài Đặt Chấm Công Online - Midomax IT</title>
     <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -37,7 +37,7 @@
             <div class="d-flex align-items-center">
                 <i class="fa-solid fa-bars" id="mobile-toggle-btn" style="display:none; cursor:pointer; font-size:22px; color:#1e3a8a; margin-right:15px;"></i>
                 <div>
-                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Chấm Công Online</h4>
+                    <h4 class="fw-bold m-0" style="color:#1e3a8a;">Cài Đặt Chấm Công Online</h4>
                     <small class="text-muted">Gán mã chấm công + văn phòng, và cấp / bỏ quyền chấm công GPS cho nhiều người một lượt</small>
                 </div>
             </div>
@@ -48,6 +48,21 @@
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                 <input type="text" id="qFilter" class="form-control" style="max-width:260px;"
                        placeholder="🔍 Tìm tên / email / mã chấm công...">
+                <select id="stateFilter" class="form-select form-select-sm" style="max-width:190px;">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="office">🏢 Chấm tại văn phòng</option>
+                    <option value="free">✈ Chấm mọi nơi</option>
+                    <option value="off">Tắt</option>
+                </select>
+                <select id="assignFilter" class="form-select form-select-sm" style="max-width:160px;">
+                    <option value="">Gán mã: tất cả</option>
+                    <option value="yes">Đã gán mã</option>
+                    <option value="no">Chưa gán mã</option>
+                </select>
+                <select id="deviceFilter" class="form-select form-select-sm" style="max-width:190px;">
+                    <option value="">Tất cả văn phòng</option>
+                    <option th:each="d : ${devices}" th:value="${d.id}" th:text="${d.name}"></option>
+                </select>
                 <span class="ms-auto text-muted" style="font-size:13px;">
                     Đã chọn <b id="selCount">0</b> người:
                 </span>
@@ -87,7 +102,11 @@
                     </thead>
                     <tbody>
                         <tr th:each="u : ${users}" th:classappend="${u.employeeCode == null or u.attendanceDeviceId == null} ? 'row-nocode' : ''"
-                            th:attr="data-uid=${u.id}, data-search=${(u.fullName != null ? u.fullName : '') + ' ' + (u.email != null ? u.email : '') + ' ' + (u.employeeCode != null ? u.employeeCode : '')}">
+                            th:attr="data-uid=${u.id},
+                                     data-search=${(u.fullName != null ? u.fullName : '') + ' ' + (u.email != null ? u.email : '') + ' ' + (u.employeeCode != null ? u.employeeCode : '')},
+                                     data-state=${u.gpsFreeLocation ? 'free' : (u.gpsCheckinAllowed ? 'office' : 'off')},
+                                     data-assigned=${(u.employeeCode != null and u.attendanceDeviceId != null) ? 'yes' : 'no'},
+                                     data-device=${u.attendanceDeviceId != null ? u.attendanceDeviceId : ''}">
                             <td><input type="checkbox" class="form-check-input row-check" th:value="${u.id}"></td>
                             <td>
                                 <div class="fw-semibold" th:text="${u.fullName != null ? u.fullName : u.email}">Nguyễn Văn A</div>
@@ -146,10 +165,17 @@
         var pager = document.getElementById('pager');
         var noMatchRow = document.getElementById('noMatchRow');
 
+        // Gộp cả 4 điều kiện: từ khóa + trạng thái + đã/chưa gán mã + văn phòng
         function matchedRows() {
-            if (!keyword) return rows;
+            var state = document.getElementById('stateFilter').value;
+            var assigned = document.getElementById('assignFilter').value;
+            var device = document.getElementById('deviceFilter').value;
             return rows.filter(function (tr) {
-                return (tr.getAttribute('data-search') || '').toLowerCase().indexOf(keyword) >= 0;
+                if (keyword && (tr.getAttribute('data-search') || '').toLowerCase().indexOf(keyword) < 0) return false;
+                if (state && tr.getAttribute('data-state') !== state) return false;
+                if (assigned && tr.getAttribute('data-assigned') !== assigned) return false;
+                if (device && tr.getAttribute('data-device') !== device) return false;
+                return true;
             });
         }
         function visibleRows() {
@@ -208,6 +234,9 @@
             keyword = this.value.trim().toLowerCase();
             page = 1; // đổi từ khóa thì về trang đầu
             render();
+        });
+        ['stateFilter', 'assignFilter', 'deviceFilter'].forEach(function (id) {
+            document.getElementById(id).addEventListener('change', function () { page = 1; render(); });
         });
 
         // --- Chọn nhiều: "chọn tất cả" chỉ áp cho các dòng ĐANG HIỆN; dòng đã tick ở trang khác vẫn giữ ---

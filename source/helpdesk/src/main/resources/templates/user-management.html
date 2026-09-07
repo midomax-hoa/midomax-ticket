@@ -228,9 +228,19 @@
                             <i class="fa-solid fa-circle-info me-2"></i>Chọn các user bạn muốn đưa vào hệ thống và xác định quyền cho họ.
                         </div>
                         
-                        <!-- Search Box for Modal -->
-                        <div class="mb-3">
-                            <input type="text" id="msUserSearch" class="form-control" placeholder="🔍 Tìm kiếm user theo tên hoặc email...">
+                        <!-- Tìm kiếm + bộ lọc trạng thái / domain email -->
+                        <div class="mb-3 d-flex flex-wrap gap-2">
+                            <input type="text" id="msUserSearch" class="form-control" style="flex:1; min-width:220px;"
+                                   placeholder="🔍 Tìm kiếm user theo tên hoặc email...">
+                            <select id="msStatusFilter" class="form-select" style="max-width:170px;">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="existing">✅ Đã có</option>
+                                <option value="new">Chưa thêm</option>
+                            </select>
+                            <select id="msDomainFilter" class="form-select" style="max-width:220px;">
+                                <option value="">Tất cả domain</option>
+                            </select>
+                            <span class="align-self-center text-muted" style="font-size:13px;" id="msFilterCount"></span>
                         </div>
 
                         <div class="table-responsive" style="max-height: 50vh;">
@@ -875,7 +885,8 @@
                 type: 'GET',
                 success: function(users) {
                     msUsersList = users;
-                    renderMsUsersTable(users);
+                    populateMsDomainFilter(users);
+                    applyMsFilters(); // tôn trọng bộ lọc đang chọn nếu mở lại modal
                     $('#syncLoading').hide();
                     $('#syncContent').fadeIn();
                 },
@@ -940,19 +951,45 @@
             );
         }
 
-        // Search in Modal
-        $('#msUserSearch').on('keyup', function() {
-            const val = $(this).val().toLowerCase();
-            if(!val) {
-                renderMsUsersTable(msUsersList);
-                return;
-            }
-            const filtered = msUsersList.filter(u => 
-                (u.fullName && u.fullName.toLowerCase().includes(val)) || 
-                (u.email && u.email.toLowerCase().includes(val))
-            );
+        // Đổ danh sách domain (phần sau @) vào bộ lọc, kèm số lượng mỗi domain
+        function populateMsDomainFilter(users) {
+            const counts = {};
+            users.forEach(u => {
+                const at = (u.email || '').indexOf('@');
+                if (at < 0) return;
+                const d = u.email.slice(at + 1).toLowerCase();
+                counts[d] = (counts[d] || 0) + 1;
+            });
+            const sel = $('#msDomainFilter');
+            sel.find('option:not(:first)').remove();
+            Object.keys(counts).sort().forEach(d => {
+                sel.append(`<option value="${d}">@${d} (${counts[d]})</option>`);
+            });
+        }
+
+        // Gộp cả 3 điều kiện: ô tìm kiếm + trạng thái + domain
+        function applyMsFilters() {
+            const val = ($('#msUserSearch').val() || '').toLowerCase();
+            const status = $('#msStatusFilter').val();
+            const domain = $('#msDomainFilter').val();
+            const filtered = msUsersList.filter(u => {
+                if (val && !((u.fullName && u.fullName.toLowerCase().includes(val))
+                        || (u.email && u.email.toLowerCase().includes(val)))) return false;
+                if (status) {
+                    const existing = !!findExisting(u.email);
+                    if (status === 'existing' && !existing) return false;
+                    if (status === 'new' && existing) return false;
+                }
+                if (domain && !(u.email || '').toLowerCase().endsWith('@' + domain)) return false;
+                return true;
+            });
+            $('#msFilterCount').text((val || status || domain)
+                    ? filtered.length + '/' + msUsersList.length + ' user' : '');
             renderMsUsersTable(filtered);
-        });
+        }
+
+        $('#msUserSearch').on('keyup', applyMsFilters);
+        $('#msStatusFilter, #msDomainFilter').on('change', applyMsFilters);
 
         // Checkbox events
         $('#selectAllMsUsers').change(function() {

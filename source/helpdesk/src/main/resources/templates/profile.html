@@ -529,9 +529,9 @@
             <div class="col-md-4 mb-4">
                 <div class="card border-0 shadow-sm rounded-4 text-center p-4">
                     <div class="mb-3 mx-auto" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: bold;">
-                        <span th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</span>
+                        <span th:text="${#strings.substring(displayName, 0, 1).toUpperCase()}">U</span>
                     </div>
-                    <h4 class="fw-bold text-primary mb-1" sec:authentication="name">Người Dùng</h4>
+                    <h4 class="fw-bold text-primary mb-1" th:text="${displayName}">Người Dùng</h4>
                     <p class="text-muted mb-3" sec:authorize="hasRole('ADMIN')">Quản trị viên (Admin)</p>
                     <p class="text-muted mb-3" sec:authorize="hasRole('USER')">Nhân viên (User)</p>
                     <button class="btn btn-outline-primary px-4 rounded-pill mt-2">Cập nhật ảnh đại diện</button>

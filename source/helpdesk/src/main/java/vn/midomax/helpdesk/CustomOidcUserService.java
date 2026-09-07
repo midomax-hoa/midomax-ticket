@@ -47,12 +47,20 @@ public class CustomOidcUserService extends OidcUserService {
             if (user != null) {
                 List<GrantedAuthority> mappedAuthorities = UserAuthorityMapper.authoritiesOf(user);
 
-                String userNameAttributeName = userRequest.getClientRegistration().getProviderDetails()
-                        .getUserInfoEndpoint().getUserNameAttributeName();
-                if (!StringUtils.hasText(userNameAttributeName)) {
+                // Authentication.getName() phải là email/UPN để các chỗ tra app_users
+                // (ModuleAccessService, controllers) khớp được. Không đặt qua
+                // user-name-attribute trong properties vì userinfo của Graph thiếu
+                // preferred_username; ở đây claims ID token + userinfo đã được gộp
+                // nên chọn claim email/UPN nào thực sự tồn tại.
+                String userNameAttributeName;
+                if (oidcUser.getClaims().get("preferred_username") != null) {
+                    userNameAttributeName = "preferred_username";
+                } else if (oidcUser.getClaims().get("email") != null) {
+                    userNameAttributeName = "email";
+                } else {
                     userNameAttributeName = "name";
                 }
-                
+
                 return new DefaultOidcUser(mappedAuthorities, oidcUser.getIdToken(), oidcUser.getUserInfo(), userNameAttributeName);
             }
         }

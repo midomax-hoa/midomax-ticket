@@ -64,6 +64,44 @@ public class GraphEmailService {
      * @param subject Tiêu đề email
      * @param htmlBody Nội dung email (HTML)
      */
+    /**
+     * Gửi từ MAILBOX CHỈ ĐỊNH thay vì hộp thư hệ thống (it01) — ví dụ bảng công
+     * gửi đứng tên nhân sự. Quyền Mail.Send dạng Application cho phép gửi từ bất kỳ
+     * mailbox nào trong tenant. Khác sendEmail: lỗi NÉM ra để nơi gọi đếm được số fail.
+     */
+    public void sendEmailFrom(String fromEmail, String toEmail, String subject, String htmlBody) {
+        if (graphClient == null) {
+            throw new IllegalStateException("GraphServiceClient chưa khởi tạo — kiểm tra cấu hình Azure.");
+        }
+        if (fromEmail == null || fromEmail.isBlank()) {
+            fromEmail = senderEmail;
+        }
+        try {
+            Message message = new Message();
+            message.setSubject(subject);
+            ItemBody body = new ItemBody();
+            body.setContentType(BodyType.Html);
+            body.setContent(htmlBody);
+            message.setBody(body);
+            LinkedList<Recipient> to = new LinkedList<>();
+            Recipient r = new Recipient();
+            EmailAddress addr = new EmailAddress();
+            addr.setAddress(toEmail.trim());
+            r.setEmailAddress(addr);
+            to.add(r);
+            message.setToRecipients(to);
+
+            SendMailPostRequestBody req = new SendMailPostRequestBody();
+            req.setMessage(message);
+            req.setSaveToSentItems(true);
+            graphClient.users().byUserId(fromEmail.trim()).sendMail().post(req);
+            logger.info("[GRAPH EMAIL SENT] From {} to {}: {}", fromEmail, toEmail, subject);
+        } catch (Exception e) {
+            logger.error("[GRAPH EMAIL ERROR] From {} to {} failed: {}", fromEmail, toEmail, e.getMessage());
+            throw new RuntimeException("Gửi mail từ " + fromEmail + " thất bại: " + e.getMessage(), e);
+        }
+    }
+
     public void sendEmail(String toEmail, String subject, String htmlBody) {
         if (toEmail == null || toEmail.trim().isEmpty()) {
             logger.warn("[GRAPH EMAIL] Recipient email is empty. Skip sending.");

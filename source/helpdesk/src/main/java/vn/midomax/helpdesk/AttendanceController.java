@@ -205,8 +205,10 @@ public class AttendanceController {
         model.addAttribute("year", ym.getYear());
         model.addAttribute("prevMonth", ym.minusMonths(1));
         model.addAttribute("nextMonth", ym.plusMonths(1));
-        // Lấy từ chính danh sách đang hiện, để lọc không loại mất người chỉ có trên máy.
+        // Chỉ lấy phòng ban của người CÓ HỒ SƠ — người chỉ có trên máy được roster
+        // gán tạm "phòng ban" = tên văn phòng, đưa vào dropdown sẽ lẫn tên văn phòng.
         model.addAttribute("departments", roster.stream()
+                .filter(p -> !p.isFromDeviceOnly())
                 .map(AttendanceService.Person::getDepartment)
                 .filter(d -> d != null && !d.isBlank())
                 .distinct().sorted().toList());
@@ -1154,6 +1156,22 @@ public class AttendanceController {
         Map<String, Object> res = new HashMap<>();
         res.put("ok", r.ok());
         res.put("message", r.message());
+        return res;
+    }
+
+    /**
+     * Đổi tọa độ thành địa chỉ để trang chấm công ĐÓNG DẤU lên ảnh trước khi gửi.
+     * Đi qua server (tái dùng reverseGeocode của GpsCheckinService) thay vì để
+     * trình duyệt gọi thẳng Nominatim: một đầu gọi duy nhất, đúng User-Agent.
+     * Chỉ để hiển thị — vị trí lưu chính thức vẫn là tọa độ gửi kèm lần chấm.
+     */
+    @GetMapping("/gps/geocode")
+    @ResponseBody
+    public Map<String, Object> gpsGeocode(@RequestParam("latitude") double latitude,
+                                          @RequestParam("longitude") double longitude) {
+        String name = GpsCheckinService.reverseGeocode(latitude, longitude);
+        Map<String, Object> res = new HashMap<>();
+        res.put("name", name == null ? "" : name);
         return res;
     }
 

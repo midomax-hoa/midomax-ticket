@@ -225,6 +225,7 @@ public class AssetController {
         model.addAttribute("statuses", STATUSES);
         model.addAttribute("conditions", CONDITIONS);
         model.addAttribute("inUseCount", assetRepository.countByStatus("Đang sử dụng"));
+        model.addAttribute("repairCount", assetRepository.countByStatus("Đang sửa"));
         model.addAttribute("brokenCount", assetRepository.countByStatus("Hỏng"));
         model.addAttribute("selectedCategoryId", categoryId);
         model.addAttribute("selectedStatus", status);

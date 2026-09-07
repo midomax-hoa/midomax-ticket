@@ -121,7 +121,10 @@ public class GpsCheckinService {
                     gray[y][x] = 0.299 * ((rgb >> 16) & 255) + 0.587 * ((rgb >> 8) & 255) + 0.114 * (rgb & 255);
                 }
 
-            // Vùng giữa = 30-70% mỗi chiều; vành rìa = 20% mép ngoài
+            // Vùng giữa = 30-70% mỗi chiều; vành rìa = 20% mép ngoài.
+            // KHÔNG tính mép DƯỚI: ảnh gửi lên có thanh đóng dấu giờ + tọa độ ở đáy
+            // (attendance-checkin.html vẽ trước khi gửi) — cạnh chữ sắc sẽ thổi phồng
+            // độ nét vành rìa, làm lọt ảnh xóa phông. Rìa trên + hai bên vẫn đủ bắt.
             int cx1 = (int) (w * 0.30), cx2 = (int) (w * 0.70);
             int cy1 = (int) (h * 0.30), cy2 = (int) (h * 0.70);
             int bx = (int) (w * 0.20), by = (int) (h * 0.20);
@@ -133,7 +136,7 @@ public class GpsCheckinService {
                     double lap = 4 * gray[y][x] - gray[y - 1][x] - gray[y + 1][x]
                                - gray[y][x - 1] - gray[y][x + 1];
                     boolean center = x >= cx1 && x < cx2 && y >= cy1 && y < cy2;
-                    boolean border = x < bx || x >= w - bx || y < by || y >= h - by;
+                    boolean border = y < h - by && (x < bx || x >= w - bx || y < by);
                     if (center) { cSum += lap; cSq += lap * lap; cN++; }
                     else if (border) { bSum += lap; bSq += lap * lap; bN++; }
                 }

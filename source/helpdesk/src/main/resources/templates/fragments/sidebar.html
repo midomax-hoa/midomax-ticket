@@ -356,14 +356,27 @@
             display: none !important;
         }
 
+        /* Thu gọn: mỗi mục chỉ còn MỘT icon căn giữa — đè cả style inline
+           (space-between, padding-right) của các mục menu cha có mũi tên xổ. */
         .sidebar.collapsed .sidebar-menu a {
-            padding-left: 20px;
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+        .sidebar.collapsed .sidebar-menu a > div {
+            justify-content: center;
         }
 
         .sidebar.collapsed .sidebar-menu a.active {
-            margin-left: 10px;
-            padding-left: 10px;
-            width: calc(100% - 10px + 2px);
+            margin: 0 12px !important;
+            padding: 0 !important;
+            width: calc(100% - 24px) !important;
+        }
+
+        /* Mũi tên xổ menu và toàn bộ submenu giấu đi khi thu gọn — icon con
+           lặp lại icon cha trông như bị nhân đôi, muốn vào mục con thì mở rộng ra. */
+        .sidebar.collapsed .submenu-caret,
+        .sidebar.collapsed .sidebar-menu .collapse {
+            display: none !important;
         }
 
         /* ACCOUNT SECTION AT BOTTOM */
@@ -959,7 +972,7 @@
                    style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
             <div class="collapse" id="assetsSubmenu"
-                 th:classappend="${activePage == 'tools' or activePage == 'licenses'} ? 'show' : ''"
+                 th:classappend="${activePage == 'tools' or activePage == 'licenses' or activePage == 'software-licenses'} ? 'show' : ''"
                  th:if="${allowedModules != null and allowedModules.contains('ASSETS')}">
                 <a href="/assets" th:classappend="${activePage == 'tools'} ? 'active' : ''" title="Danh Sách Tài Sản"
                    style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
@@ -970,6 +983,11 @@
                    style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
                     <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-brands fa-microsoft"></i></div>
                     <span>License 365</span>
+                </a>
+                <a href="/assets/software-licenses" th:classappend="${activePage == 'software-licenses'} ? 'active' : ''" title="License phần mềm khác (Adobe, antivirus...)"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-key"></i></div>
+                    <span>License Khác</span>
                 </a>
             </div>
             <!-- Quản Lý Tài Chính là menu cha; Sổ Hóa Đơn nằm trong nó, không đặt ngang hàng.
@@ -1054,7 +1072,7 @@
                    style="font-size: 12px; padding: 6px; margin: -6px;"></i>
             </a>
             <div class="collapse" id="hrSubmenu"
-                 th:classappend="${activePage == 'employees' or activePage == 'attendance' or activePage == 'gps-locations' or activePage == 'gps-perms'} ? 'show' : ''"
+                 th:classappend="${activePage == 'employees' or activePage == 'attendance' or activePage == 'timesheet' or activePage == 'gps-locations' or activePage == 'gps-perms'} ? 'show' : ''"
                  th:if="${allowedModules != null and allowedModules.contains('HR')}">
                 <a href="/employees" th:classappend="${activePage == 'employees'} ? 'active' : ''" title="Hồ Sơ Nhân Viên"
                    style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
@@ -1066,15 +1084,20 @@
                     <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-fingerprint"></i></div>
                     <span>Lịch Chấm Công</span>
                 </a>
+                <a href="/attendance/timesheet" th:classappend="${activePage == 'timesheet'} ? 'active' : ''" title="Bảng Công Tháng"
+                   style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
+                    <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-calculator"></i></div>
+                    <span>Bảng Công Tháng</span>
+                </a>
                 <a href="/attendance/locations" th:classappend="${activePage == 'gps-locations'} ? 'active' : ''" title="Địa Điểm Chấm Công GPS"
                    style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
                     <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-map-location-dot"></i></div>
                     <span>Địa Điểm Chấm Công</span>
                 </a>
-                <a href="/attendance/gps-permissions" th:classappend="${activePage == 'gps-perms'} ? 'active' : ''" title="Chấm Công Online"
+                <a href="/attendance/gps-permissions" th:classappend="${activePage == 'gps-perms'} ? 'active' : ''" title="Cài Đặt Chấm Công Online"
                    style="padding-left: 45px; height: 40px; font-size: 14px; margin-top: 5px;" class="submenu-link">
                     <div class="icon-wrapper" style="width: 25px; height: 25px; font-size: 14px; background: transparent;"><i class="fa-solid fa-mobile-screen-button"></i></div>
-                    <span>Chấm Công Online</span>
+                    <span>Cài Đặt Chấm Công Online</span>
                 </a>
             </div>
 
@@ -1099,10 +1122,10 @@
         <!-- Bottom Account -->
         <a th:href="@{/logout}" class="sidebar-bottom" title="Đăng xuất">
             <div class="sidebar-avatar">
-                <span th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</span>
+                <span th:text="${#strings.substring(displayName, 0, 1).toUpperCase()}">U</span>
             </div>
             <div class="sidebar-user-info">
-                <span class="sidebar-user-name" th:text="${#authentication.name}">Username</span>
+                <span class="sidebar-user-name" th:text="${displayName}">Username</span>
                 <!-- Không hiện mã role thô (ROLE_ADMIN...) — chỉ để tên cho gọn -->
             </div>
             <i class="fa-solid fa-right-from-bracket ms-auto" style="color: #ef4444; font-size: 16px;"></i>

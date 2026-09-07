@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Công Tháng - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        .form-select { padding-right: 34px; }
+
+        .ts-scroll { overflow: auto; max-height: calc(100vh - 320px); min-height: 300px; border: 1px solid #e5e7eb; border-radius: 10px; }
+        .ts-table { border-collapse: separate; border-spacing: 0; font-size: 13px; margin: 0; width: 100%; }
+        .ts-table th, .ts-table td { border-bottom: 1px solid #f1f5f9; padding: 9px 10px; white-space: nowrap; }
+        .ts-table thead th { background: #f8fafc; color: #475569; font-weight: 600; font-size: 11.5px; text-transform: uppercase; position: sticky; top: 0; z-index: 2; }
+        .ts-table tbody tr:hover td { background: #f8fafc; }
+        .ts-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .emp-name { font-weight: 600; color: #1e3a8a; }
+        .emp-meta { font-size: 11px; color: #6b7280; }
+        .total-cell { font-weight: 800; color: #0d9488; font-size: 14px; }
+        .warn { color: #b45309; font-weight: 600; }
+        .bad { color: #b91c1c; font-weight: 600; }
+        .muted0 { color: #cbd5e1; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('timesheet')}"></div>
+
+    <div class="main-content" id="main-content">
+        <div class="topbar">
+            <div>
+                <h5 class="fw-bold mb-0" style="color:#1e3a8a;">
+                    <i class="fa-solid fa-calculator me-2"></i>Bảng công tháng
+                    <span th:text="${month} + '/' + ${year}">9/2026</span>
+                </h5>
+                <small class="text-muted">Mỗi nhân viên một dòng tổng kết — số liệu lấy từ bảng công đã chốt bên Lịch Chấm Công</small>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <a class="btn btn-light border" th:href="@{/attendance/timesheet(month=${prevMonth.monthValue},year=${prevMonth.year},department=${selectedDept},deviceId=${selectedDeviceId},search=${searchQuery})}">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </a>
+                <a class="btn btn-light border" th:href="@{/attendance/timesheet(month=${nextMonth.monthValue},year=${nextMonth.year},department=${selectedDept},deviceId=${selectedDeviceId},search=${searchQuery})}">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </a>
+                <form method="post" action="/attendance/timesheet/rebuild" class="m-0"
+                      onsubmit="return confirm('Tính lại công cả tháng từ dữ liệu máy chấm công + đơn nghỉ đã duyệt?');">
+                    <input type="hidden" name="month" th:value="${month}">
+                    <input type="hidden" name="year" th:value="${year}">
+                    <button class="btn btn-light border" title="Tính lại công cả tháng">
+                        <i class="fa-solid fa-rotate me-1"></i>Tính lại công
+                    </button>
+                </form>
+                <a class="btn text-white fw-bold" style="background:#15803d;"
+                   th:href="@{/attendance/timesheet/export(month=${month},year=${year},department=${selectedDept},deviceId=${selectedDeviceId},search=${searchQuery})}">
+                    <i class="fa-solid fa-file-excel me-1"></i>Xuất Excel
+                </a>
+                <form method="post" action="/attendance/timesheet/send-mail" class="m-0"
+                      th:onsubmit="'return confirm(\'Gửi mail bảng công tháng ' + ${month} + '/' + ${year} + ' cho TẤT CẢ nhân viên theo bộ lọc đang xem?\\n\\nHãy chắc chắn bạn đã bấm 👁 xem trước vài bảng công mẫu và số CẦN KIỂM TRA đã về 0.\');'">
+                    <input type="hidden" name="month" th:value="${month}">
+                    <input type="hidden" name="year" th:value="${year}">
+                    <input type="hidden" name="department" th:value="${selectedDept}">
+                    <input type="hidden" name="deviceId" th:value="${selectedDeviceId}">
+                    <input type="hidden" name="search" th:value="${searchQuery}">
+                    <button class="btn text-white fw-bold" style="background:#0078d4;">
+                        <i class="fa-solid fa-envelope me-1"></i>Gửi mail bảng công
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success py-2" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger py-2" th:text="${errorMessage}"></div>
+
+        <!-- 3 ô tổng quan: nhìn một phát biết còn bao nhiêu người phải xử -->
+        <div class="d-flex gap-3 mb-3 flex-wrap">
+            <div class="widget-card py-3 px-4" style="min-width:170px;">
+                <div class="text-muted fw-semibold" style="font-size:12px; letter-spacing:0.4px;">Tổng nhân viên</div>
+                <div class="fw-bold" style="font-size:24px; color:#1e3a8a;" th:text="${totalCount}">0</div>
+            </div>
+            <div class="widget-card py-3 px-4" style="min-width:170px; border-color:#86efac;">
+                <div class="text-muted fw-semibold" style="font-size:12px; letter-spacing:0.4px;">
+                    <i class="fa-solid fa-circle-check me-1" style="color:#15803d;"></i>Công hợp lệ
+                </div>
+                <div class="fw-bold" style="font-size:24px; color:#15803d;" th:text="${okCount}">0</div>
+            </div>
+            <a class="widget-card py-3 px-4 text-decoration-none" style="min-width:170px; border-color:#fca5a5;"
+               th:href="@{/attendance/timesheet(month=${month},year=${year},department=${selectedDept},deviceId=${selectedDeviceId},search=${searchQuery},issuesOnly=${!issuesOnly})}"
+               th:title="${issuesOnly} ? 'Đang lọc — bấm để hiện lại tất cả' : 'Bấm để chỉ hiện người cần kiểm tra'">
+                <div class="text-muted fw-semibold" style="font-size:12px; letter-spacing:0.4px;">
+                    <i class="fa-solid fa-triangle-exclamation me-1" style="color:#b91c1c;"></i>Cần kiểm tra
+                    <span th:text="${issuesOnly} ? '· đang lọc' : '· bấm để lọc'" style="font-weight:400;"></span>
+                </div>
+                <div class="fw-bold" style="font-size:24px; color:#b91c1c;" th:text="${reviewCount}">0</div>
+            </a>
+        </div>
+
+        <div class="widget-card">
+            <form method="get" action="/attendance/timesheet" class="d-flex flex-wrap gap-2 mb-3">
+                <input type="hidden" name="month" th:value="${month}">
+                <input type="hidden" name="year" th:value="${year}">
+                <input type="hidden" name="issuesOnly" th:value="${issuesOnly}">
+                <input type="text" name="search" class="form-control" style="max-width:230px;"
+                       placeholder="🔍 Tìm theo tên, email hoặc mã chấm công..." th:value="${searchQuery}">
+                <select name="department" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+                    <option value="">— Tất cả phòng ban —</option>
+                    <option th:each="d : ${departments}" th:value="${d.name()}" th:text="${d.label}"
+                            th:selected="${selectedDept == d.name()}"></option>
+                </select>
+                <select name="deviceId" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+                    <option value="">— Tất cả văn phòng —</option>
+                    <option th:each="dv : ${devices}" th:value="${dv.id}" th:text="${dv.name}"
+                            th:selected="${selectedDeviceId == dv.id}"></option>
+                </select>
+                <button class="btn btn-primary" style="background:#1e3a8a; border:none;">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+                <span class="ms-auto align-self-center text-muted" style="font-size:13px;"
+                      th:text="${#lists.size(rows)} + ' nhân viên'">0 nhân viên</span>
+            </form>
+
+            <div class="ts-scroll">
+                <table class="ts-table">
+                    <thead>
+                        <tr>
+                            <th>Nhân viên</th>
+                            <th>Ca làm việc</th>
+                            <th class="num" title="Số ngày làm việc theo ca trong tháng">Công chuẩn</th>
+                            <th class="num" title="Tổng công được tính (cộng dồn 0 / 0,5 / 1)">Tổng công</th>
+                            <th class="num">Ngày đi làm</th>
+                            <th class="num" title="Nghỉ phép đã duyệt">Nghỉ phép</th>
+                            <th class="num" title="Vắng không phép">Vắng KP</th>
+                            <th class="num" title="Ngày chỉ chấm một lần, thiếu giờ vào/ra">Thiếu chấm</th>
+                            <th class="num">Đi trễ (lần)</th>
+                            <th class="num">Đi trễ (phút)</th>
+                            <th class="num" title="Tổng giờ tăng ca">Tăng ca (giờ)</th>
+                            <th style="width:70px;" class="text-center" title="Xem trước rồi gửi bảng công qua email">Gửi mail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${rows}" th:style="${r.needsReview} ? 'background:#fef2f2;'">
+                            <td>
+                                <!-- Bấm tên là qua lịch công chi tiết từng ngày của người đó -->
+                                <a th:href="@{/attendance/user(employeeCode=${r.employeeCode},month=${month},year=${year})}"
+                                   style="text-decoration:none;">
+                                    <div class="emp-name" th:text="${r.fullName != null ? r.fullName : r.employeeCode}">Tên</div>
+                                    <div class="emp-meta">
+                                        <span th:text="${r.employeeCode}">MS001</span>
+                                        <span th:if="${r.department != null}" th:text="' · ' + ${r.department}"></span>
+                                        <span th:if="${r.deviceName != null}" th:text="' · ' + ${r.deviceName}"></span>
+                                    </div>
+                                </a>
+                            </td>
+                            <td th:text="${r.shiftName}" style="color:#475569;">Ca HC</td>
+                            <td class="num" th:text="${r.standardDays}">26</td>
+                            <td class="num total-cell" th:text="${#numbers.formatDecimal(r.totalWorkDays,1,1)}">22.5</td>
+                            <td class="num" th:text="${r.presentDays}">21</td>
+                            <td class="num" th:classappend="${r.leaveDays == 0} ? 'muted0'" th:text="${r.leaveDays}">1</td>
+                            <td class="num" th:classappend="${r.absentDays > 0} ? 'bad' : 'muted0'" th:text="${r.absentDays}">0</td>
+                            <td class="num" th:classappend="${r.missingDays > 0} ? 'bad' : 'muted0'" th:text="${r.missingDays}">0</td>
+                            <td class="num" th:classappend="${r.lateCount > 0} ? 'warn' : 'muted0'" th:text="${r.lateCount}">2</td>
+                            <td class="num" th:classappend="${r.lateMinutes > 0} ? 'warn' : 'muted0'" th:text="${r.lateMinutes}">14</td>
+                            <td class="num" th:classappend="${r.otMinutes == 0} ? 'muted0'"
+                                th:text="${#numbers.formatDecimal(r.otHours,1,1)}">1.5</td>
+                            <td class="text-center">
+                                <!-- Mở trang XEM TRƯỚC — nút gửi thật nằm trong đó, duyệt xong mới gửi được -->
+                                <a th:if="${r.email != null}" class="btn btn-sm btn-outline-primary" target="_blank"
+                                   th:href="@{/attendance/timesheet/preview(month=${month},year=${year},employeeCode=${r.employeeCode})}"
+                                   th:title="'Xem trước rồi gửi qua ' + ${r.email}">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                <span th:if="${r.email == null}" class="muted0" title="Chưa có email">—</span>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(rows)}">
+                            <td colspan="12" class="text-center text-muted py-4">
+                                Không có dữ liệu công trong tháng này. Kiểm tra bộ lọc, hoặc bấm "Tính lại công" bên trang Lịch Chấm Công.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <small class="text-muted d-block mt-2">
+                <b>Công chuẩn</b> = số ngày làm việc theo ca của từng người trong tháng ·
+                <b>Vắng KP</b> = vắng không phép ·
+                Dòng nền đỏ là người <b>cần kiểm tra</b> (có ngày thiếu chấm hoặc vắng không phép), còn lại là công hợp lệ ·
+                Bấm <b>tên nhân viên</b> để xem và sửa công từng ngày, bấm <i class="fa-solid fa-eye"></i> để xem trước rồi gửi bảng công qua email.
+            </small>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

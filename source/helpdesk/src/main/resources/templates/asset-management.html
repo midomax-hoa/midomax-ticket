@@ -116,27 +116,33 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
 
-        <!-- STATS -->
+        <!-- STATS (5 ô chia đều nhờ col-md tự giãn) -->
         <div class="row g-3 mb-4">
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
                 <div class="stat-card">
                     <div class="stat-icon" style="background:#eef2ff; color:#4338ca;"><i class="fa-solid fa-boxes-stacked"></i></div>
                     <div><div class="stat-label">Tổng tài sản</div><div class="stat-value" th:text="${totalCount}">0</div></div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
                 <div class="stat-card">
                     <div class="stat-icon" style="background:#ecfdf5; color:#059669;"><i class="fa-solid fa-circle-check"></i></div>
                     <div><div class="stat-label">Đang sử dụng</div><div class="stat-value" th:text="${inUseCount}">0</div></div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fef9c3; color:#a16207;"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                    <div><div class="stat-label">Đang sửa</div><div class="stat-value" th:text="${repairCount}">0</div></div>
+                </div>
+            </div>
+            <div class="col-md col-6">
                 <div class="stat-card">
                     <div class="stat-icon" style="background:#fef2f2; color:#dc2626;"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     <div><div class="stat-label">Hỏng</div><div class="stat-value" th:text="${brokenCount}">0</div></div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
+            <div class="col-md col-6">
                 <div class="stat-card">
                     <div class="stat-icon" style="background:#fffbeb; color:#d97706;"><i class="fa-solid fa-tags"></i></div>
                     <div><div class="stat-label">Danh mục</div><div class="stat-value" th:text="${#lists.size(categories)}">0</div></div>

@@ -88,6 +88,14 @@ public class AttendanceGpsPermissionController {
         if (user == null) return fail("Không tìm thấy user.");
 
         String code = text(payload.get("employeeCode"));
+        // "0" là quy ước GỠ mã: xử như để trống cả mã lẫn văn phòng
+        if ("0".equals(code)) {
+            user.setEmployeeCode(null);
+            user.setAttendanceDeviceId(null);
+            appUserRepository.save(user);
+            String who = user.getFullName() != null ? user.getFullName() : user.getEmail();
+            return Map.of("ok", true, "message", "Đã gỡ mã chấm công của " + who + ".");
+        }
         if (code != null && code.length() > MAX_EMPLOYEE_CODE_LENGTH) {
             return fail("Mã chấm công tối đa " + MAX_EMPLOYEE_CODE_LENGTH + " ký tự.");
         }

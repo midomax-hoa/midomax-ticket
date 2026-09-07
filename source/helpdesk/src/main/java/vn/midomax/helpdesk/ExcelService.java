@@ -19,6 +19,53 @@ import java.util.Map;
 @Service
 public class ExcelService {
 
+    /** Bảng công tháng cho nhân sự: mỗi nhân viên một dòng tổng kết. */
+    public ByteArrayInputStream exportTimesheetToExcel(
+            List<AttendanceTimesheetController.TimesheetRow> rows, java.time.YearMonth ym) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Bảng công " + ym.getMonthValue() + "-" + ym.getYear());
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font bold = workbook.createFont();
+            bold.setBold(true);
+            headerStyle.setFont(bold);
+
+            String[] headers = {"Mã NV", "Họ tên", "Phòng ban", "Văn phòng", "Ca làm việc",
+                    "Công chuẩn", "Tổng công", "Ngày đi làm", "Nghỉ phép", "Vắng KP",
+                    "Thiếu chấm", "Số lần trễ", "Phút trễ", "Giờ OT"};
+            Row headerRow = sheet.createRow(0);
+            for (int col = 0; col < headers.length; col++) {
+                Cell cell = headerRow.createCell(col);
+                cell.setCellValue(headers[col]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 1;
+            for (AttendanceTimesheetController.TimesheetRow r : rows) {
+                Row row = sheet.createRow(rowIdx++);
+                int c = 0;
+                row.createCell(c++).setCellValue(r.getEmployeeCode() == null ? "" : r.getEmployeeCode());
+                row.createCell(c++).setCellValue(r.getFullName() == null ? "" : r.getFullName());
+                row.createCell(c++).setCellValue(r.getDepartment() == null ? "" : r.getDepartment());
+                row.createCell(c++).setCellValue(r.getDeviceName() == null ? "" : r.getDeviceName());
+                row.createCell(c++).setCellValue(r.getShiftName() == null ? "" : r.getShiftName());
+                row.createCell(c++).setCellValue(r.getStandardDays());
+                row.createCell(c++).setCellValue(r.getTotalWorkDays());
+                row.createCell(c++).setCellValue(r.getPresentDays());
+                row.createCell(c++).setCellValue(r.getLeaveDays());
+                row.createCell(c++).setCellValue(r.getAbsentDays());
+                row.createCell(c++).setCellValue(r.getMissingDays());
+                row.createCell(c++).setCellValue(r.getLateCount());
+                row.createCell(c++).setCellValue(r.getLateMinutes());
+                row.createCell(c).setCellValue(r.getOtHours());
+            }
+            for (int col = 0; col < headers.length; col++) sheet.autoSizeColumn(col);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
+
     public ByteArrayInputStream exportEmployeesToExcel(List<Employee> employees) throws IOException {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Nhân Sự");

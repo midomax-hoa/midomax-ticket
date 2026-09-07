@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Khác - Midomax IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #e2e8f0; color: #333; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        .main-content.expanded { margin-left: 80px; width: calc(100% - 80px); }
+        .topbar { background: #ffffff; padding: 15px 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb; }
+        .widget-card { background: #fff; border-radius: 12px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 8px 12px; font-size: 14px; }
+        .tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+        .tbl th, .tbl td { border-bottom: 1px solid #f1f5f9; padding: 10px 12px; vertical-align: middle; }
+        .tbl thead th { background: #f8fafc; color: #475569; font-weight: 600; font-size: 11.5px; text-transform: uppercase; }
+        .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .badge-soft { padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
+        .b-ok { background: #dcfce7; color: #15803d; }
+        .b-warn { background: #fef9c3; color: #a16207; }
+        .b-over { background: #fee2e2; color: #b91c1c; }
+        .b-none { background: #f1f5f9; color: #64748b; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/sidebar :: sidebar('software-licenses')}"></div>
+
+    <div class="main-content" id="main-content">
+        <div class="topbar">
+            <div>
+                <h5 class="fw-bold mb-0" style="color:#1e3a8a;">
+                    <i class="fa-solid fa-key me-2"></i>License Khác
+                </h5>
+                <small class="text-muted">Phần mềm bản quyền ngoài Microsoft 365 (Adobe, antivirus, Canva...) — IT tự tạo và cập nhật</small>
+            </div>
+            <button th:if="${canEdit}" class="btn text-white fw-bold" style="background:#1e3a8a;"
+                    onclick="openLicModal()">
+                <i class="fa-solid fa-plus me-1"></i>Tạo License
+            </button>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success py-2" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger py-2" th:text="${errorMessage}"></div>
+
+        <!-- Ô tổng quan -->
+        <div class="d-flex gap-3 mb-3 flex-wrap">
+            <div class="widget-card py-3 px-4" style="min-width:160px;">
+                <div class="text-muted" style="font-size:12px;">LOẠI LICENSE</div>
+                <div class="fw-bold" style="font-size:22px; color:#1e3a8a;" th:text="${#lists.size(rows)}">0</div>
+            </div>
+            <div class="widget-card py-3 px-4" style="min-width:160px;">
+                <div class="text-muted" style="font-size:12px;">ĐÃ MUA</div>
+                <div class="fw-bold" style="font-size:22px; color:#1e3a8a;" th:text="${totalPurchased}">0</div>
+            </div>
+            <div class="widget-card py-3 px-4" style="min-width:160px;">
+                <div class="text-muted" style="font-size:12px;">ĐÃ CẤP</div>
+                <div class="fw-bold" style="font-size:22px; color:#b45309;" th:text="${totalAssigned}">0</div>
+            </div>
+            <div class="widget-card py-3 px-4" style="min-width:160px; border-color:#86efac;">
+                <div class="text-muted" style="font-size:12px;">CÒN TRỐNG</div>
+                <div class="fw-bold" style="font-size:22px; color:#15803d;" th:text="${totalRemaining}">0</div>
+            </div>
+            <div class="widget-card py-3 px-4" style="min-width:160px;" th:styleappend="${alertCount > 0} ? 'border-color:#fca5a5;'">
+                <div class="text-muted" style="font-size:12px;">CẦN CHÚ Ý ⚠</div>
+                <div class="fw-bold" style="font-size:22px;" th:style="${alertCount > 0} ? 'color:#b91c1c;' : 'color:#94a3b8;'"
+                     th:text="${alertCount}">0</div>
+            </div>
+        </div>
+
+        <div class="widget-card">
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <input type="text" id="licSearch" class="form-control" style="max-width:280px;"
+                       placeholder="🔍 Tìm tên license / nhà cung cấp...">
+                <select id="licStatusFilter" class="form-select" style="max-width:200px;">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="OK">Bình thường</option>
+                    <option value="EXPIRING">Sắp hết hạn (≤30 ngày)</option>
+                    <option value="EXPIRED">Đã hết hạn</option>
+                    <option value="OVER">Cấp vượt số mua</option>
+                </select>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table class="tbl" id="licTable">
+                    <thead>
+                        <tr>
+                            <th>License</th>
+                            <th>Nhà cung cấp</th>
+                            <th class="num">Đã mua</th>
+                            <th class="num">Đã cấp</th>
+                            <th class="num">Còn trống</th>
+                            <th>Hết hạn</th>
+                            <th>Tình trạng</th>
+                            <th>Ghi chú</th>
+                            <th th:if="${canEdit}" style="width:110px;" class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${rows}"
+                            th:attr="data-search=${r.name + ' ' + (r.vendor != null ? r.vendor : '')},
+                                     data-status=${r.status},
+                                     data-id=${r.id}, data-name=${r.name}, data-vendor=${r.vendor},
+                                     data-purchased=${r.purchasedQty}, data-assigned=${r.assignedQty},
+                                     data-expiry=${r.expiryDate}, data-note=${r.note}">
+                            <td class="fw-semibold" style="color:#1e3a8a;" th:text="${r.name}">Adobe CC</td>
+                            <td th:text="${r.vendor != null ? r.vendor : '—'}">Adobe</td>
+                            <td class="num fw-semibold" th:text="${r.purchasedQty}">10</td>
+                            <td class="num" th:text="${r.assignedQty}">8</td>
+                            <td class="num fw-bold" th:style="${r.remaining < 0} ? 'color:#b91c1c;' : 'color:#15803d;'"
+                                th:text="${r.remaining}">2</td>
+                            <td th:text="${r.expiryDate != null} ? ${#temporals.format(r.expiryDate,'dd/MM/yyyy')} : 'Vĩnh viễn'">31/12/2026</td>
+                            <td>
+                                <span th:if="${r.status == 'OK'}" class="badge-soft b-ok">Bình thường</span>
+                                <span th:if="${r.status == 'EXPIRING'}" class="badge-soft b-warn">Sắp hết hạn</span>
+                                <span th:if="${r.status == 'EXPIRED'}" class="badge-soft b-over">Đã hết hạn</span>
+                                <span th:if="${r.status == 'OVER'}" class="badge-soft b-over">Cấp vượt số mua</span>
+                            </td>
+                            <td class="text-muted" style="max-width:240px;" th:text="${r.note}"></td>
+                            <td th:if="${canEdit}" class="text-center text-nowrap">
+                                <button class="btn btn-sm btn-outline-primary" onclick="editLic(this)" title="Sửa">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <form method="post" action="/assets/software-licenses/delete" class="d-inline"
+                                      onsubmit="return confirm('Xóa license này?');">
+                                    <input type="hidden" name="id" th:value="${r.id}">
+                                    <button class="btn btn-sm btn-outline-danger" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(rows)}" id="emptyRow">
+                            <td colspan="9" class="text-center text-muted py-4">
+                                Chưa có license nào. <span th:if="${canEdit}">Bấm "Tạo License" để thêm.</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <small class="text-muted d-block mt-2">
+                License Microsoft 365 theo dõi riêng tại mục <a href="/assets/licenses">License 365</a> (tự đồng bộ số đã cấp từ Microsoft).
+            </small>
+        </div>
+    </div>
+
+    <!-- Modal tạo / sửa license -->
+    <div class="modal fade" id="licModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content border-0 shadow-lg rounded-4" method="post" action="/assets/software-licenses/save">
+                <div class="modal-header text-white border-0" style="background:#1e3a8a; border-radius:1rem 1rem 0 0;">
+                    <h6 class="modal-title fw-bold" id="licModalTitle">Tạo License</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" name="id" id="licId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Tên license <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="licName" class="form-control" required
+                               placeholder="VD: Adobe Creative Cloud, Kaspersky Endpoint...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Nhà cung cấp</label>
+                        <input type="text" name="vendor" id="licVendor" class="form-control" placeholder="VD: Adobe, Kaspersky...">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-4">
+                            <label class="form-label fw-bold small">Đã mua</label>
+                            <input type="number" name="purchasedQty" id="licPurchased" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-bold small">Đã cấp</label>
+                            <input type="number" name="assignedQty" id="licAssigned" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-bold small">Ngày hết hạn</label>
+                            <input type="date" name="expiryDate" id="licExpiry" class="form-control">
+                            <small class="text-muted">Trống = vĩnh viễn</small>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label fw-bold small">Ghi chú</label>
+                        <textarea name="note" id="licNote" class="form-control" rows="2"
+                                  placeholder="Số hợp đồng, ai giữ key, chu kỳ gia hạn..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button class="btn text-white fw-bold" style="background:#1e3a8a;">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        var modal;
+        function getModal() {
+            if (!modal) modal = new bootstrap.Modal(document.getElementById('licModal'));
+            return modal;
+        }
+        window.openLicModal = function () {
+            document.getElementById('licModalTitle').textContent = 'Tạo License';
+            ['licId', 'licName', 'licVendor', 'licExpiry', 'licNote'].forEach(function (id) {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('licPurchased').value = 0;
+            document.getElementById('licAssigned').value = 0;
+            getModal().show();
+        };
+        window.editLic = function (btn) {
+            var tr = btn.closest('tr');
+            document.getElementById('licModalTitle').textContent = 'Sửa License';
+            document.getElementById('licId').value = tr.getAttribute('data-id');
+            document.getElementById('licName').value = tr.getAttribute('data-name') || '';
+            document.getElementById('licVendor').value = tr.getAttribute('data-vendor') || '';
+            document.getElementById('licPurchased').value = tr.getAttribute('data-purchased') || 0;
+            document.getElementById('licAssigned').value = tr.getAttribute('data-assigned') || 0;
+            document.getElementById('licExpiry').value = tr.getAttribute('data-expiry') || '';
+            document.getElementById('licNote').value = tr.getAttribute('data-note') || '';
+            getModal().show();
+        };
+
+        // Lọc tại chỗ: từ khóa + trạng thái
+        var rows = Array.prototype.slice.call(document.querySelectorAll('#licTable tbody tr[data-id]'));
+        function applyFilters() {
+            var q = (document.getElementById('licSearch').value || '').toLowerCase();
+            var st = document.getElementById('licStatusFilter').value;
+            rows.forEach(function (tr) {
+                var okQ = !q || (tr.getAttribute('data-search') || '').toLowerCase().indexOf(q) >= 0;
+                var okS = !st || tr.getAttribute('data-status') === st;
+                tr.style.display = (okQ && okS) ? '' : 'none';
+            });
+        }
+        document.getElementById('licSearch').addEventListener('input', applyFilters);
+        document.getElementById('licStatusFilter').addEventListener('change', applyFilters);
+    })();
+    </script>
+</body>
+</html>
