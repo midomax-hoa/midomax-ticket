@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets (chi dung local, khong day len git) ###
+application-local.properties
+**/application-local.properties
+.env
