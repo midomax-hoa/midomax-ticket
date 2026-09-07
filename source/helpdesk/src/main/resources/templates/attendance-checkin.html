@@ -102,11 +102,21 @@
 
                     <!-- Được cấp quyền: nút chấm to -->
                     <div th:if="${gpsAllowed and hasCode}" class="py-2">
-                        <button type="button" class="punch-btn" id="gpsBtn" onclick="gpsPunch()">
-                            <span class="punch-ring"></span>
-                            <i class="fa-solid fa-fingerprint"></i>
-                            Chấm công
-                        </button>
+                        <!-- Hai nút VÀO / RA — mỗi lần chấm ghi rõ loại để lịch sử đọc được giờ vào giờ ra -->
+                        <div class="d-flex justify-content-center gap-3 flex-wrap">
+                            <button type="button" class="punch-btn" id="gpsBtn" onclick="gpsPunch('IN')"
+                                    style="background:linear-gradient(135deg,#059669,#10b981);">
+                                <span class="punch-ring"></span>
+                                <i class="fa-solid fa-right-to-bracket"></i>
+                                Chấm công VÀO
+                            </button>
+                            <button type="button" class="punch-btn" id="gpsBtnOut" onclick="gpsPunch('OUT')"
+                                    style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+                                <span class="punch-ring"></span>
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                                Chấm công RA
+                            </button>
+                        </div>
                         <div class="hero-hint mt-3" id="gpsHint">
                             Bấm nút → cho phép vị trí &amp; camera → chụp selfie là xong
                         </div>
@@ -181,7 +191,11 @@
                              style="width:44px; height:44px; object-fit:cover; border-radius:10px; border:2px solid #99f6e4; cursor:zoom-in; flex-shrink:0;"
                              th:attr="onclick=|window.open('/attendance/gps/selfie/${c.id}','_blank')|">
                         <div style="flex:1; min-width:0;">
-                            <div class="fw-semibold" th:text="${#temporals.format(c.punchTime,'HH:mm:ss')}">08:30:15</div>
+                            <div class="fw-semibold">
+                                <span th:text="${#temporals.format(c.punchTime,'HH:mm:ss')}">08:30:15</span>
+                                <span th:if="${c.punchType == 'IN'}" class="badge ms-1" style="background:#dcfce7; color:#15803d; font-size:10px;">VÀO</span>
+                                <span th:if="${c.punchType == 'OUT'}" class="badge ms-1" style="background:#ffedd5; color:#c2410c; font-size:10px;">RA</span>
+                            </div>
                             <div class="text-muted" style="font-size:11.5px;">
                                 <!-- Công tác: hiện địa chỉ thật nơi chấm; trong bán kính: tên văn phòng + khoảng cách -->
                                 <span th:if="${c.freeLocation}" th:text="${c.locationName != null ? c.locationName : 'Vị trí theo định vị'}">Quận 1, TP.HCM</span>
@@ -224,15 +238,20 @@
         }
         tick(); setInterval(tick, 1000);
 
-        var gpsPos = null, gpsStream = null, gpsFacing = 'user', gpsAddr = null;
+        var gpsPos = null, gpsStream = null, gpsFacing = 'user', gpsAddr = null, gpsType = 'IN';
         function note(msg, isErr) {
             var el = document.getElementById('gpsResult');
             // Nền hero xanh đậm nên lỗi dùng vàng nhạt, thành công dùng trắng — chữ đỏ trên nền xanh khó đọc
             if (el) el.innerHTML = '<span style="color:' + (isErr ? '#fde68a' : '#ffffff') + '; font-weight:600;">' + msg + '</span>';
         }
-        function busy(b) { var x = document.getElementById('gpsBtn'); if (x) x.disabled = b; }
+        function busy(b) {
+            ['gpsBtn', 'gpsBtnOut'].forEach(function (id) {
+                var x = document.getElementById(id); if (x) x.disabled = b;
+            });
+        }
 
-        window.gpsPunch = function () {
+        window.gpsPunch = function (type) {
+            gpsType = type === 'OUT' ? 'OUT' : 'IN';
             if (!window.isSecureContext || !navigator.geolocation
                     || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 note('Trình duyệt chặn định vị/camera trên HTTP — chấm được khi hệ thống lên HTTPS (ticket.midomax.vn).', true);
@@ -414,6 +433,7 @@
                 fd.append('longitude', gpsPos.coords.longitude);
                 fd.append('accuracy', gpsPos.coords.accuracy);
                 fd.append('selfie', blob, 'selfie.jpg');
+                fd.append('type', gpsType);
                 fetch('/attendance/gps/checkin', { method: 'POST', body: fd })
                     .then(function (r) { return r.json(); })
                     .then(function (res) {

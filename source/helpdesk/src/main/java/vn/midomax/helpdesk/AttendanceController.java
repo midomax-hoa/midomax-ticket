@@ -1145,6 +1145,7 @@ public class AttendanceController {
                                           @RequestParam(value = "accuracy", required = false) Double accuracy,
                                           @RequestParam(value = "selfie", required = false)
                                           org.springframework.web.multipart.MultipartFile selfie,
+                                          @RequestParam(value = "type", required = false) String punchType,
                                           jakarta.servlet.http.HttpServletRequest request,
                                           org.springframework.security.core.Authentication authentication) {
         AppUser me = currentAppUser(authentication);
@@ -1152,7 +1153,7 @@ public class AttendanceController {
         String ip = request.getHeader("X-Forwarded-For");
         ip = (ip == null || ip.isBlank()) ? request.getRemoteAddr() : ip.split(",")[0].trim();
 
-        GpsCheckinService.Result r = gpsCheckinService.checkin(me, latitude, longitude, accuracy, selfie, ip);
+        GpsCheckinService.Result r = gpsCheckinService.checkin(me, latitude, longitude, accuracy, selfie, ip, punchType);
         Map<String, Object> res = new HashMap<>();
         res.put("ok", r.ok());
         res.put("message", r.message());
@@ -1198,6 +1199,7 @@ public class AttendanceController {
             m.put("time", c.getPunchTime() == null ? "" :
                     c.getPunchTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
             m.put("deviceName", c.getDeviceName());
+            m.put("type", c.getPunchType());
             m.put("distance", c.getDistanceM() == null ? null : Math.round(c.getDistanceM()));
             m.put("free", c.isFreeLocation());
             m.put("location", c.getLocationName());

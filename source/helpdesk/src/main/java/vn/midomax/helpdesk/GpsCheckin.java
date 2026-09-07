@@ -65,8 +65,15 @@ public class GpsCheckin {
     @Column(name = "location_name", length = 300)
     private String locationName;
 
+    /** Loại lần chấm: "IN" (vào) / "OUT" (ra). Null = dữ liệu cũ trước khi tách nút. */
+    @Column(name = "punch_type", length = 8)
+    private String punchType;
+
     public String getLocationName() { return locationName; }
     public void setLocationName(String locationName) { this.locationName = locationName; }
+
+    public String getPunchType() { return punchType; }
+    public void setPunchType(String punchType) { this.punchType = punchType; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

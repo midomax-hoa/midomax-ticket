@@ -48,6 +48,10 @@
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                 <input type="text" id="qFilter" class="form-control" style="max-width:260px;"
                        placeholder="🔍 Tìm tên / email / mã chấm công...">
+                <select id="deptFilter" class="form-select form-select-sm" style="max-width:210px;">
+                    <option value="">Tất cả phòng ban</option>
+                    <option th:each="d : ${departments}" th:value="${d.name()}" th:text="${d.label}"></option>
+                </select>
                 <select id="stateFilter" class="form-select form-select-sm" style="max-width:190px;">
                     <option value="">Tất cả trạng thái</option>
                     <option value="office">🏢 Chấm tại văn phòng</option>
@@ -105,6 +109,7 @@
                             th:attr="data-uid=${u.id},
                                      data-search=${(u.fullName != null ? u.fullName : '') + ' ' + (u.email != null ? u.email : '') + ' ' + (u.employeeCode != null ? u.employeeCode : '')},
                                      data-state=${u.gpsFreeLocation ? 'free' : (u.gpsCheckinAllowed ? 'office' : 'off')},
+                                     data-dept=${u.department != null ? u.department : ''},
                                      data-assigned=${(u.employeeCode != null and u.attendanceDeviceId != null) ? 'yes' : 'no'},
                                      data-device=${u.attendanceDeviceId != null ? u.attendanceDeviceId : ''}">
                             <td><input type="checkbox" class="form-check-input row-check" th:value="${u.id}"></td>
@@ -165,13 +170,15 @@
         var pager = document.getElementById('pager');
         var noMatchRow = document.getElementById('noMatchRow');
 
-        // Gộp cả 4 điều kiện: từ khóa + trạng thái + đã/chưa gán mã + văn phòng
+        // Gộp cả 5 điều kiện: từ khóa + phòng ban + trạng thái + đã/chưa gán mã + văn phòng
         function matchedRows() {
+            var dept = document.getElementById('deptFilter').value;
             var state = document.getElementById('stateFilter').value;
             var assigned = document.getElementById('assignFilter').value;
             var device = document.getElementById('deviceFilter').value;
             return rows.filter(function (tr) {
                 if (keyword && (tr.getAttribute('data-search') || '').toLowerCase().indexOf(keyword) < 0) return false;
+                if (dept && tr.getAttribute('data-dept') !== dept) return false;
                 if (state && tr.getAttribute('data-state') !== state) return false;
                 if (assigned && tr.getAttribute('data-assigned') !== assigned) return false;
                 if (device && tr.getAttribute('data-device') !== device) return false;
@@ -235,7 +242,7 @@
             page = 1; // đổi từ khóa thì về trang đầu
             render();
         });
-        ['stateFilter', 'assignFilter', 'deviceFilter'].forEach(function (id) {
+        ['deptFilter', 'stateFilter', 'assignFilter', 'deviceFilter'].forEach(function (id) {
             document.getElementById(id).addEventListener('change', function () { page = 1; render(); });
         });
 

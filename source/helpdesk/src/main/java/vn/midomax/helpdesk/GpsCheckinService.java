@@ -213,7 +213,7 @@ public class GpsCheckinService {
     }
 
     public Result checkin(AppUser user, double latitude, double longitude, Double accuracy,
-                          MultipartFile selfie, String ip) {
+                          MultipartFile selfie, String ip, String punchType) {
         // Cờ "công tác" (chấm tự do vị trí) tự nó đã là quyền chấm GPS
         if (user == null || (!user.isGpsCheckinAllowed() && !user.isGpsFreeLocation())) {
             return Result.fail("Tài khoản chưa được cấp quyền chấm công GPS. Liên hệ IT/nhân sự.");
@@ -345,6 +345,8 @@ public class GpsCheckinService {
         c.setFreeLocation(free);
         c.setIpAddress(ip);
         c.setSelfieFile(selfieName);
+        // Chỉ nhận đúng 2 giá trị hợp lệ, còn lại để null (bản ghi chung chung)
+        c.setPunchType("IN".equals(punchType) || "OUT".equals(punchType) ? punchType : null);
         // Chấm công tác: dịch toạ độ ra địa chỉ thật để hiển thị "đang ở đâu"
         // thay vì "cách văn phòng bao xa" — dịch lỗi thì để trống, nơi hiển thị tự lo.
         String locationName = free ? reverseGeocode(latitude, longitude) : null;

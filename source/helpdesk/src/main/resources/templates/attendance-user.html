@@ -129,10 +129,12 @@
         }
 
         @media (max-width: 480px) {
-            .calendar-day-cell { padding: 4px 2px; min-height: 72px; }
+            .calendar-day-cell { padding: 4px 2px; min-height: 80px; }
             .calendar-header-day { padding: 8px 2px; font-size: 11px; }
             .status-badge { font-size: 13px; }
-            .cell-time { display: none; }
+            /* Điện thoại vẫn PHẢI thấy giờ vào-ra: thu nhỏ và cho xuống dòng
+               ("8:30 -" / "17:30") thay vì ẩn hẳn như trước. */
+            .cell-time { font-size: 8.5px; line-height: 1.2; white-space: normal; word-spacing: -1px; }
         }
     </style>
 </head>
@@ -690,6 +692,8 @@
                         + ' onclick="window.open(\'/attendance/gps/selfie/' + c.id + '\',\'_blank\')">'
                         + '<div style="flex:1; font-size:12.5px;">'
                         + '<b>' + c.time + '</b>'
+                        + (c.type === 'IN' ? ' <span class="badge" style="background:#dcfce7; color:#15803d; font-size:9.5px;">VÀO</span>'
+                          : c.type === 'OUT' ? ' <span class="badge" style="background:#ffedd5; color:#c2410c; font-size:9.5px;">RA</span>' : '')
                         + '<span class="text-muted"> · ' + (c.free
                             ? ((c.location || 'Vị trí theo định vị') + ' · công tác')
                             : ((c.deviceName || '') + (c.distance != null ? ' · cách ' + c.distance + 'm' : '')))

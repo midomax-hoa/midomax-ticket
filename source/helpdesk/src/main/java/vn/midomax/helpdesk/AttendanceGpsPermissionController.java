@@ -45,6 +45,8 @@ public class AttendanceGpsPermissionController {
         model.addAttribute("users", users);
         // Every device (office), including inactive ones, for the per-row office select
         model.addAttribute("devices", deviceRepo.findAll());
+        // 11 phòng ban chuẩn cho bộ lọc — app_users.department lưu mã (B2B, ITD...)
+        model.addAttribute("departments", Department.values());
         return "attendance-gps-permissions";
     }
 
